@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
@@ -53,8 +54,11 @@ class DatabaseCommand extends Command
             $choices = [
                 1 => '<fg=green>Crear</> base de datos',
                 2 => '<fg=green>Eliminar</> base de datos',
-                3 => '<fg=green>Importar</> SQL',
-                4 => '<fg=green>Exportar</> SQL',
+                3 => '<fg=green>Resetear</> base de datos',
+                4 => '<fg=green>Importar</> SQL',
+                5 => '<fg=green>Exportar</> SQL',
+                6 => '<fg=green>Buscar/Reemplazar</> en DB',
+                7 => '<fg=green>Ejecutar Query</> SQL',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -86,10 +90,19 @@ class DatabaseCommand extends Command
                     $this->drop($wpcli, $output);
                     break;
                 case 3:
-                    $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
+                    $this->reset($wpcli, $output);
                     break;
                 case 4:
+                    $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
+                    break;
+                case 5:
                     $output->writeln('<comment>Función de exportación interactiva pendiente</comment>');
+                    break;
+                case 6:
+                    $this->searchReplace($input, $output, $wpcli);
+                    break;
+                case 7:
+                    $this->query($input, $output, $wpcli);
                     break;
             }
             
@@ -159,6 +172,62 @@ class DatabaseCommand extends Command
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos exportada</info>');
+            return Command::SUCCESS;
+        }
+        
+        return Command::FAILURE;
+    }
+
+    private function reset(WpCliService $wpcli, OutputInterface $output): int
+    {
+        $output->writeln('<info>Reseteando base de datos...</info>');
+        $process = $wpcli->dbReset();
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Base de datos reseteada</info>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al resetear base de datos</error>');
+        return Command::FAILURE;
+    }
+
+    private function searchReplace(InputInterface $input, OutputInterface $output, WpCliService $wpcli): int
+    {
+        $helper = $this->getHelper('question');
+        $search = $helper->ask($input, $output, new Question('<fg=yellow>Buscar:</>'));
+        $replace = $helper->ask($input, $output, new Question('<fg=yellow>Reemplazar por:</>'));
+        
+        $output->writeln("<info>Buscando '{$search}' y reemplazando por '{$replace}'...</info>");
+        $process = $wpcli->dbSearchReplace($search, $replace);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Reemplazo completado</info>');
+            return Command::SUCCESS;
+        }
+        
+        return Command::FAILURE;
+    }
+
+    private function query(InputInterface $input, OutputInterface $output, WpCliService $wpcli): int
+    {
+        $helper = $this->getHelper('question');
+        $query = $helper->ask($input, $output, new Question('<fg=yellow>Query SQL:</>'));
+        
+        $output->writeln('<info>Ejecutando query...</info>');
+        $process = $wpcli->dbQuery($query);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Query ejecutado</info>');
             return Command::SUCCESS;
         }
         
