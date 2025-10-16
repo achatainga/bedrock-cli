@@ -26,6 +26,7 @@ class MainMenuCommand extends Command
         $output->writeln('');
 
         $choices = [
+            '❌ Salir',
             '🐳 Docker - Gestión de contenedores',
             '💾 Database - Gestión de base de datos',
             '⚙️  Install - Instalar WordPress',
@@ -33,29 +34,28 @@ class MainMenuCommand extends Command
             '🎨 Themes - Gestión de temas',
             '📦 Backup - Crear backup',
             '🔄 Update - Actualizar sistema',
-            '❌ Salir',
         ];
 
-        $question = new ChoiceQuestion('Selecciona una opción:', $choices, 0);
+        $question = new ChoiceQuestion('Selecciona una opción:', $choices, 1);
         $question->setErrorMessage('Opción %s inválida.');
 
         $choice = $helper->ask($input, $output, $question);
         $selectedIndex = array_search($choice, $choices);
         
-        if ($selectedIndex === 7) {
+        if ($selectedIndex === 0) {
             $output->writeln('');
             $output->writeln('<info>👋 Hasta luego!</info>');
             return Command::SUCCESS;
         }
 
         $commandMap = [
-            0 => 'docker',
-            1 => 'db',
-            2 => 'install',
-            3 => 'plugins',
-            4 => 'themes',
-            5 => 'backup',
-            6 => 'update',
+            1 => 'docker',
+            2 => 'db',
+            3 => 'install',
+            4 => 'plugins',
+            5 => 'themes',
+            6 => 'backup',
+            7 => 'update',
         ];
 
         $commandName = $commandMap[$selectedIndex];
