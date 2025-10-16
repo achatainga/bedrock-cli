@@ -113,8 +113,15 @@ class DockerCommand extends Command
     {
         $output->writeln('<info>Levantando contenedores...</info>');
         $process = $docker->up($build);
-        $process->setTty(true);
-        $process->run();
+        
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $process->setTty(true);
+            $process->run();
+        } else {
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
+        }
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
@@ -171,8 +178,15 @@ class DockerCommand extends Command
     {
         $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
         $process = $docker->rebuild();
-        $process->setTty(true);
-        $process->run();
+        
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $process->setTty(true);
+            $process->run();
+        } else {
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
+        }
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores reconstruidos</info>');
@@ -187,8 +201,15 @@ class DockerCommand extends Command
     {
         $output->writeln('<info>Mostrando logs (Ctrl+C para salir)...</info>');
         $process = $docker->logs();
-        $process->setTty(true);
-        $process->run();
+        
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $process->setTty(true);
+            $process->run();
+        } else {
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
+        }
         
         return Command::SUCCESS;
     }
