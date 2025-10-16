@@ -5,9 +5,9 @@ namespace Roots\BedrockCli\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 
@@ -18,8 +18,8 @@ class DatabaseCommand extends Command
         $this
             ->setName('db')
             ->setDescription('Gestión de base de datos')
-
             ->addOption('create', null, InputOption::VALUE_NONE, 'Crear base de datos')
+            ->addOption('drop', null, InputOption::VALUE_NONE, 'Eliminar base de datos')
             ->addOption('import', null, InputOption::VALUE_REQUIRED, 'Importar SQL')
             ->addOption('export', null, InputOption::VALUE_REQUIRED, 'Exportar SQL');
     }
@@ -29,9 +29,11 @@ class DatabaseCommand extends Command
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
-        // Comandos directos
         if ($input->getOption('create')) {
             return $this->create($wpcli, $output);
+        }
+        if ($input->getOption('drop')) {
+            return $this->drop($wpcli, $output);
         }
         if ($file = $input->getOption('import')) {
             return $this->import($wpcli, $output, $file);
@@ -40,7 +42,6 @@ class DatabaseCommand extends Command
             return $this->export($wpcli, $output, $file);
         }
 
-        // Menú interactivo
         return $this->showMenu($input, $output, $wpcli);
     }
 
@@ -48,30 +49,51 @@ class DatabaseCommand extends Command
     {
         $helper = $this->getHelper('question');
         
-        $question = new ChoiceQuestion(
-            '<info>Selecciona una opción:</info>',
-            [
-                '1' => 'Crear base de datos',
-                '2' => 'Importar SQL',
-                '3' => 'Exportar SQL',
-                '4' => 'Salir'
-            ],
-            '4'
-        );
+        while (true) {
+            $choices = [
+                1 => '<fg=green>Crear</> base de datos',
+                2 => '<fg=green>Eliminar</> base de datos',
+                3 => '<fg=green>Importar</> SQL',
+                4 => '<fg=green>Exportar</> SQL',
+                0 => '<fg=yellow>Volver atrás</>',
+            ];
+            
+            $question = new ChoiceQuestion(
+                '<fg=cyan>Selecciona una opción:</>',
+                $choices,
+                1
+            );
+            $question->setAutocompleterValues(null);
 
-        $answer = $helper->ask($input, $output, $question);
+            $answer = $helper->ask($input, $output, $question);
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+            
+            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+            
+            if ($index === 0) {
+                return Command::SUCCESS;
+            }
 
-        switch ($answer) {
-            case '1':
-                return $this->create($wpcli, $output);
-            case '2':
-                $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
-                return Command::SUCCESS;
-            case '3':
-                $output->writeln('<comment>Función de exportación interactiva pendiente</comment>');
-                return Command::SUCCESS;
-            case '4':
-                return Command::SUCCESS;
+            $output->writeln('');
+            
+            switch ($index) {
+                case 1:
+                    $this->create($wpcli, $output);
+                    break;
+                case 2:
+                    $this->drop($wpcli, $output);
+                    break;
+                case 3:
+                    $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
+                    break;
+                case 4:
+                    $output->writeln('<comment>Función de exportación interactiva pendiente</comment>');
+                    break;
+            }
+            
+            $output->writeln('');
         }
 
         return Command::SUCCESS;
@@ -91,6 +113,23 @@ class DatabaseCommand extends Command
         }
         
         $output->writeln('<error>✗ Error al crear base de datos</error>');
+        return Command::FAILURE;
+    }
+
+    private function drop(WpCliService $wpcli, OutputInterface $output): int
+    {
+        $output->writeln('<info>Eliminando base de datos...</info>');
+        $process = $wpcli->dbDrop();
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Base de datos eliminada</info>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al eliminar base de datos</error>');
         return Command::FAILURE;
     }
 
