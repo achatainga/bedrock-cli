@@ -28,13 +28,14 @@ class MainMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Docker</> - Gestión de contenedores',
-                2 => '<fg=green>Database</> - Gestión de base de datos',
-                3 => '<fg=green>Install</> - Instalar WordPress',
-                4 => '<fg=green>Plugins</> - Gestión de plugins',
-                5 => '<fg=green>Themes</> - Gestión de temas',
-                6 => '<fg=green>Backup</> - Crear backup',
-                7 => '<fg=green>Update</> - Actualizar sistema',
+                1 => '<fg=green>Setup</> - Configuración inicial',
+                2 => '<fg=green>Docker</> - Gestión de contenedores',
+                3 => '<fg=green>Database</> - Gestión de base de datos',
+                4 => '<fg=green>Install</> - Instalar WordPress',
+                5 => '<fg=green>Plugins</> - Gestión de plugins',
+                6 => '<fg=green>Themes</> - Gestión de temas',
+                7 => '<fg=green>Backup</> - Crear backup',
+                8 => '<fg=green>Update</> - Actualizar sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
@@ -55,13 +56,14 @@ class MainMenuCommand extends Command
             }
 
             $commandMap = [
-                1 => 'docker',
-                2 => 'db',
-                3 => 'install',
-                4 => 'plugins',
-                5 => 'themes',
-                6 => 'backup',
-                7 => 'update',
+                1 => 'setup',
+                2 => 'docker',
+                3 => 'db',
+                4 => 'install',
+                5 => 'plugins',
+                6 => 'themes',
+                7 => 'backup',
+                8 => 'update',
             ];
 
             $commandName = $commandMap[$selectedIndex];

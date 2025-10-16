@@ -11,6 +11,7 @@ use Roots\BedrockCli\Commands\ThemesCommand;
 use Roots\BedrockCli\Commands\BackupCommand;
 use Roots\BedrockCli\Commands\UpdateCommand;
 use Roots\BedrockCli\Commands\MainMenuCommand;
+use Roots\BedrockCli\Commands\SetupCommand;
 
 class Application extends BaseApplication
 {
@@ -20,6 +21,7 @@ class Application extends BaseApplication
 
         $this->addCommands([
             new MainMenuCommand(),
+            new SetupCommand(),
             new DockerCommand(),
             new DatabaseCommand(),
             new InstallCommand(),
