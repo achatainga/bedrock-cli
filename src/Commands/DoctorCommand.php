@@ -227,7 +227,13 @@ class DoctorCommand extends Command
         $process = new Process(['wsl', '-l']);
         $process->run();
         
-        if ($process->isSuccessful() && stripos($process->getOutput(), 'Ubuntu') !== false) {
+        $wslOutput = $process->getOutput();
+        $output->writeln('<fg=cyan>[DEBUG] Comando: wsl -l</>');
+        $output->writeln('<fg=cyan>[DEBUG] Exit code: ' . $process->getExitCode() . '</>');
+        $output->writeln('<fg=cyan>[DEBUG] Output: ' . json_encode($wslOutput) . '</>');
+        $output->writeln('<fg=cyan>[DEBUG] Buscando "Ubuntu" en output...</>');
+        
+        if ($process->isSuccessful() && stripos($wslOutput, 'Ubuntu') !== false) {
             $output->writeln('<fg=green>✓ Ubuntu instalado en WSL</>');
             return true;
         }
