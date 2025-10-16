@@ -50,30 +50,33 @@ class DockerCommand extends Command
     {
         $helper = $this->getHelper('question');
         
+        $choices = [
+            'Levantar contenedores',
+            'Bajar contenedores',
+            'Reiniciar contenedores',
+            'Ver estado',
+            'Salir'
+        ];
+        
         $question = new ChoiceQuestion(
             '<info>Selecciona una opción:</info>',
-            [
-                '1' => 'Levantar contenedores',
-                '2' => 'Bajar contenedores',
-                '3' => 'Reiniciar contenedores',
-                '4' => 'Ver estado',
-                '5' => 'Salir'
-            ],
-            '5'
+            $choices,
+            4
         );
 
         $answer = $helper->ask($input, $output, $question);
+        $index = array_search($answer, $choices);
 
-        switch ($answer) {
-            case '1':
+        switch ($index) {
+            case 0:
                 return $this->up($docker, $output, false);
-            case '2':
+            case 1:
                 return $this->down($docker, $output);
-            case '3':
+            case 2:
                 return $this->restart($docker, $output);
-            case '4':
+            case 3:
                 return $this->status($docker, $output);
-            case '5':
+            case 4:
                 return Command::SUCCESS;
         }
 
