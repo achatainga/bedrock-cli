@@ -16,7 +16,10 @@ composer require roots/bedrock-cli --dev
 ```bash
 cd bedrock-cli
 composer install
-chmod +x bin/bedrock
+
+# Crear alias global
+echo 'alias bedrock="php /c/code/bedrock-cli/bin/bedrock"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ## 📖 Uso
@@ -25,31 +28,31 @@ chmod +x bin/bedrock
 
 ```bash
 # Gestión Docker (menú)
-./bin/bedrock docker
+bedrock docker
 
 # Gestión Base de Datos (menú)
-./bin/bedrock db
+bedrock db
 
 # Gestión Plugins (menú)
-./bin/bedrock plugins
+bedrock plugins
 ```
 
 ### Comandos Directos
 
 ```bash
 # Docker
-./bin/bedrock docker --up
-./bin/bedrock docker --down
-./bin/bedrock docker --restart
-./bin/bedrock docker --status
+bedrock docker --up
+bedrock docker --down
+bedrock docker --restart
+bedrock docker --status
 
 # Base de Datos
-./bin/bedrock db --create
-./bin/bedrock db --import=database.sql
-./bin/bedrock db --export=backup.sql
+bedrock db --create
+bedrock db --import=database.sql
+bedrock db --export=backup.sql
 
 # WordPress
-./bin/bedrock install
+bedrock install
 ```
 
 ## 🏗️ Arquitectura
@@ -89,10 +92,10 @@ bedrock-cli/
 composer install
 
 # Ejecutar
-./bin/bedrock list
+bedrock list
 
 # Probar comando
-./bin/bedrock docker --status
+bedrock docker --status
 ```
 
 ## 📦 Como Paquete Composer
@@ -101,7 +104,14 @@ Una vez publicado, se instalará así:
 
 ```bash
 composer require roots/bedrock-cli --dev
+
+# Opción 1: Usar vendor/bin
 vendor/bin/bedrock docker --up
+
+# Opción 2: Crear alias
+echo 'alias bedrock="php $(pwd)/vendor/roots/bedrock-cli/bin/bedrock"' >> ~/.bashrc
+source ~/.bashrc
+bedrock docker --up
 ```
 
 ## 🚧 Estado
