@@ -56,7 +56,7 @@ class DockerCommand extends Command
                 2 => 'Bajar contenedores',
                 3 => 'Reiniciar contenedores',
                 4 => 'Ver estado',
-                0 => '[..] Volver atrás'
+                '..' => 'Volver atrás',
             ];
             
             $question = new ChoiceQuestion(
@@ -64,18 +64,15 @@ class DockerCommand extends Command
                 $choices,
                 1
             );
+            $question->setAutocompleterValues(null);
 
             $answer = $helper->ask($input, $output, $question);
             
-            if ($answer === '..' || $answer === '0' || strpos($answer, '[..]') !== false) {
+            if ($answer === 'Volver atrás' || $answer === '..') {
                 return Command::SUCCESS;
             }
             
             $index = array_search($answer, $choices);
-            
-            if ($index === 0) {
-                return Command::SUCCESS;
-            }
 
             $output->writeln('');
             
