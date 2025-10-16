@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Cursor;
+use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
 
 class DockerCommand extends Command
@@ -32,16 +33,29 @@ class DockerCommand extends Command
         // Verificar si Docker está corriendo
         if (!$docker->isRunning()) {
             $output->writeln('');
-            $output->writeln('<fg=red;options=bold>⚠️  Docker no está corriendo ⚠️</>');
+            $output->writeln('<fg=yellow>Docker Desktop no está en ejecución.</>');
+            $output->writeln('<fg=cyan>Ejecutando bedrock doctor para verificar/iniciar Docker...</>');
             $output->writeln('');
-            $output->writeln('<fg=yellow>Por favor, inicia Docker Desktop y espera a que se inicialice completamente.</>');
+            
+            // Ejecutar comando doctor
+            $doctorCommand = $this->getApplication()->find('doctor');
+            $returnCode = $doctorCommand->run($input, $output);
+            
+            if ($returnCode !== Command::SUCCESS) {
+                return Command::FAILURE;
+            }
+            
+            // Verificar nuevamente si Docker está corriendo
+            if (!$docker->isRunning()) {
+                $output->writeln('');
+                $output->writeln('<fg=red>Docker aún no está disponible después de ejecutar doctor.</>');
+                $output->writeln('<fg=yellow>Por favor, revisa los mensajes anteriores y soluciona los problemas.</>');
+                return Command::FAILURE;
+            }
+            
             $output->writeln('');
-            $output->writeln('<fg=cyan>Pasos:</>');
-            $output->writeln('  1. Abre Docker Desktop');
-            $output->writeln('  2. Espera a que el ícono en la bandeja del sistema muestre "Docker Desktop is running"');
-            $output->writeln('  3. Vuelve a ejecutar este comando');
+            $output->writeln('<fg=green>✓ Docker está listo. Continuando...</>');
             $output->writeln('');
-            return Command::FAILURE;
         }
 
         // Comandos directos
@@ -227,5 +241,64 @@ class DockerCommand extends Command
         }
         
         return Command::SUCCESS;
+    }
+
+    private function startDockerDesktop(OutputInterface $output): bool
+    {
+        // Verificar si Docker Desktop está instalado
+        $dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
+        
+        if (!file_exists($dockerPath)) {
+            $output->writeln('');
+            $output->writeln('<fg=red>Docker Desktop no está instalado.</>');            $output->writeln('<fg=yellow>Descarga e instala desde: https://www.docker.com/products/docker-desktop</>');
+            $output->writeln('');
+            return false;
+        }
+        
+        // Iniciar Docker Desktop
+        $output->writeln('<fg=cyan>Iniciando Docker Desktop...</>');
+        
+        if (DIRECTORY_SEPARATOR === '\\') {
+            // Windows
+            $process = Process::fromShellCommandline('start "" "' . $dockerPath . '"');
+        } else {
+            // Mac/Linux
+            $process = new Process(['open', '-a', 'Docker']);
+        }
+        
+        $process->run();
+        
+        // Esperar a que Docker se inicialice
+        $output->writeln('<fg=yellow>Esperando a que Docker Desktop se inicialice (esto puede tardar 60 segundos)...</>');
+        $output->writeln('<fg=cyan>Este proceso puede tardar más tiempo en la primera ejecución.</>');
+        
+        $maxAttempts = 12; // 60 segundos (12 * 5)
+        $attempt = 0;
+        
+        while ($attempt < $maxAttempts) {
+            sleep(5);
+            $attempt++;
+            
+            $docker = new DockerService();
+            if ($docker->isRunning()) {
+                $output->writeln('<fg=green>✓ Docker Desktop está funcionando correctamente</>');
+                $output->writeln('');
+                return true;
+            }
+            
+            $output->write('.');
+        }
+        
+        $output->writeln('');
+        $output->writeln('');
+        $output->writeln('<fg=red>Docker Desktop no se inició correctamente después de 60 segundos.</>');
+        $output->writeln('<fg=yellow>Posibles soluciones:</>');
+        $output->writeln('  1. Verifica que Docker Desktop se esté iniciando (icono en bandeja del sistema)');
+        $output->writeln('  2. Espera un poco más y vuelve a ejecutar el comando');
+        $output->writeln('  3. Reinicia tu sistema si acabas de instalar Docker');
+        $output->writeln('  4. Verifica que WSL2 esté configurado correctamente (Windows)');
+        $output->writeln('');
+        
+        return false;
     }
 }

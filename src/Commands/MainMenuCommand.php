@@ -36,6 +36,7 @@ class MainMenuCommand extends Command
                 6 => '<fg=green>Themes</> - Gestión de temas',
                 7 => '<fg=green>Backup</> - Crear backup',
                 8 => '<fg=red>Reinstall</> - Reinstalar aplicación (DESTRUCTIVO)',
+                9 => '<fg=cyan>Doctor</> - Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
@@ -64,6 +65,7 @@ class MainMenuCommand extends Command
                 6 => 'themes',
                 7 => 'backup',
                 8 => 'reinstall',
+                9 => 'doctor',
             ];
 
             $commandName = $commandMap[$selectedIndex];
