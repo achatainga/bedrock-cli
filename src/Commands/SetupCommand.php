@@ -29,7 +29,8 @@ class SetupCommand extends Command
         
         $confirmQuestion = new ConfirmationQuestion(
             '<fg=yellow>¿Deseas continuar con la configuración inicial?</> [s/n] ',
-            false
+            false,
+            '/^(s|si|y|yes)/i'
         );
         
         if (!$helper->ask($input, $output, $confirmQuestion)) {

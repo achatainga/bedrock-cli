@@ -29,7 +29,8 @@ class InstallCommand extends Command
         
         $confirmQuestion = new ConfirmationQuestion(
             '<fg=yellow>¿Deseas continuar con la instalación de WordPress?</> [s/n] ',
-            false
+            false,
+            '/^(s|si|y|yes)/i'
         );
         
         if (!$helper->ask($input, $output, $confirmQuestion)) {
