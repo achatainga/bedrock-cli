@@ -1,5 +1,5 @@
 {
-  "name": "roots/bedrock-cli",
+  "name": "achatainga/bedrock-cli",
   "description": "Universal CLI tool for managing Roots Bedrock WordPress projects",
   "type": "library",
   "license": "MIT",
