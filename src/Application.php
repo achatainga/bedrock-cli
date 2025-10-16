@@ -10,6 +10,7 @@ use Roots\BedrockCli\Commands\PluginsCommand;
 use Roots\BedrockCli\Commands\ThemesCommand;
 use Roots\BedrockCli\Commands\BackupCommand;
 // use Roots\BedrockCli\Commands\UpdateCommand; // DESHABILITADO: Composer debe gestionar versiones
+use Roots\BedrockCli\Commands\ReinstallCommand;
 use Roots\BedrockCli\Commands\MainMenuCommand;
 use Roots\BedrockCli\Commands\SetupCommand;
 
@@ -28,6 +29,7 @@ class Application extends BaseApplication
             new PluginsCommand(),
             new ThemesCommand(),
             new BackupCommand(),
+            new ReinstallCommand(),
             // new UpdateCommand(), // DESHABILITADO: Composer debe gestionar versiones
         ]);
         

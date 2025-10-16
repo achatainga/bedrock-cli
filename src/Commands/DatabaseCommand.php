@@ -11,6 +11,7 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
+use Roots\BedrockCli\Services\SecurityService;
 
 class DatabaseCommand extends Command
 {
@@ -131,6 +132,17 @@ class DatabaseCommand extends Command
 
     private function drop(WpCliService $wpcli, OutputInterface $output): int
     {
+        $helper = $this->getHelper('question');
+        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        if (!SecurityService::confirmDangerousAction(
+            $input,
+            $output,
+            $helper,
+            'Esta acción ELIMINARÁ PERMANENTEMENTE la base de datos.'
+        )) {
+            return Command::SUCCESS;
+        }
+        
         $output->writeln('<info>Eliminando base de datos...</info>');
         $process = $wpcli->dbDrop();
         $process->run(function ($type, $buffer) use ($output) {
@@ -180,6 +192,17 @@ class DatabaseCommand extends Command
 
     private function reset(WpCliService $wpcli, OutputInterface $output): int
     {
+        $helper = $this->getHelper('question');
+        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        if (!SecurityService::confirmDangerousAction(
+            $input,
+            $output,
+            $helper,
+            'Esta acción BORRARÁ TODOS LOS DATOS de la base de datos.'
+        )) {
+            return Command::SUCCESS;
+        }
+        
         $output->writeln('<info>Reseteando base de datos...</info>');
         $process = $wpcli->dbReset();
         $process->run(function ($type, $buffer) use ($output) {
