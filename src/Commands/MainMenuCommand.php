@@ -40,7 +40,13 @@ class MainMenuCommand extends Command
         $question->setErrorMessage('Opción %s inválida.');
 
         $choice = $helper->ask($input, $output, $question);
-        $output->writeln('');
+        $selectedIndex = array_search($choice, $choices);
+        
+        if ($selectedIndex === 7) {
+            $output->writeln('');
+            $output->writeln('<info>👋 Hasta luego!</info>');
+            return Command::SUCCESS;
+        }
 
         $commandMap = [
             0 => 'docker',
@@ -50,18 +56,11 @@ class MainMenuCommand extends Command
             4 => 'themes',
             5 => 'backup',
             6 => 'update',
-            7 => null,
         ];
-
-        $selectedIndex = array_search($choice, $choices);
-        
-        if ($selectedIndex === 7) {
-            $output->writeln('<info>👋 Hasta luego!</info>');
-            return Command::SUCCESS;
-        }
 
         $commandName = $commandMap[$selectedIndex];
         if ($commandName) {
+            $output->writeln('');
             $command = $this->getApplication()->find($commandName);
             return $command->run($input, $output);
         }

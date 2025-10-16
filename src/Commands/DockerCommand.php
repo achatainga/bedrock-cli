@@ -50,34 +50,46 @@ class DockerCommand extends Command
     {
         $helper = $this->getHelper('question');
         
-        $choices = [
-            'Levantar contenedores',
-            'Bajar contenedores',
-            'Reiniciar contenedores',
-            'Ver estado',
-            'Salir'
-        ];
-        
-        $question = new ChoiceQuestion(
-            '<info>Selecciona una opción:</info>',
-            $choices,
-            4
-        );
+        while (true) {
+            $choices = [
+                'Levantar contenedores',
+                'Bajar contenedores',
+                'Reiniciar contenedores',
+                'Ver estado',
+                'Salir'
+            ];
+            
+            $question = new ChoiceQuestion(
+                '<info>Selecciona una opción:</info>',
+                $choices,
+                4
+            );
 
-        $answer = $helper->ask($input, $output, $question);
-        $index = array_search($answer, $choices);
+            $answer = $helper->ask($input, $output, $question);
+            $index = array_search($answer, $choices);
 
-        switch ($index) {
-            case 0:
-                return $this->up($docker, $output, false);
-            case 1:
-                return $this->down($docker, $output);
-            case 2:
-                return $this->restart($docker, $output);
-            case 3:
-                return $this->status($docker, $output);
-            case 4:
+            if ($index === 4) {
                 return Command::SUCCESS;
+            }
+
+            $output->writeln('');
+            
+            switch ($index) {
+                case 0:
+                    $this->up($docker, $output, false);
+                    break;
+                case 1:
+                    $this->down($docker, $output);
+                    break;
+                case 2:
+                    $this->restart($docker, $output);
+                    break;
+                case 3:
+                    $this->status($docker, $output);
+                    break;
+            }
+            
+            $output->writeln('');
         }
 
         return Command::SUCCESS;
