@@ -13,12 +13,12 @@ use Roots\BedrockCli\Services\WpCliService;
 
 class DatabaseCommand extends Command
 {
-    protected static $defaultName = 'db';
-    protected static $defaultDescription = 'Gestión de base de datos';
-
     protected function configure(): void
     {
         $this
+            ->setName('db')
+            ->setDescription('Gestión de base de datos')
+
             ->addOption('create', null, InputOption::VALUE_NONE, 'Crear base de datos')
             ->addOption('import', null, InputOption::VALUE_REQUIRED, 'Importar SQL')
             ->addOption('export', null, InputOption::VALUE_REQUIRED, 'Exportar SQL');

@@ -8,8 +8,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class UpdateCommand extends Command
 {
-    protected static $defaultName = 'update';
-    protected static $defaultDescription = 'Actualizar sistema completo';
+    protected function configure(): void
+    {
+        $this
+            ->setName('update')
+            ->setDescription('Actualizar sistema completo');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

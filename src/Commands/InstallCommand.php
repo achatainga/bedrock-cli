@@ -11,8 +11,12 @@ use Roots\BedrockCli\Services\WpCliService;
 
 class InstallCommand extends Command
 {
-    protected static $defaultName = 'install';
-    protected static $defaultDescription = 'Instalar WordPress core';
+    protected function configure(): void
+    {
+        $this
+            ->setName('install')
+            ->setDescription('Instalar WordPress core');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

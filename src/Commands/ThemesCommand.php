@@ -8,8 +8,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ThemesCommand extends Command
 {
-    protected static $defaultName = 'themes';
-    protected static $defaultDescription = 'Gestión de temas';
+    protected function configure(): void
+    {
+        $this
+            ->setName('themes')
+            ->setDescription('Gestión de temas');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

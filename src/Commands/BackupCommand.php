@@ -8,8 +8,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class BackupCommand extends Command
 {
-    protected static $defaultName = 'backup';
-    protected static $defaultDescription = 'Crear backup completo';
+    protected function configure(): void
+    {
+        $this
+            ->setName('backup')
+            ->setDescription('Crear backup completo');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {

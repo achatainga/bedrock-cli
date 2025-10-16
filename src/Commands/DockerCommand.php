@@ -11,12 +11,12 @@ use Roots\BedrockCli\Services\DockerService;
 
 class DockerCommand extends Command
 {
-    protected static $defaultName = 'docker';
-    protected static $defaultDescription = 'Gestión de contenedores Docker';
-
     protected function configure(): void
     {
         $this
+            ->setName('docker')
+            ->setDescription('Gestión de contenedores Docker')
+
             ->addOption('up', null, InputOption::VALUE_NONE, 'Levantar contenedores')
             ->addOption('down', null, InputOption::VALUE_NONE, 'Bajar contenedores')
             ->addOption('restart', null, InputOption::VALUE_NONE, 'Reiniciar contenedores')

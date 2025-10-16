@@ -9,8 +9,12 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class PluginsCommand extends Command
 {
-    protected static $defaultName = 'plugins';
-    protected static $defaultDescription = 'Gestión de plugins';
+    protected function configure(): void
+    {
+        $this
+            ->setName('plugins')
+            ->setDescription('Gestión de plugins');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
