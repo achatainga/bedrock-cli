@@ -50,4 +50,16 @@ class DockerService
     {
         return new Process(array_merge(['docker-compose', 'exec', $service], $command));
     }
+
+    public function rebuild(): Process
+    {
+        $process = new Process(['docker-compose', 'up', '-d', '--build', '--no-cache']);
+        $process->setTimeout(600);
+        return $process;
+    }
+
+    public function logs(): Process
+    {
+        return new Process(['docker-compose', 'logs', '-f']);
+    }
 }

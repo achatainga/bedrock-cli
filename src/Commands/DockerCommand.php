@@ -56,7 +56,9 @@ class DockerCommand extends Command
                 1 => '<fg=green>Levantar</> contenedores',
                 2 => '<fg=green>Bajar</> contenedores',
                 3 => '<fg=green>Reiniciar</> contenedores',
-                4 => '<fg=green>Ver estado</>',
+                4 => '<fg=green>Reconstruir</> (sin caché)',
+                5 => '<fg=green>Ver estado</>',
+                6 => '<fg=green>Ver logs</>',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -91,7 +93,13 @@ class DockerCommand extends Command
                     $this->restart($docker, $output);
                     break;
                 case 4:
+                    $this->rebuild($docker, $output);
+                    break;
+                case 5:
                     $this->status($docker, $output);
+                    break;
+                case 6:
+                    $this->logs($docker, $output);
                     break;
             }
             
@@ -105,9 +113,8 @@ class DockerCommand extends Command
     {
         $output->writeln('<info>Levantando contenedores...</info>');
         $process = $docker->up($build);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $process->setTty(true);
+        $process->run();
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
@@ -158,5 +165,31 @@ class DockerCommand extends Command
         });
         
         return $process->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    private function rebuild(DockerService $docker, OutputInterface $output): int
+    {
+        $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
+        $process = $docker->rebuild();
+        $process->setTty(true);
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Contenedores reconstruidos</info>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al reconstruir contenedores</error>');
+        return Command::FAILURE;
+    }
+
+    private function logs(DockerService $docker, OutputInterface $output): int
+    {
+        $output->writeln('<info>Mostrando logs (Ctrl+C para salir)...</info>');
+        $process = $docker->logs();
+        $process->setTty(true);
+        $process->run();
+        
+        return Command::SUCCESS;
     }
 }
