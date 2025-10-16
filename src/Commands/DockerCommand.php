@@ -56,7 +56,7 @@ class DockerCommand extends Command
                 2 => 'Bajar contenedores',
                 3 => 'Reiniciar contenedores',
                 4 => 'Ver estado',
-                '..' => 'Volver atrás',
+                '0..' => 'Volver atrás',
             ];
             
             $question = new ChoiceQuestion(
@@ -68,11 +68,11 @@ class DockerCommand extends Command
 
             $answer = $helper->ask($input, $output, $question);
             
-            if ($answer === 'Volver atrás' || $answer === '..') {
+            if ($answer === 'Volver atrás' || $answer === '0..' || $answer === '..') {
                 return Command::SUCCESS;
             }
             
-            $index = array_search($answer, $choices);
+            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
 
             $output->writeln('');
             

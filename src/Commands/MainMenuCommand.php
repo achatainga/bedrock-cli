@@ -27,14 +27,14 @@ class MainMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '🐳 Docker - Gestión de contenedores',
-                2 => '💾 Database - Gestión de base de datos',
-                3 => '⚙️  Install - Instalar WordPress',
-                4 => '🔌 Plugins - Gestión de plugins',
-                5 => '🎨 Themes - Gestión de temas',
-                6 => '📦 Backup - Crear backup',
-                7 => '🔄 Update - Actualizar sistema',
-                0 => '❌ Salir',
+                1 => 'Docker - Gestión de contenedores',
+                2 => 'Database - Gestión de base de datos',
+                3 => 'Install - Instalar WordPress',
+                4 => 'Plugins - Gestión de plugins',
+                5 => 'Themes - Gestión de temas',
+                6 => 'Backup - Crear backup',
+                7 => 'Update - Actualizar sistema',
+                0 => 'Salir',
             ];
 
             $question = new ChoiceQuestion('Selecciona una opción:', $choices, 1);
@@ -45,7 +45,7 @@ class MainMenuCommand extends Command
             
             if ($selectedIndex === 0) {
                 $output->writeln('');
-                $output->writeln('<info>👋 Hasta luego!</info>');
+                $output->writeln('<info>Hasta luego!</info>');
                 return Command::SUCCESS;
             }
 
