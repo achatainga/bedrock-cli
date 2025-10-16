@@ -6,6 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 class SetupCommand extends Command
 {
@@ -24,6 +25,18 @@ class SetupCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  CONFIGURACIÓN INICIAL - BEDROCK  </> <fg=cyan;options=bold>║</>');
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        
+        $confirmQuestion = new ConfirmationQuestion(
+            '<fg=yellow>¿Deseas continuar con la configuración inicial?</> [s/n] ',
+            false
+        );
+        
+        if (!$helper->ask($input, $output, $confirmQuestion)) {
+            $output->writeln('<comment>Configuración cancelada</comment>');
+            return Command::SUCCESS;
+        }
+        
         $output->writeln('');
 
         // Configuración de acceso
