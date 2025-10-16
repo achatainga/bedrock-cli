@@ -228,10 +228,9 @@ class DoctorCommand extends Command
         $process->run();
         
         $wslOutput = $process->getOutput();
-        $output->writeln('<fg=cyan>[DEBUG] Comando: wsl -l</>');
-        $output->writeln('<fg=cyan>[DEBUG] Exit code: ' . $process->getExitCode() . '</>');
-        $output->writeln('<fg=cyan>[DEBUG] Output: ' . json_encode($wslOutput) . '</>');
-        $output->writeln('<fg=cyan>[DEBUG] Buscando "Ubuntu" en output...</>');
+        
+        // Convertir de UTF-16LE a UTF-8
+        $wslOutput = mb_convert_encoding($wslOutput, 'UTF-8', 'UTF-16LE');
         
         if ($process->isSuccessful() && stripos($wslOutput, 'Ubuntu') !== false) {
             $output->writeln('<fg=green>✓ Ubuntu instalado en WSL</>');
