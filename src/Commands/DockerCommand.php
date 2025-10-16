@@ -87,8 +87,9 @@ class DockerCommand extends Command
                 2 => '<fg=green>Bajar</> contenedores',
                 3 => '<fg=green>Reiniciar</> contenedores',
                 4 => '<fg=green>Reconstruir</> (sin caché)',
-                5 => '<fg=green>Ver estado</>',
-                6 => '<fg=green>Ver logs</>',
+                5 => '<fg=green>Reconstruir</> (con caché)',
+                6 => '<fg=green>Ver estado</>',
+                7 => '<fg=green>Ver logs</>',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -123,12 +124,15 @@ class DockerCommand extends Command
                     $this->restart($docker, $output);
                     break;
                 case 4:
-                    $this->rebuild($docker, $output);
+                    $this->rebuild($docker, $output, false);
                     break;
                 case 5:
-                    $this->status($docker, $output);
+                    $this->rebuild($docker, $output, true);
                     break;
                 case 6:
+                    $this->status($docker, $output);
+                    break;
+                case 7:
                     $this->logs($docker, $output);
                     break;
             }
@@ -142,12 +146,10 @@ class DockerCommand extends Command
     private function up(DockerService $docker, OutputInterface $output, bool $build): int
     {
         $output->writeln('<info>Levantando contenedores...</info>');
-        $process = $docker->up($build);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $cmd = $build ? 'docker-compose up -d --build' : 'docker-compose up -d';
+        passthru($cmd, $exitCode);
         
-        if ($process->isSuccessful()) {
+        if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
             return Command::SUCCESS;
         }
@@ -198,17 +200,17 @@ class DockerCommand extends Command
         return $process->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
     }
 
-    private function rebuild(DockerService $docker, OutputInterface $output): int
+    private function rebuild(DockerService $docker, OutputInterface $output, bool $useCache = false): int
     {
-        $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
+        if ($useCache) {
+            $output->writeln('<info>Reconstruyendo contenedores con caché...</info>');
+            passthru('docker-compose build web', $exitCode);
+        } else {
+            $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
+            passthru('docker-compose build --no-cache web', $exitCode);
+        }
         
-        // Paso 1: Build sin caché
-        $process = $docker->rebuild();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
-        
-        if (!$process->isSuccessful()) {
+        if ($exitCode !== 0) {
             $output->writeln('<error>✗ Error al reconstruir contenedores</error>');
             return Command::FAILURE;
         }
@@ -216,12 +218,9 @@ class DockerCommand extends Command
         $output->writeln('<info>Build completado. Levantando contenedores...</info>');
         
         // Paso 2: Up
-        $process = $docker->rebuildAndUp();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        passthru('docker-compose up -d', $exitCode);
         
-        if ($process->isSuccessful()) {
+        if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores reconstruidos y levantados</info>');
             return Command::SUCCESS;
         }

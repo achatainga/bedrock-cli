@@ -53,15 +53,15 @@ class DockerService
 
     public function rebuild(): Process
     {
-        // Primero build sin caché, luego up
-        $process = new Process(['docker-compose', 'build', '--no-cache']);
+        // Build servicio web sin caché
+        $process = new Process(['docker-compose', 'build', '--no-cache', 'web']);
         $process->setTimeout(600);
         return $process;
     }
     
     public function rebuildAndUp(): Process
     {
-        $process = new Process(['docker-compose', 'up', '-d', '--build']);
+        $process = new Process(['docker-compose', 'up', '-d']);
         $process->setTimeout(600);
         return $process;
     }
