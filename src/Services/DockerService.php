@@ -53,13 +53,27 @@ class DockerService
 
     public function rebuild(): Process
     {
-        $process = new Process(['docker-compose', 'up', '-d', '--build', '--no-cache']);
+        // Primero build sin caché, luego up
+        $process = new Process(['docker-compose', 'build', '--no-cache']);
+        $process->setTimeout(600);
+        return $process;
+    }
+    
+    public function rebuildAndUp(): Process
+    {
+        $process = new Process(['docker-compose', 'up', '-d', '--build']);
         $process->setTimeout(600);
         return $process;
     }
 
-    public function logs(): Process
+    public function logs(bool $follow = false): Process
     {
-        return new Process(['docker-compose', 'logs', '-f']);
+        $cmd = ['docker-compose', 'logs'];
+        if ($follow) {
+            $cmd[] = '-f';
+        } else {
+            $cmd[] = '--tail=100'; // Últimas 100 líneas
+        }
+        return new Process($cmd);
     }
 }

@@ -201,24 +201,42 @@ class DockerCommand extends Command
     private function rebuild(DockerService $docker, OutputInterface $output): int
     {
         $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
+        
+        // Paso 1: Build sin caché
         $process = $docker->rebuild();
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
         });
         
+        if (!$process->isSuccessful()) {
+            $output->writeln('<error>✗ Error al reconstruir contenedores</error>');
+            return Command::FAILURE;
+        }
+        
+        $output->writeln('<info>Build completado. Levantando contenedores...</info>');
+        
+        // Paso 2: Up
+        $process = $docker->rebuildAndUp();
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
         if ($process->isSuccessful()) {
-            $output->writeln('<info>✓ Contenedores reconstruidos</info>');
+            $output->writeln('<info>✓ Contenedores reconstruidos y levantados</info>');
             return Command::SUCCESS;
         }
         
-        $output->writeln('<error>✗ Error al reconstruir contenedores</error>');
+        $output->writeln('<error>✗ Error al levantar contenedores</error>');
         return Command::FAILURE;
     }
 
     private function logs(DockerService $docker, OutputInterface $output): int
     {
-        $output->writeln('<info>Mostrando logs (Ctrl+C para salir)...</info>');
-        $process = $docker->logs();
+        $output->writeln('<info>Mostrando últimas 100 líneas de logs...</info>');
+        $output->writeln('<fg=yellow>Tip: Para seguir logs en tiempo real usa: docker-compose logs -f</>');
+        $output->writeln('');
+        
+        $process = $docker->logs(false);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
         });
