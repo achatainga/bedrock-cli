@@ -9,8 +9,11 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class MainMenuCommand extends Command
 {
-    protected static $defaultName = 'main-menu';
-    protected static $defaultDescription = 'Menú principal interactivo';
+    protected function configure(): void
+    {
+        $this->setName('main-menu')
+             ->setDescription('Menú principal interactivo');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
