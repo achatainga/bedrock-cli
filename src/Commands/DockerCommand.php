@@ -37,9 +37,10 @@ class DockerCommand extends Command
             $output->writeln('<fg=cyan>Ejecutando bedrock doctor para verificar/iniciar Docker...</>');
             $output->writeln('');
             
-            // Ejecutar comando doctor
+            // Ejecutar comando doctor con input limpio
             $doctorCommand = $this->getApplication()->find('doctor');
-            $returnCode = $doctorCommand->run($input, $output);
+            $doctorInput = new \Symfony\Component\Console\Input\ArrayInput([]);
+            $returnCode = $doctorCommand->run($doctorInput, $output);
             
             if ($returnCode !== Command::SUCCESS) {
                 return Command::FAILURE;
