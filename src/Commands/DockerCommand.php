@@ -28,6 +28,21 @@ class DockerCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $docker = new DockerService();
+        
+        // Verificar si Docker está corriendo
+        if (!$docker->isRunning()) {
+            $output->writeln('');
+            $output->writeln('<fg=red;options=bold>⚠️  Docker no está corriendo ⚠️</>');
+            $output->writeln('');
+            $output->writeln('<fg=yellow>Por favor, inicia Docker Desktop y espera a que se inicialice completamente.</>');
+            $output->writeln('');
+            $output->writeln('<fg=cyan>Pasos:</>');
+            $output->writeln('  1. Abre Docker Desktop');
+            $output->writeln('  2. Espera a que el ícono en la bandeja del sistema muestre "Docker Desktop is running"');
+            $output->writeln('  3. Vuelve a ejecutar este comando');
+            $output->writeln('');
+            return Command::FAILURE;
+        }
 
         // Comandos directos
         if ($input->getOption('up')) {
