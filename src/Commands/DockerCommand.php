@@ -52,23 +52,28 @@ class DockerCommand extends Command
         
         while (true) {
             $choices = [
-                '.. Volver atrás',
-                'Levantar contenedores',
-                'Bajar contenedores',
-                'Reiniciar contenedores',
-                'Ver estado'
+                1 => 'Levantar contenedores',
+                2 => 'Bajar contenedores',
+                3 => 'Reiniciar contenedores',
+                4 => 'Ver estado',
+                0 => '[..] Volver atrás'
             ];
             
             $question = new ChoiceQuestion(
                 '<info>Selecciona una opción:</info>',
                 $choices,
-                0
+                1
             );
 
             $answer = $helper->ask($input, $output, $question);
+            
+            if ($answer === '..' || $answer === '0' || strpos($answer, '[..]') !== false) {
+                return Command::SUCCESS;
+            }
+            
             $index = array_search($answer, $choices);
-
-            if ($index === 0 || $answer === '..') {
+            
+            if ($index === 0) {
                 return Command::SUCCESS;
             }
 

@@ -26,14 +26,14 @@ class MainMenuCommand extends Command
         $output->writeln('');
 
         $choices = [
-            '❌ Salir',
-            '🐳 Docker - Gestión de contenedores',
-            '💾 Database - Gestión de base de datos',
-            '⚙️  Install - Instalar WordPress',
-            '🔌 Plugins - Gestión de plugins',
-            '🎨 Themes - Gestión de temas',
-            '📦 Backup - Crear backup',
-            '🔄 Update - Actualizar sistema',
+            1 => '🐳 Docker - Gestión de contenedores',
+            2 => '💾 Database - Gestión de base de datos',
+            3 => '⚙️  Install - Instalar WordPress',
+            4 => '🔌 Plugins - Gestión de plugins',
+            5 => '🎨 Themes - Gestión de temas',
+            6 => '📦 Backup - Crear backup',
+            7 => '🔄 Update - Actualizar sistema',
+            0 => '❌ Salir',
         ];
 
         $question = new ChoiceQuestion('Selecciona una opción:', $choices, 1);
