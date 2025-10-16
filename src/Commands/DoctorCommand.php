@@ -224,10 +224,10 @@ class DoctorCommand extends Command
 
     private function checkUbuntu(OutputInterface $output): bool
     {
-        $process = Process::fromShellCommandline('powershell -Command "wsl -l -v | Select-String Ubuntu"');
+        $process = Process::fromShellCommandline('powershell -Command "try { $output = wsl --list; if ($output -like \"*Ubuntu*\") { exit 0 } else { exit 1 } } catch { exit 1 }"');
         $process->run();
         
-        if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
+        if ($process->isSuccessful()) {
             $output->writeln('<fg=green>✓ Ubuntu instalado en WSL</>');
             return true;
         }
