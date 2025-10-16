@@ -17,9 +17,15 @@ composer require roots/bedrock-cli --dev
 cd bedrock-cli
 composer install
 
-# Crear alias global
-echo 'alias bedrock="php /c/code/bedrock-cli/bin/bedrock"' >> ~/.bashrc
+# Opción 1: Agregar al PATH (Windows)
+# Agregar c:\code\bedrock-cli a la variable PATH del sistema
+
+# Opción 2: Alias en Git Bash
+echo 'alias bedrock="/c/code/bedrock-cli/bedrock"' >> ~/.bashrc
 source ~/.bashrc
+
+# Opción 3: Usar directamente
+./bedrock list
 ```
 
 ## 📖 Uso
