@@ -28,6 +28,16 @@ class WpCliService
         return $this->exec(['db', 'create']);
     }
 
+    public function dbDrop(): Process
+    {
+        return $this->exec(['db', 'drop', '--yes']);
+    }
+
+    public function dbReset(): Process
+    {
+        return $this->exec(['db', 'reset', '--yes']);
+    }
+
     public function dbImport(string $file): Process
     {
         return $this->exec(['db', 'import', $file]);

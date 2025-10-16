@@ -22,15 +22,20 @@ class InstallCommand extends Command
     {
         $helper = $this->getHelper('question');
         
-        $url = $helper->ask($input, $output, new Question('URL del sitio [http://127.0.0.1:8024]: ', 'http://127.0.0.1:8024'));
-        $title = $helper->ask($input, $output, new Question('Título del sitio [Detodo24]: ', 'Detodo24'));
-        $user = $helper->ask($input, $output, new Question('Usuario admin [detodo24]: ', 'detodo24'));
-        $pass = $helper->ask($input, $output, new Question('Contraseña [detodo24]: ', 'detodo24'));
-        $email = $helper->ask($input, $output, new Question('Email [detodo24@detodo24.com]: ', 'detodo24@detodo24.com'));
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>===== INSTALACIÓN DE WORDPRESS =====</>');
+        $output->writeln('');
+        
+        $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://127.0.0.1:8024]: ', 'http://127.0.0.1:8024'));
+        $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Detodo24]: ', 'Detodo24'));
+        $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [detodo24]: ', 'detodo24'));
+        $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [detodo24]: ', 'detodo24'));
+        $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [detodo24@detodo24.com]: ', 'detodo24@detodo24.com'));
 
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
+        $output->writeln('');
         $output->writeln('<info>Instalando WordPress...</info>');
         $process = $wpcli->coreInstall([
             'url' => $url,
@@ -45,10 +50,11 @@ class InstallCommand extends Command
         });
 
         if ($process->isSuccessful()) {
-            $output->writeln('<info>✓ WordPress instalado</info>');
+            $output->writeln('<info>✓ WordPress instalado exitosamente</info>');
             return Command::SUCCESS;
         }
 
+        $output->writeln('<error>✗ Error al instalar WordPress</error>');
         return Command::FAILURE;
     }
 }
