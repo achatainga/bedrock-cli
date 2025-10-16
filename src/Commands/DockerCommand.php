@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 
 class DockerCommand extends Command
@@ -52,27 +53,30 @@ class DockerCommand extends Command
         
         while (true) {
             $choices = [
-                1 => 'Levantar contenedores',
-                2 => 'Bajar contenedores',
-                3 => 'Reiniciar contenedores',
-                4 => 'Ver estado',
-                '0..' => 'Volver atrás',
+                1 => '<fg=green>Levantar</> contenedores',
+                2 => '<fg=green>Bajar</> contenedores',
+                3 => '<fg=green>Reiniciar</> contenedores',
+                4 => '<fg=green>Ver estado</>',
+                0 => '<fg=yellow>Volver atrás</>',
             ];
             
             $question = new ChoiceQuestion(
-                '<info>Selecciona una opción:</info>',
+                '<fg=cyan>Selecciona una opción:</>',
                 $choices,
                 1
             );
             $question->setAutocompleterValues(null);
 
             $answer = $helper->ask($input, $output, $question);
-            
-            if ($answer === 'Volver atrás' || $answer === '0..' || $answer === '..') {
-                return Command::SUCCESS;
-            }
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
             
             $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+            
+            if ($index === 0) {
+                return Command::SUCCESS;
+            }
 
             $output->writeln('');
             

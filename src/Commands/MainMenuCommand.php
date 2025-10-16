@@ -6,6 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Cursor;
 
 class MainMenuCommand extends Command
 {
@@ -21,26 +22,30 @@ class MainMenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║</> <fg=yellow;options=bold>    BEDROCK CLI - Menú Principal</> <fg=cyan>    ║</>');
-            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
 
             $choices = [
-                1 => 'Docker - Gestión de contenedores',
-                2 => 'Database - Gestión de base de datos',
-                3 => 'Install - Instalar WordPress',
-                4 => 'Plugins - Gestión de plugins',
-                5 => 'Themes - Gestión de temas',
-                6 => 'Backup - Crear backup',
-                7 => 'Update - Actualizar sistema',
-                0 => 'Salir',
+                1 => '<fg=green>Docker</> - Gestión de contenedores',
+                2 => '<fg=green>Database</> - Gestión de base de datos',
+                3 => '<fg=green>Install</> - Instalar WordPress',
+                4 => '<fg=green>Plugins</> - Gestión de plugins',
+                5 => '<fg=green>Themes</> - Gestión de temas',
+                6 => '<fg=green>Backup</> - Crear backup',
+                7 => '<fg=green>Update</> - Actualizar sistema',
+                0 => '<fg=red>Salir</>',
             ];
 
-            $question = new ChoiceQuestion('Selecciona una opción:', $choices, 1);
-            $question->setErrorMessage('Opción %s inválida.');
+            $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
+            $question->setAutocompleterValues(null);
+            $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
 
             $choice = $helper->ask($input, $output, $question);
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
             $selectedIndex = array_search($choice, $choices);
             
             if ($selectedIndex === 0) {
