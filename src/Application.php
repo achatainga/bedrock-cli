@@ -9,7 +9,7 @@ use Roots\BedrockCli\Commands\InstallCommand;
 use Roots\BedrockCli\Commands\PluginsCommand;
 use Roots\BedrockCli\Commands\ThemesCommand;
 use Roots\BedrockCli\Commands\BackupCommand;
-use Roots\BedrockCli\Commands\UpdateCommand;
+// use Roots\BedrockCli\Commands\UpdateCommand; // DESHABILITADO: Composer debe gestionar versiones
 use Roots\BedrockCli\Commands\MainMenuCommand;
 use Roots\BedrockCli\Commands\SetupCommand;
 
@@ -28,7 +28,7 @@ class Application extends BaseApplication
             new PluginsCommand(),
             new ThemesCommand(),
             new BackupCommand(),
-            new UpdateCommand(),
+            // new UpdateCommand(), // DESHABILITADO: Composer debe gestionar versiones
         ]);
         
         $this->setDefaultCommand('main-menu', true);

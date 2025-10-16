@@ -35,7 +35,6 @@ class MainMenuCommand extends Command
                 5 => '<fg=green>Plugins</> - Gestión de plugins',
                 6 => '<fg=green>Themes</> - Gestión de temas',
                 7 => '<fg=green>Backup</> - Crear backup',
-                8 => '<fg=green>Update</> - Actualizar sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
@@ -63,7 +62,6 @@ class MainMenuCommand extends Command
                 5 => 'plugins',
                 6 => 'themes',
                 7 => 'backup',
-                8 => 'update',
             ];
 
             $commandName = $commandMap[$selectedIndex];
