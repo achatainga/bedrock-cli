@@ -16,7 +16,8 @@ class UnzipService
 
     public function detectProjectRoot(): string
     {
-        return dirname(dirname(dirname(dirname(dirname(__DIR__)))));
+        $root = dirname(dirname(dirname(dirname(dirname(__DIR__)))));
+        return str_replace('\\', '/', $root);
     }
 
     public function listZipFiles(string $directory): array
@@ -63,27 +64,42 @@ class UnzipService
             }
         }
 
-        // Fallback: detectar contenedor PHP desde docker-compose.yml
+        // Fallback: detectar si existe Docker
         $projectRoot = $this->detectProjectRoot();
         $dockerCompose = $projectRoot . '/docker-compose.yml';
         
-        $containerName = 'bedrock_web'; // default
         if (file_exists($dockerCompose)) {
+            // Modo Docker: detectar contenedor y volumen
             $content = file_get_contents($dockerCompose);
+            $containerName = 'bedrock_web';
+            $dockerPath = '/var/www/html';
+            
             if (preg_match('/container_name:\s*([^\s#]+)/m', $content, $matches)) {
                 $containerName = trim($matches[1]);
             }
+            if (preg_match('/- \.\/:([^\s:]+)/m', $content, $matches)) {
+                $dockerPath = trim($matches[1]);
+            }
+            
+            $dockerZipPath = str_replace($projectRoot, $dockerPath, $zipPath);
+            $dockerDestination = str_replace($projectRoot, $dockerPath, $destination);
+            $dockerZipPath = str_replace('\\', '/', $dockerZipPath);
+            $dockerDestination = str_replace('\\', '/', $dockerDestination);
+            
+            $command = sprintf(
+                'docker exec %s unzip -q -o "%s" -d "%s" 2>&1',
+                $containerName,
+                $dockerZipPath,
+                $dockerDestination
+            );
+        } else {
+            // Modo sin Docker: usar rutas normales
+            $command = sprintf(
+                'unzip -q -o "%s" -d "%s" 2>&1',
+                $zipPath,
+                $destination
+            );
         }
-        
-        $zipPath = str_replace('\\', '/', $zipPath);
-        $destination = str_replace('\\', '/', $destination);
-        
-        $command = sprintf(
-            'docker exec %s unzip -q -o "%s" -d "%s" 2>&1',
-            $containerName,
-            $zipPath,
-            $destination
-        );
         
         exec($command, $output_lines, $return_code);
 
