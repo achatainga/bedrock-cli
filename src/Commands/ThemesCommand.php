@@ -29,11 +29,10 @@ class ThemesCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Listar</> temas',
-                2 => '<fg=green>Activar</> tema',
-                3 => '<fg=green>Eliminar</> tema',
-                4 => '<fg=green>Actualizar</> temas',
-                5 => '<fg=green>Descomprimir</> ZIPs',
+                1 => '<fg=green>Listar</> temas instalados',
+                2 => '<fg=green>Gestionar</> tema específico',
+                3 => '<fg=green>Actualizar</> todos los temas',
+                4 => '<fg=green>Descomprimir</> ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -62,17 +61,12 @@ class ThemesCommand extends Command
                     $this->listThemes($wpcli, $output);
                     break;
                 case 2:
-                    $theme = $helper->ask($input, $output, new Question('<fg=yellow>Tema a activar:</>'));
-                    $this->activate($wpcli, $output, $theme);
+                    $this->manageTheme($input, $output, $wpcli);
                     break;
                 case 3:
-                    $theme = $helper->ask($input, $output, new Question('<fg=yellow>Tema a eliminar:</>'));
-                    $this->delete($wpcli, $output, $theme);
-                    break;
-                case 4:
                     $this->update($wpcli, $output);
                     break;
-                case 5:
+                case 4:
                     $this->unzipThemes($input, $output);
                     break;
             }
@@ -231,5 +225,135 @@ class ThemesCommand extends Command
 
         $output->writeln('');
         $output->writeln("<info>Resumen: {$successCount} exitosos, {$failCount} fallidos</info>");
+    }
+
+    private function manageTheme(InputInterface $input, OutputInterface $output, WpCliService $wpcli): void
+    {
+        $helper = $this->getHelper('question');
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $themesDir = $projectRoot . '/web/app/themes';
+
+        if (!is_dir($themesDir)) {
+            $output->writeln("<error>Carpeta de themes no encontrada: {$themesDir}</error>");
+            return;
+        }
+
+        $themes = array_filter(scandir($themesDir), function($item) use ($themesDir) {
+            return $item !== '.' && $item !== '..' && is_dir($themesDir . '/' . $item);
+        });
+
+        if (empty($themes)) {
+            $output->writeln('<comment>No hay temas instalados</comment>');
+            return;
+        }
+
+        $choices = [];
+        foreach (array_values($themes) as $index => $theme) {
+            $choices[(string)($index + 1)] = "<fg=green>{$theme}</>";
+        }
+        $choices['0'] = '<fg=yellow>Volver</>';
+
+        $question = new ChoiceQuestion('<fg=yellow>Seleccione un tema:</>', $choices, '0');
+        $question->setAutocompleterValues(null);
+        $choice = $helper->ask($input, $output, $question);
+
+        $cursor = new Cursor($output);
+        $cursor->moveUp(1);
+        $cursor->clearLine();
+
+        if ($choice === '<fg=yellow>Volver</>') {
+            return;
+        }
+
+        preg_match('/<fg=green>(.*?)<\/>/  ', $choice, $matches);
+        $selectedTheme = $matches[1] ?? null;
+
+        if (!$selectedTheme) {
+            return;
+        }
+
+        $this->themeActions($input, $output, $wpcli, $selectedTheme, $themesDir);
+    }
+
+    private function themeActions(InputInterface $input, OutputInterface $output, WpCliService $wpcli, string $theme, string $themesDir): void
+    {
+        $helper = $this->getHelper('question');
+
+        while (true) {
+            $output->writeln('');
+            $output->writeln("<fg=cyan;options=bold>Tema: {$theme}</>");
+            $output->writeln('');
+
+            $choices = [
+                1 => '<fg=green>Activar</> tema',
+                2 => '<fg=red>Eliminar</> tema',
+                3 => '<fg=yellow>Comprimir</> a ZIP',
+                0 => '<fg=yellow>Volver</>',
+            ];
+
+            $question = new ChoiceQuestion('<fg=cyan>Selecciona una acción:</>', $choices, 0);
+            $question->setAutocompleterValues(null);
+            $answer = $helper->ask($input, $output, $question);
+
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+
+            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+
+            if ($index === 0) {
+                return;
+            }
+
+            $output->writeln('');
+
+            switch ($index) {
+                case 1:
+                    $this->activate($wpcli, $output, $theme);
+                    break;
+                case 2:
+                    $this->delete($wpcli, $output, $theme);
+                    return;
+                case 3:
+                    $this->compressTheme($output, $theme, $themesDir);
+                    break;
+            }
+
+            $output->writeln('');
+        }
+    }
+
+    private function compressTheme(OutputInterface $output, string $theme, string $themesDir): void
+    {
+        $themePath = $themesDir . '/' . $theme;
+        $zipPath = dirname($themesDir) . '/../themes/' . $theme . '.zip';
+
+        $output->writeln("<info>Comprimiendo {$theme}...</info>");
+
+        if (class_exists('ZipArchive')) {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($themePath),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+
+                foreach ($files as $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        $relativePath = substr($filePath, strlen($themePath) + 1);
+                        $zip->addFile($filePath, $theme . '/' . $relativePath);
+                    }
+                }
+
+                $zip->close();
+                $output->writeln("<info>✓ Tema comprimido en: {$zipPath}</info>");
+            } else {
+                $output->writeln('<error>Error al crear archivo ZIP</error>');
+            }
+        } else {
+            $output->writeln('<error>ZipArchive no disponible</error>');
+        }
     }
 }

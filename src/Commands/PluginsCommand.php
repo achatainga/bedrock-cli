@@ -29,13 +29,11 @@ class PluginsCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Listar</> plugins',
-                2 => '<fg=green>Instalar</> plugin',
-                3 => '<fg=green>Activar</> plugin',
-                4 => '<fg=green>Desactivar</> plugin',
-                5 => '<fg=green>Desinstalar</> plugin',
-                6 => '<fg=green>Actualizar</> plugins',
-                7 => '<fg=green>Descomprimir</> ZIPs',
+                1 => '<fg=green>Listar</> plugins instalados',
+                2 => '<fg=green>Gestionar</> plugin específico',
+                3 => '<fg=green>Instalar</> desde repositorio',
+                4 => '<fg=green>Actualizar</> todos los plugins',
+                5 => '<fg=green>Descomprimir</> ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -64,25 +62,16 @@ class PluginsCommand extends Command
                     $this->listPlugins($wpcli, $output);
                     break;
                 case 2:
+                    $this->managePlugin($input, $output, $wpcli);
+                    break;
+                case 3:
                     $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Slug del plugin:</>'));
                     $this->install($wpcli, $output, $plugin);
                     break;
-                case 3:
-                    $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Plugin a activar:</>'));
-                    $this->activate($wpcli, $output, $plugin);
-                    break;
                 case 4:
-                    $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Plugin a desactivar:</>'));
-                    $this->deactivate($wpcli, $output, $plugin);
-                    break;
-                case 5:
-                    $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Plugin a desinstalar:</>'));
-                    $this->uninstall($wpcli, $output, $plugin);
-                    break;
-                case 6:
                     $this->update($wpcli, $output);
                     break;
-                case 7:
+                case 5:
                     $this->unzipPlugins($input, $output);
                     break;
             }
@@ -271,5 +260,139 @@ class PluginsCommand extends Command
 
         $output->writeln('');
         $output->writeln("<info>Resumen: {$successCount} exitosos, {$failCount} fallidos</info>");
+    }
+
+    private function managePlugin(InputInterface $input, OutputInterface $output, WpCliService $wpcli): void
+    {
+        $helper = $this->getHelper('question');
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $pluginsDir = $projectRoot . '/web/app/plugins';
+
+        if (!is_dir($pluginsDir)) {
+            $output->writeln("<error>Carpeta de plugins no encontrada: {$pluginsDir}</error>");
+            return;
+        }
+
+        $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+            return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
+        });
+
+        if (empty($plugins)) {
+            $output->writeln('<comment>No hay plugins instalados</comment>');
+            return;
+        }
+
+        $choices = [];
+        foreach (array_values($plugins) as $index => $plugin) {
+            $choices[(string)($index + 1)] = "<fg=green>{$plugin}</>";
+        }
+        $choices['0'] = '<fg=yellow>Volver</>';
+
+        $question = new ChoiceQuestion('<fg=yellow>Seleccione un plugin:</>', $choices, '0');
+        $question->setAutocompleterValues(null);
+        $choice = $helper->ask($input, $output, $question);
+
+        $cursor = new Cursor($output);
+        $cursor->moveUp(1);
+        $cursor->clearLine();
+
+        if ($choice === '<fg=yellow>Volver</>') {
+            return;
+        }
+
+        preg_match('/<fg=green>(.*?)<\/>/  ', $choice, $matches);
+        $selectedPlugin = $matches[1] ?? null;
+
+        if (!$selectedPlugin) {
+            return;
+        }
+
+        $this->pluginActions($input, $output, $wpcli, $selectedPlugin, $pluginsDir);
+    }
+
+    private function pluginActions(InputInterface $input, OutputInterface $output, WpCliService $wpcli, string $plugin, string $pluginsDir): void
+    {
+        $helper = $this->getHelper('question');
+
+        while (true) {
+            $output->writeln('');
+            $output->writeln("<fg=cyan;options=bold>Plugin: {$plugin}</>");
+            $output->writeln('');
+
+            $choices = [
+                1 => '<fg=green>Activar</> plugin',
+                2 => '<fg=yellow>Desactivar</> plugin',
+                3 => '<fg=red>Desinstalar</> plugin',
+                4 => '<fg=cyan>Comprimir</> a ZIP',
+                0 => '<fg=yellow>Volver</>',
+            ];
+
+            $question = new ChoiceQuestion('<fg=cyan>Selecciona una acción:</>', $choices, 0);
+            $question->setAutocompleterValues(null);
+            $answer = $helper->ask($input, $output, $question);
+
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+
+            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+
+            if ($index === 0) {
+                return;
+            }
+
+            $output->writeln('');
+
+            switch ($index) {
+                case 1:
+                    $this->activate($wpcli, $output, $plugin);
+                    break;
+                case 2:
+                    $this->deactivate($wpcli, $output, $plugin);
+                    break;
+                case 3:
+                    $this->uninstall($wpcli, $output, $plugin);
+                    return;
+                case 4:
+                    $this->compressPlugin($output, $plugin, $pluginsDir);
+                    break;
+            }
+
+            $output->writeln('');
+        }
+    }
+
+    private function compressPlugin(OutputInterface $output, string $plugin, string $pluginsDir): void
+    {
+        $pluginPath = $pluginsDir . '/' . $plugin;
+        $zipPath = dirname($pluginsDir) . '/../plugins/' . $plugin . '.zip';
+
+        $output->writeln("<info>Comprimiendo {$plugin}...</info>");
+
+        if (class_exists('ZipArchive')) {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($pluginPath),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+
+                foreach ($files as $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        $relativePath = substr($filePath, strlen($pluginPath) + 1);
+                        $zip->addFile($filePath, $plugin . '/' . $relativePath);
+                    }
+                }
+
+                $zip->close();
+                $output->writeln("<info>✓ Plugin comprimido en: {$zipPath}</info>");
+            } else {
+                $output->writeln('<error>Error al crear archivo ZIP</error>');
+            }
+        } else {
+            $output->writeln('<error>ZipArchive no disponible</error>');
+        }
     }
 }
