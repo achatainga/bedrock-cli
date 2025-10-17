@@ -56,7 +56,7 @@ class UnzipService
         }
 
         // 2. Intentar con ZipArchive (PHP local)
-        if ($this->unzipWithPhp($zipPath, $destination)) {
+        if ($this->unzipWithPhp($zipPath, $destination, $output)) {
             return true;
         }
 
@@ -76,6 +76,7 @@ class UnzipService
         // Intentar Python local
         exec('python --version 2>&1', $pythonCheck, $pythonCode);
         if ($pythonCode === 0) {
+            $output->writeln('<comment>[Python Local]</comment>');
             $command = sprintf('python "%s" "%s" "%s" 2>&1', $pythonScript, $zipPath, $destination);
             exec($command, $output_lines, $return_code);
             
@@ -95,6 +96,7 @@ class UnzipService
         // Fallback: Python en Docker
         $dockerCompose = $projectRoot . '/docker-compose.yml';
         if (file_exists($dockerCompose)) {
+            $output->writeln('<comment>[Python Docker]</comment>');
             $content = file_get_contents($dockerCompose);
             $containerName = 'bedrock_web';
             $dockerPath = '/var/www/html';
@@ -128,12 +130,13 @@ class UnzipService
         return false;
     }
 
-    private function unzipWithPhp(string $zipPath, string $destination): bool
+    private function unzipWithPhp(string $zipPath, string $destination, OutputInterface $output): bool
     {
         if (!class_exists('ZipArchive')) {
             return false;
         }
 
+        $output->writeln('<comment>[ZipArchive PHP]</comment>');
         try {
             $zip = new \ZipArchive();
             if ($zip->open($zipPath) === true) {
@@ -158,6 +161,7 @@ class UnzipService
             return false;
         }
 
+        $output->writeln('<comment>[unzip Docker]</comment>');
         $content = file_get_contents($dockerCompose);
         $containerName = 'bedrock_web';
         $dockerPath = '/var/www/html';
