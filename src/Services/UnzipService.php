@@ -4,7 +4,6 @@ namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use ZipArchive;
 
 class UnzipService
 {
@@ -53,7 +52,7 @@ class UnzipService
         // Intentar con ZipArchive (PHP local)
         if (class_exists('ZipArchive')) {
             try {
-                $zip = new ZipArchive();
+                $zip = new \ZipArchive();
                 if ($zip->open($zipPath) === true) {
                     $zip->extractTo($destination);
                     $zip->close();
@@ -64,12 +63,24 @@ class UnzipService
             }
         }
 
-        // Fallback: usar Docker PHP
+        // Fallback: detectar contenedor PHP desde docker-compose.yml
+        $projectRoot = $this->detectProjectRoot();
+        $dockerCompose = $projectRoot . '/docker-compose.yml';
+        
+        $containerName = 'bedrock_web'; // default
+        if (file_exists($dockerCompose)) {
+            $content = file_get_contents($dockerCompose);
+            if (preg_match('/container_name:\s*([^\s#]+)/m', $content, $matches)) {
+                $containerName = trim($matches[1]);
+            }
+        }
+        
         $zipPath = str_replace('\\', '/', $zipPath);
         $destination = str_replace('\\', '/', $destination);
         
         $command = sprintf(
-            'docker exec detodo24-php unzip -q -o "%s" -d "%s" 2>&1',
+            'docker exec %s unzip -q -o "%s" -d "%s" 2>&1',
+            $containerName,
             $zipPath,
             $destination
         );
