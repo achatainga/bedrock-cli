@@ -46,18 +46,40 @@ class UnzipService
             return false;
         }
 
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            $output->writeln("<error>No se pudo abrir el archivo ZIP: {$zipPath}</error>");
-            return false;
-        }
-
         if (!is_dir($destination)) {
             $this->filesystem->mkdir($destination);
         }
 
-        $zip->extractTo($destination);
-        $zip->close();
+        // Intentar con ZipArchive (PHP local)
+        if (class_exists('ZipArchive')) {
+            try {
+                $zip = new ZipArchive();
+                if ($zip->open($zipPath) === true) {
+                    $zip->extractTo($destination);
+                    $zip->close();
+                    return true;
+                }
+            } catch (\Exception $e) {
+                // Fallar silenciosamente y probar con Docker
+            }
+        }
+
+        // Fallback: usar Docker PHP
+        $zipPath = str_replace('\\', '/', $zipPath);
+        $destination = str_replace('\\', '/', $destination);
+        
+        $command = sprintf(
+            'docker exec detodo24-php unzip -q -o "%s" -d "%s" 2>&1',
+            $zipPath,
+            $destination
+        );
+        
+        exec($command, $output_lines, $return_code);
+
+        if ($return_code !== 0) {
+            $output->writeln("<error>Error al descomprimir: " . implode("\n", $output_lines) . "</error>");
+            return false;
+        }
 
         return true;
     }
