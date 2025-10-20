@@ -22,6 +22,7 @@ use Roots\BedrockCli\Commands\PluginsActivateCommand;
 use Roots\BedrockCli\Commands\PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\PluginsCompressCommand;
 use Roots\BedrockCli\Commands\PluginsStatusCommand;
+use Roots\BedrockCli\Commands\SeedCommand;
 
 class Application extends BaseApplication
 {
@@ -49,6 +50,7 @@ class Application extends BaseApplication
             new ThemesCompressCommand(),
             new ThemesListCommand(),
             new ThemesStatusCommand(),
+            new SeedCommand(),
         ]);
     }
 
