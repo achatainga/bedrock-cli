@@ -79,6 +79,7 @@ class DatabaseCommand extends Command
                 6 => '<fg=green>Buscar/Reemplazar</> en DB',
                 7 => '<fg=green>Cambiar Prefijo</> de tablas',
                 8 => '<fg=green>Ejecutar Query</> SQL',
+                9 => '<fg=green>Seeders</> - Gestión de seeders',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -126,6 +127,9 @@ class DatabaseCommand extends Command
                     break;
                 case 8:
                     $this->query($input, $output, $wpcli);
+                    break;
+                case 9:
+                    $this->seedersMenu($input, $output, $wpcli);
                     break;
             }
             
@@ -370,5 +374,173 @@ class DatabaseCommand extends Command
         
         $output->writeln('<error>✗ Error al cambiar prefijo</error>');
         return Command::FAILURE;
+    }
+
+    private function seedersMenu(InputInterface $input, OutputInterface $output, WpCliService $wpcli): int
+    {
+        $helper = $this->getHelper('question');
+        $seedersPath = getcwd() . '/database/seeders';
+        
+        if (!is_dir($seedersPath)) {
+            mkdir($seedersPath, 0755, true);
+        }
+        
+        while (true) {
+            $seeders = glob($seedersPath . '/*Seeder.php');
+            
+            $output->writeln('');
+            $output->writeln('<fg=cyan;options=bold>🌱 Seeders Disponibles</>');
+            $output->writeln('');
+            
+            $choices = [
+                1 => '<fg=green>Ejecutar todos</> los seeders',
+                2 => '<fg=green>Ejecutar todos</> (fresh - resetea DB)',
+                3 => '<fg=cyan>Crear nuevo</> seeder',
+            ];
+            
+            $seederIndex = 4;
+            foreach ($seeders as $seeder) {
+                $class = basename($seeder, '.php');
+                $choices[$seederIndex] = "<fg=yellow>Ejecutar:</> {$class}";
+                $seederIndex++;
+            }
+            
+            $choices[0] = '<fg=yellow>Volver</>';
+            
+            $question = new ChoiceQuestion('<fg=cyan>Selecciona una opción:</>', $choices, 0);
+            $question->setAutocompleterValues(null);
+            $answer = $helper->ask($input, $output, $question);
+            
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+            
+            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+            
+            if ($index === 0) {
+                return Command::SUCCESS;
+            }
+            
+            $output->writeln('');
+            
+            switch ($index) {
+                case 1:
+                    $this->runSeed($output, $wpcli, false);
+                    break;
+                case 2:
+                    $this->runSeed($output, $wpcli, true);
+                    break;
+                case 3:
+                    $this->createSeeder($input, $output, $seedersPath);
+                    break;
+                default:
+                    if ($index >= 4) {
+                        $seederFile = $seeders[$index - 4];
+                        $class = basename($seederFile, '.php');
+                        $this->runSeederClass($output, $wpcli, $class);
+                    }
+                    break;
+            }
+            
+            $output->writeln('');
+        }
+        
+        return Command::SUCCESS;
+    }
+    
+    private function runSeed(OutputInterface $output, WpCliService $wpcli, bool $fresh): int
+    {
+        $command = 'seed';
+        if ($fresh) {
+            $command .= ' --fresh';
+        }
+        
+        $process = $wpcli->custom($command);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        return $process->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+    }
+    
+    private function runSeederClass(OutputInterface $output, WpCliService $wpcli, string $class): int
+    {
+        $seedersPath = getcwd() . '/database/seeders';
+        $file = $seedersPath . '/' . $class . '.php';
+        
+        if (!file_exists($file)) {
+            $output->writeln("<error>Seeder no encontrado: {$class}</error>");
+            return Command::FAILURE;
+        }
+        
+        $output->writeln("<info>🌱 Ejecutando: {$class}</info>");
+        
+        $dockerPath = str_replace(getcwd(), '/var/www/html', $file);
+        $dockerPath = str_replace('\\', '/', $dockerPath);
+        
+        $process = $wpcli->custom("eval-file {$dockerPath}");
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln("<info>✓ {$class} completado</info>");
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln("<error>✗ Error en {$class}</error>");
+        return Command::FAILURE;
+    }
+    
+    private function createSeeder(InputInterface $input, OutputInterface $output, string $path): int
+    {
+        $helper = $this->getHelper('question');
+        $question = new Question('<fg=yellow>Nombre del seeder (sin .php):</> ');
+        $name = $helper->ask($input, $output, $question);
+        
+        if (!$name) {
+            $output->writeln('<error>Nombre inválido</error>');
+            return Command::FAILURE;
+        }
+        
+        if (!str_ends_with($name, 'Seeder')) {
+            $name .= 'Seeder';
+        }
+        
+        $file = $path . '/' . $name . '.php';
+        
+        if (file_exists($file)) {
+            $output->writeln("<error>El seeder {$name} ya existe</error>");
+            return Command::FAILURE;
+        }
+        
+        $template = <<<'PHP'
+<?php
+/**
+ * {NAME}
+ */
+
+WP_CLI::line('🌱 Ejecutando {NAME}...');
+
+// Tu código aquí
+// Ejemplo:
+// $user = wp_insert_user([
+//     'user_login' => 'test',
+//     'user_pass' => 'test123',
+//     'user_email' => 'test@example.com',
+//     'role' => 'subscriber'
+// ]);
+
+WP_CLI::success('✓ {NAME} completado');
+
+PHP;
+        
+        $content = str_replace('{NAME}', $name, $template);
+        file_put_contents($file, $content);
+        
+        $output->writeln("<info>✓ Seeder creado: {$file}</info>");
+        $output->writeln('<comment>Edita el archivo para agregar tu lógica</comment>');
+        
+        return Command::SUCCESS;
     }
 }
