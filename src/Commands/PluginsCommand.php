@@ -323,8 +323,9 @@ class PluginsCommand extends Command
             $choices = [
                 1 => '<fg=green>Activar</> plugin',
                 2 => '<fg=yellow>Desactivar</> plugin',
-                3 => '<fg=red>Desinstalar</> plugin',
-                4 => '<fg=cyan>Comprimir</> a ZIP',
+                3 => '<fg=red>Desinstalar</> plugin (WP-CLI)',
+                4 => '<fg=red;options=bold>Eliminar carpeta</> (filesystem)',
+                5 => '<fg=cyan>Comprimir</> a ZIP',
                 0 => '<fg=yellow>Volver</>',
             ];
 
@@ -355,12 +356,64 @@ class PluginsCommand extends Command
                     $this->uninstall($wpcli, $output, $plugin);
                     return;
                 case 4:
+                    $this->deletePluginFolder($input, $output, $plugin, $pluginsDir);
+                    return;
+                case 5:
                     $this->compressPlugin($output, $plugin, $pluginsDir);
                     break;
             }
 
             $output->writeln('');
         }
+    }
+
+    private function deletePluginFolder(InputInterface $input, OutputInterface $output, string $plugin, string $pluginsDir): void
+    {
+        $helper = $this->getHelper('question');
+        $pluginPath = $pluginsDir . '/' . $plugin;
+
+        $output->writeln('');
+        $output->writeln('<fg=red;options=bold>⚠️  ADVERTENCIA: Eliminación directa del filesystem</>');  
+        $output->writeln('<fg=yellow>Esto eliminará la carpeta sin pasar por WP-CLI</>');  
+        $output->writeln("<fg=yellow>Ruta: {$pluginPath}</>");
+        $output->writeln('');
+
+        $question = new Question('<fg=red>Escribe "ELIMINAR" para confirmar:</> ');
+        $confirmation = $helper->ask($input, $output, $question);
+
+        if ($confirmation !== 'ELIMINAR') {
+            $output->writeln('<comment>Operación cancelada</comment>');
+            return;
+        }
+
+        if (!is_dir($pluginPath)) {
+            $output->writeln("<error>La carpeta no existe: {$pluginPath}</error>");
+            return;
+        }
+
+        $output->writeln("<info>Eliminando carpeta {$plugin}...</info>");
+
+        if ($this->removeDirectory($pluginPath)) {
+            $output->writeln("<info>✓ Carpeta eliminada: {$pluginPath}</info>");
+        } else {
+            $output->writeln('<error>Error al eliminar la carpeta</error>');
+        }
+    }
+
+    private function removeDirectory(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->removeDirectory($path) : unlink($path);
+        }
+
+        return rmdir($dir);
     }
 
     private function compressPlugin(OutputInterface $output, string $plugin, string $pluginsDir): void
