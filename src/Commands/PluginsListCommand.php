@@ -17,8 +17,7 @@ class PluginsListCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $unzipService = new UnzipService();
-        $projectRoot = $unzipService->detectProjectRoot();
+        $projectRoot = getcwd();
         $pluginsDir = $projectRoot . '/web/app/plugins';
 
         if (!is_dir($pluginsDir)) {
