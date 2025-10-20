@@ -12,8 +12,8 @@ class MainMenuCommand extends Command
 {
     protected function configure(): void
     {
-        $this->setName('main-menu')
-             ->setDescription('Menú principal interactivo');
+        $this->setName('menu')
+             ->setDescription('Abre el menú interactivo');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

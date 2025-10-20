@@ -11,6 +11,7 @@ use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\UnzipService;
+use Roots\BedrockCli\Services\ZipService;
 
 class ThemesCommand extends Command
 {
@@ -29,10 +30,9 @@ class ThemesCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Listar</> temas instalados',
-                2 => '<fg=green>Gestionar</> tema específico',
-                3 => '<fg=green>Actualizar</> todos los temas',
-                4 => '<fg=green>Descomprimir</> ZIPs',
+                1 => '<fg=green>Gestionar</> tema específico',
+                2 => '<fg=green>Actualizar</> todos los temas',
+                3 => '<fg=green>Descomprimir</> ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -58,15 +58,12 @@ class ThemesCommand extends Command
             
             switch ($index) {
                 case 1:
-                    $this->listThemes($wpcli, $output);
-                    break;
-                case 2:
                     $this->manageTheme($input, $output, $wpcli);
                     break;
-                case 3:
+                case 2:
                     $this->update($wpcli, $output);
                     break;
-                case 4:
+                case 3:
                     $this->unzipThemes($input, $output);
                     break;
             }
@@ -79,11 +76,36 @@ class ThemesCommand extends Command
 
     private function listThemes(WpCliService $wpcli, OutputInterface $output): int
     {
-        $process = $wpcli->themeList();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $themesDir = $projectRoot . '/web/app/themes';
+
+        if (!is_dir($themesDir)) {
+            $output->writeln("<error>Carpeta de themes no encontrada: {$themesDir}</error>");
+            return Command::FAILURE;
+        }
+
+        $themes = array_filter(scandir($themesDir), function($item) use ($themesDir) {
+            return $item !== '.' && $item !== '..' && is_dir($themesDir . '/' . $item);
         });
-        return $process->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+
+        if (empty($themes)) {
+            $output->writeln('<comment>No hay temas instalados</comment>');
+            return Command::SUCCESS;
+        }
+
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>Temas Instalados:</>');
+        $output->writeln('');
+
+        foreach ($themes as $theme) {
+            $output->writeln("  <fg=green>•</> {$theme}");
+        }
+
+        $output->writeln('');
+        $output->writeln("<info>Total: " . count($themes) . " temas</info>");
+
+        return Command::SUCCESS;
     }
 
     private function activate(WpCliService $wpcli, OutputInterface $output, string $theme): int
@@ -288,7 +310,8 @@ class ThemesCommand extends Command
             $choices = [
                 1 => '<fg=green>Activar</> tema',
                 2 => '<fg=red>Eliminar</> tema',
-                3 => '<fg=yellow>Comprimir</> a ZIP',
+                3 => '<fg=cyan>Estado / información</> (WP-CLI)',
+                4 => '<fg=yellow>Comprimir</> a ZIP',
                 0 => '<fg=yellow>Volver</>',
             ];
 
@@ -316,6 +339,9 @@ class ThemesCommand extends Command
                     $this->delete($wpcli, $output, $theme);
                     return;
                 case 3:
+                    $this->themeStatus($wpcli, $output, $theme);
+                    break;
+                case 4:
                     $this->compressTheme($output, $theme, $themesDir);
                     break;
             }
@@ -326,34 +352,28 @@ class ThemesCommand extends Command
 
     private function compressTheme(OutputInterface $output, string $theme, string $themesDir): void
     {
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        
         $themePath = $themesDir . '/' . $theme;
-        $zipPath = dirname($themesDir) . '/../themes/' . $theme . '.zip';
+        $zipPath = $projectRoot . '/themes/' . $theme . '.zip';
 
         $output->writeln("<info>Comprimiendo {$theme}...</info>");
 
-        if (class_exists('ZipArchive')) {
-            $zip = new \ZipArchive();
-            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-                $files = new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($themePath),
-                    \RecursiveIteratorIterator::LEAVES_ONLY
-                );
-
-                foreach ($files as $file) {
-                    if (!$file->isDir()) {
-                        $filePath = $file->getRealPath();
-                        $relativePath = substr($filePath, strlen($themePath) + 1);
-                        $zip->addFile($filePath, $theme . '/' . $relativePath);
-                    }
-                }
-
-                $zip->close();
-                $output->writeln("<info>✓ Tema comprimido en: {$zipPath}</info>");
-            } else {
-                $output->writeln('<error>Error al crear archivo ZIP</error>');
-            }
+        $zipService = new ZipService();
+        if ($zipService->compress($themePath, $zipPath, $output)) {
+            $output->writeln("<info>✓ Tema comprimido en: {$zipPath}</info>");
         } else {
-            $output->writeln('<error>ZipArchive no disponible</error>');
+            $output->writeln('<error>Error al comprimir tema</error>');
         }
+    }
+
+    private function themeStatus(WpCliService $wpcli, OutputInterface $output, string $theme): void
+    {
+        $output->writeln("<info>Obteniendo información de {$theme}...</info>");
+        $process = $wpcli->custom("theme get {$theme}");
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
     }
 }

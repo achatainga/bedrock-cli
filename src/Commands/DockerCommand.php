@@ -204,10 +204,10 @@ class DockerCommand extends Command
     {
         if ($useCache) {
             $output->writeln('<info>Reconstruyendo contenedores con caché...</info>');
-            passthru('docker-compose build web', $exitCode);
+            passthru('docker-compose build --progress=plain web', $exitCode);
         } else {
             $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
-            passthru('docker-compose build --no-cache web', $exitCode);
+            passthru('docker-compose build --no-cache --progress=plain web', $exitCode);
         }
         
         if ($exitCode !== 0) {

@@ -11,6 +11,7 @@ use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\UnzipService;
+use Roots\BedrockCli\Services\ZipService;
 
 class PluginsCommand extends Command
 {
@@ -29,11 +30,10 @@ class PluginsCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Listar</> plugins instalados',
-                2 => '<fg=green>Gestionar</> plugin específico',
-                3 => '<fg=green>Instalar</> desde repositorio',
-                4 => '<fg=green>Actualizar</> todos los plugins',
-                5 => '<fg=green>Descomprimir</> ZIPs',
+                1 => '<fg=green>Gestionar</> plugin específico',
+                2 => '<fg=green>Instalar</> desde repositorio',
+                3 => '<fg=green>Actualizar</> todos los plugins',
+                4 => '<fg=green>Descomprimir</> ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -59,19 +59,16 @@ class PluginsCommand extends Command
             
             switch ($index) {
                 case 1:
-                    $this->listPlugins($wpcli, $output);
-                    break;
-                case 2:
                     $this->managePlugin($input, $output, $wpcli);
                     break;
-                case 3:
+                case 2:
                     $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Slug del plugin:</>'));
                     $this->install($wpcli, $output, $plugin);
                     break;
-                case 4:
+                case 3:
                     $this->update($wpcli, $output);
                     break;
-                case 5:
+                case 4:
                     $this->unzipPlugins($input, $output);
                     break;
             }
@@ -84,11 +81,36 @@ class PluginsCommand extends Command
 
     private function listPlugins(WpCliService $wpcli, OutputInterface $output): int
     {
-        $process = $wpcli->pluginList();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $pluginsDir = $projectRoot . '/web/app/plugins';
+
+        if (!is_dir($pluginsDir)) {
+            $output->writeln("<error>Carpeta de plugins no encontrada: {$pluginsDir}</error>");
+            return Command::FAILURE;
+        }
+
+        $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+            return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
         });
-        return $process->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+
+        if (empty($plugins)) {
+            $output->writeln('<comment>No hay plugins instalados</comment>');
+            return Command::SUCCESS;
+        }
+
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>Plugins Instalados:</>');
+        $output->writeln('');
+
+        foreach ($plugins as $plugin) {
+            $output->writeln("  <fg=green>•</> {$plugin}");
+        }
+
+        $output->writeln('');
+        $output->writeln("<info>Total: " . count($plugins) . " plugins</info>");
+
+        return Command::SUCCESS;
     }
 
     private function install(WpCliService $wpcli, OutputInterface $output, string $plugin): int
@@ -324,8 +346,9 @@ class PluginsCommand extends Command
                 1 => '<fg=green>Activar</> plugin',
                 2 => '<fg=yellow>Desactivar</> plugin',
                 3 => '<fg=red>Desinstalar</> plugin (WP-CLI)',
-                4 => '<fg=red;options=bold>Eliminar carpeta</> (filesystem)',
-                5 => '<fg=cyan>Comprimir</> a ZIP',
+                4 => '<fg=cyan>Estado / información</> (WP-CLI)',
+                5 => '<fg=red;options=bold>Eliminar carpeta</> (filesystem)',
+                6 => '<fg=cyan>Comprimir</> a ZIP',
                 0 => '<fg=yellow>Volver</>',
             ];
 
@@ -356,9 +379,16 @@ class PluginsCommand extends Command
                     $this->uninstall($wpcli, $output, $plugin);
                     return;
                 case 4:
+                    $output->writeln("<info>Obteniendo información de {$plugin}...</info>");
+                    $process = $wpcli->custom("plugin get {$plugin}");
+                    $process->run(function ($type, $buffer) use ($output) {
+                        $output->write($buffer);
+                    });
+                    break;
+                case 5:
                     $this->deletePluginFolder($input, $output, $plugin, $pluginsDir);
                     return;
-                case 5:
+                case 6:
                     $this->compressPlugin($output, $plugin, $pluginsDir);
                     break;
             }
@@ -423,29 +453,13 @@ class PluginsCommand extends Command
 
         $output->writeln("<info>Comprimiendo {$plugin}...</info>");
 
-        if (class_exists('ZipArchive')) {
-            $zip = new \ZipArchive();
-            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-                $files = new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($pluginPath),
-                    \RecursiveIteratorIterator::LEAVES_ONLY
-                );
-
-                foreach ($files as $file) {
-                    if (!$file->isDir()) {
-                        $filePath = $file->getRealPath();
-                        $relativePath = substr($filePath, strlen($pluginPath) + 1);
-                        $zip->addFile($filePath, $plugin . '/' . $relativePath);
-                    }
-                }
-
-                $zip->close();
-                $output->writeln("<info>✓ Plugin comprimido en: {$zipPath}</info>");
-            } else {
-                $output->writeln('<error>Error al crear archivo ZIP</error>');
-            }
+        $zipService = new ZipService();
+        if ($zipService->compress($pluginPath, $zipPath, $output)) {
+            $output->writeln("<info>✓ Plugin comprimido en: {$zipPath}</info>");
         } else {
-            $output->writeln('<error>ZipArchive no disponible</error>');
+            $output->writeln('<error>Error al comprimir plugin</error>');
         }
     }
+
+
 }
