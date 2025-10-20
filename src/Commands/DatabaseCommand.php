@@ -59,7 +59,8 @@ class DatabaseCommand extends Command
                 4 => '<fg=green>Importar</> SQL',
                 5 => '<fg=green>Exportar</> SQL',
                 6 => '<fg=green>Buscar/Reemplazar</> en DB',
-                7 => '<fg=green>Ejecutar Query</> SQL',
+                7 => '<fg=green>Cambiar Prefijo</> de tablas',
+                8 => '<fg=green>Ejecutar Query</> SQL',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -103,6 +104,9 @@ class DatabaseCommand extends Command
                     $this->searchReplace($input, $output, $wpcli);
                     break;
                 case 7:
+                    $this->prefixReplace($input, $output, $wpcli);
+                    break;
+                case 8:
                     $this->query($input, $output, $wpcli);
                     break;
             }
@@ -221,20 +225,74 @@ class DatabaseCommand extends Command
     private function searchReplace(InputInterface $input, OutputInterface $output, WpCliService $wpcli): int
     {
         $helper = $this->getHelper('question');
-        $search = $helper->ask($input, $output, new Question('<fg=yellow>Buscar:</>'));
-        $replace = $helper->ask($input, $output, new Question('<fg=yellow>Reemplazar por:</>'));
         
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>ℹ️  Buscar y Reemplazar en Base de Datos</>');
+        $output->writeln('<fg=yellow>Ejemplo: https://detodo24.com → http://127.0.0.1:8024</>');
+        $output->writeln('');
+        
+        $search = $helper->ask($input, $output, new Question('<fg=yellow>Buscar:</> '));
+        $replace = $helper->ask($input, $output, new Question('<fg=yellow>Reemplazar por:</> '));
+        
+        if (!$search || !$replace) {
+            $output->writeln('<error>Valores inválidos</error>');
+            return Command::FAILURE;
+        }
+        
+        $output->writeln('');
         $output->writeln("<info>Buscando '{$search}' y reemplazando por '{$replace}'...</info>");
-        $process = $wpcli->dbSearchReplace($search, $replace);
+        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
+        
+        $process = $wpcli->custom("search-replace '{$search}' '{$replace}' --skip-columns=guid --all-tables");
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
         });
         
         if ($process->isSuccessful()) {
-            $output->writeln('<info>✓ Reemplazo completado</info>');
+            $output->writeln('');
+            $output->writeln('<info>✓ Reemplazo completado exitosamente</info>');
             return Command::SUCCESS;
         }
         
+        $output->writeln('<error>✗ Error al ejecutar reemplazo</error>');
+        return Command::FAILURE;
+    }
+
+    private function prefixReplace(InputInterface $input, OutputInterface $output, WpCliService $wpcli): int
+    {
+        $helper = $this->getHelper('question');
+        
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>ℹ️  Cambiar Prefijo de Tablas</>');
+        $output->writeln('<fg=yellow>Ejemplo: hp2f_ → wp_</>');
+        $output->writeln('<fg=red;options=bold>⚠️  ADVERTENCIA: Esta operación modifica la estructura de la base de datos</>');
+        $output->writeln('');
+        
+        $oldPrefix = $helper->ask($input, $output, new Question('<fg=yellow>Prefijo actual:</> '));
+        $newPrefix = $helper->ask($input, $output, new Question('<fg=yellow>Nuevo prefijo:</> '));
+        
+        if (!$oldPrefix || !$newPrefix) {
+            $output->writeln('<error>Valores inválidos</error>');
+            return Command::FAILURE;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<info>Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'...</info>");
+        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
+        
+        $process = $wpcli->custom("db prefix replace {$oldPrefix} {$newPrefix} --yes --include-multiple-prefixes");
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('');
+            $output->writeln('<info>✓ Prefijo cambiado exitosamente</info>');
+            $output->writeln('<fg=yellow>⚠️  Recuerda actualizar el archivo .env con el nuevo prefijo si es necesario</>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al cambiar prefijo</error>');
         return Command::FAILURE;
     }
 
