@@ -23,7 +23,9 @@ class DatabaseCommand extends Command
             ->addOption('create', null, InputOption::VALUE_NONE, 'Crear base de datos')
             ->addOption('drop', null, InputOption::VALUE_NONE, 'Eliminar base de datos')
             ->addOption('import', null, InputOption::VALUE_REQUIRED, 'Importar SQL')
-            ->addOption('export', null, InputOption::VALUE_REQUIRED, 'Exportar SQL');
+            ->addOption('export', null, InputOption::VALUE_REQUIRED, 'Exportar SQL')
+            ->addOption('search-replace', null, InputOption::VALUE_REQUIRED, 'Buscar y reemplazar (formato: "buscar|reemplazar")')
+            ->addOption('prefix-replace', null, InputOption::VALUE_REQUIRED, 'Cambiar prefijo de tablas (formato: "viejo|nuevo")');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -42,6 +44,22 @@ class DatabaseCommand extends Command
         }
         if ($file = $input->getOption('export')) {
             return $this->export($wpcli, $output, $file);
+        }
+        if ($searchReplace = $input->getOption('search-replace')) {
+            $parts = explode('|', $searchReplace);
+            if (count($parts) !== 2) {
+                $output->writeln('<error>Formato inválido. Use: "buscar|reemplazar"</error>');
+                return Command::FAILURE;
+            }
+            return $this->searchReplaceDirect($output, $wpcli, $parts[0], $parts[1]);
+        }
+        if ($prefixReplace = $input->getOption('prefix-replace')) {
+            $parts = explode('|', $prefixReplace);
+            if (count($parts) !== 2) {
+                $output->writeln('<error>Formato inválido. Use: "viejo|nuevo"</error>');
+                return Command::FAILURE;
+            }
+            return $this->prefixReplaceDirect($output, $wpcli, $parts[0], $parts[1]);
         }
 
         return $this->showMenu($input, $output, $wpcli);
@@ -312,6 +330,45 @@ class DatabaseCommand extends Command
             return Command::SUCCESS;
         }
         
+        return Command::FAILURE;
+    }
+
+    private function searchReplaceDirect(OutputInterface $output, WpCliService $wpcli, string $search, string $replace): int
+    {
+        $output->writeln("<info>Buscando '{$search}' y reemplazando por '{$replace}'...</info>");
+        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
+        
+        $process = $wpcli->custom("search-replace '{$search}' '{$replace}' --skip-columns=guid --all-tables");
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Reemplazo completado exitosamente</info>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al ejecutar reemplazo</error>');
+        return Command::FAILURE;
+    }
+
+    private function prefixReplaceDirect(OutputInterface $output, WpCliService $wpcli, string $oldPrefix, string $newPrefix): int
+    {
+        $output->writeln("<info>Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'...</info>");
+        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
+        
+        $process = $wpcli->custom("db prefix replace {$oldPrefix} {$newPrefix} --yes --include-multiple-prefixes");
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Prefijo cambiado exitosamente</info>');
+            $output->writeln('<fg=yellow>⚠️  Recuerda actualizar el archivo .env con el nuevo prefijo si es necesario</>');
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>✗ Error al cambiar prefijo</error>');
         return Command::FAILURE;
     }
 }

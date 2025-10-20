@@ -4,6 +4,8 @@ namespace Roots\BedrockCli\Commands;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
@@ -19,7 +21,10 @@ class PluginsCommand extends Command
     {
         $this
             ->setName('plugins')
-            ->setDescription('Gestión de plugins');
+            ->setDescription('Gestión de plugins')
+            ->addArgument('plugin', InputArgument::OPTIONAL, 'Nombre del plugin')
+            ->addOption('delete', null, InputOption::VALUE_NONE, 'Eliminar carpeta del plugin (filesystem)')
+            ->addOption('compress', null, InputOption::VALUE_NONE, 'Comprimir plugin a ZIP');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -27,6 +32,16 @@ class PluginsCommand extends Command
         $helper = $this->getHelper('question');
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
+        
+        $plugin = $input->getArgument('plugin');
+        
+        if ($plugin && $input->getOption('delete')) {
+            return $this->deletePluginFolderDirect($output, $plugin);
+        }
+        
+        if ($plugin && $input->getOption('compress')) {
+            return $this->compressPluginDirect($output, $plugin);
+        }
         
         while (true) {
             $choices = [
@@ -461,5 +476,52 @@ class PluginsCommand extends Command
         }
     }
 
+    private function deletePluginFolderDirect(OutputInterface $output, string $plugin): int
+    {
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $pluginsDir = $projectRoot . '/web/app/plugins';
+        $pluginPath = $pluginsDir . '/' . $plugin;
+
+        if (!is_dir($pluginPath)) {
+            $output->writeln("<error>Plugin no encontrado: {$pluginPath}</error>");
+            return Command::FAILURE;
+        }
+
+        $output->writeln("<info>Eliminando carpeta {$plugin}...</info>");
+
+        if ($this->removeDirectory($pluginPath)) {
+            $output->writeln("<info>✓ Carpeta eliminada: {$pluginPath}</info>");
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>Error al eliminar la carpeta</error>');
+        return Command::FAILURE;
+    }
+
+    private function compressPluginDirect(OutputInterface $output, string $plugin): int
+    {
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
+        $pluginsDir = $projectRoot . '/web/app/plugins';
+        $pluginPath = $pluginsDir . '/' . $plugin;
+        $zipPath = dirname($pluginsDir) . '/../plugins/' . $plugin . '.zip';
+
+        if (!is_dir($pluginPath)) {
+            $output->writeln("<error>Plugin no encontrado: {$pluginPath}</error>");
+            return Command::FAILURE;
+        }
+
+        $output->writeln("<info>Comprimiendo {$plugin}...</info>");
+
+        $zipService = new ZipService();
+        if ($zipService->compress($pluginPath, $zipPath, $output)) {
+            $output->writeln("<info>✓ Plugin comprimido en: {$zipPath}</info>");
+            return Command::SUCCESS;
+        }
+        
+        $output->writeln('<error>Error al comprimir plugin</error>');
+        return Command::FAILURE;
+    }
 
 }
