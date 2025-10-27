@@ -26,30 +26,37 @@ class UpdateCommand extends Command
         $output->writeln('<fg=cyan;options=bold>===== ACTUALIZACIÓN DEL SISTEMA =====</>');
         $output->writeln('');
         
-        $output->writeln('<info>Actualizando WordPress core...</info>');
         $process = $wpcli->coreUpdate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Actualizando WordPress core');
         
         $output->writeln('');
-        $output->writeln('<info>Actualizando plugins...</info>');
         $process = $wpcli->pluginUpdate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Actualizando plugins');
         
         $output->writeln('');
-        $output->writeln('<info>Actualizando temas...</info>');
         $process = $wpcli->themeUpdate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Actualizando temas');
         
         $output->writeln('');
         $output->writeln('<info>✓ Sistema actualizado completamente</info>');
         $output->writeln('');
         
         return Command::SUCCESS;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

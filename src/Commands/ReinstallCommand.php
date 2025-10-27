@@ -61,9 +61,7 @@ class ReinstallCommand extends Command
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
         $process = $wpcli->dbReset();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Reseteando base de datos');
         
         if (!$process->isSuccessful()) {
             $output->writeln('<fg=red>✗ Error al resetear base de datos</>');
@@ -208,5 +206,21 @@ class ReinstallCommand extends Command
         } else {
             $output->writeln('<fg=red>✗ Error al instalar WordPress</>');
         }
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

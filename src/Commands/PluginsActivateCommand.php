@@ -24,11 +24,8 @@ class PluginsActivateCommand extends Command
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
-        $output->writeln("<info>Activando {$plugin}...</info>");
         $process = $wpcli->pluginActivate($plugin);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Activando plugin: {$plugin}");
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin activado</info>');
@@ -36,5 +33,21 @@ class PluginsActivateCommand extends Command
         }
 
         return Command::FAILURE;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

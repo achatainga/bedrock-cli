@@ -24,11 +24,8 @@ class ThemesActivateCommand extends Command
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
-        $output->writeln("<info>Activando {$theme}...</info>");
         $process = $wpcli->themeActivate($theme);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Activando tema: {$theme}");
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Tema activado</info>');
@@ -36,5 +33,21 @@ class ThemesActivateCommand extends Command
         }
 
         return Command::FAILURE;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

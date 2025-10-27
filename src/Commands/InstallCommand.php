@@ -48,7 +48,6 @@ class InstallCommand extends Command
         $wpcli = new WpCliService($docker);
 
         $output->writeln('');
-        $output->writeln('<info>Instalando WordPress...</info>');
         $process = $wpcli->coreInstall([
             'url' => $url,
             'title' => $title,
@@ -57,9 +56,7 @@ class InstallCommand extends Command
             'admin_email' => $email
         ]);
 
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Instalando WordPress');
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ WordPress instalado exitosamente</info>');
@@ -68,5 +65,21 @@ class InstallCommand extends Command
 
         $output->writeln('<error>✗ Error al instalar WordPress</error>');
         return Command::FAILURE;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

@@ -46,10 +46,11 @@ class PluginsCommand extends Command
         while (true) {
             $choices = [
                 1 => '<fg=green>Gestionar</> plugin específico',
-                2 => '<fg=green>Instalar</> desde repositorio',
-                3 => '<fg=green>Actualizar</> todos los plugins',
-                4 => '<fg=green>Descomprimir</> ZIPs',
-                5 => '<fg=yellow>Orden de Activación</> - Gestionar secuencia de carga',
+                2 => '<fg=cyan>Listar desde WordPress</> (WP-CLI)',
+                3 => '<fg=green>Instalar</> desde repositorio',
+                4 => '<fg=green>Actualizar</> todos los plugins',
+                5 => '<fg=green>Descomprimir</> ZIPs',
+                6 => '<fg=yellow>Orden de Activación</> - Gestionar secuencia de carga',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -78,16 +79,19 @@ class PluginsCommand extends Command
                     $this->managePlugin($input, $output, $wpcli);
                     break;
                 case 2:
+                    $this->listFromWordPress($wpcli, $output);
+                    break;
+                case 3:
                     $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Slug del plugin:</>'));
                     $this->install($wpcli, $output, $plugin);
                     break;
-                case 3:
+                case 4:
                     $this->update($wpcli, $output);
                     break;
-                case 4:
+                case 5:
                     $this->unzipPlugins($input, $output);
                     break;
-                case 5:
+                case 6:
                     $command = $this->getApplication()->find('plugins:order:menu');
                     $command->run($input, $output);
                     break;
@@ -97,6 +101,71 @@ class PluginsCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    private function listFromWordPress(WpCliService $wpcli, OutputInterface $output): int
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>   Plugins desde WordPress (WP-CLI)  </> <fg=cyan;options=bold>║</>');
+        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        
+        try {
+            $process = $wpcli->custom('plugin list --format=table');
+            $this->runWithLoader($process, $output, 'Consultando plugins desde WordPress');
+            
+            if (!$process->isSuccessful()) {
+                $errorOutput = $process->getErrorOutput();
+                $output->writeln('');
+                $output->writeln('<error>✗ Error al consultar WordPress</error>');
+                $output->writeln('');
+                
+                // Detectar tipo de error
+                if (str_contains($errorOutput, 'Error establishing a database connection')) {
+                    $output->writeln('<fg=red>⚠️  Error de conexión a la base de datos</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Docker no está corriendo');
+                    $output->writeln('  2. Contenedor MySQL no está activo');
+                    $output->writeln('  3. Credenciales de DB incorrectas en .env');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock docker --up');
+                } elseif (str_contains($errorOutput, 'WordPress is not installed')) {
+                    $output->writeln('<fg=red>⚠️  WordPress no está instalado</>');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock install');
+                } elseif (str_contains($errorOutput, 'docker-compose') || str_contains($errorOutput, 'Cannot connect')) {
+                    $output->writeln('<fg=red>⚠️  Docker no está disponible</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Docker Desktop no está corriendo');
+                    $output->writeln('  2. Contenedores no están levantados');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock doctor');
+                } else {
+                    $output->writeln('<fg=yellow>Detalles del error:</>');
+                    $output->writeln('<comment>' . trim($errorOutput) . '</comment>');
+                }
+                
+                $output->writeln('');
+                return Command::FAILURE;
+            }
+            
+            // Mostrar output exitoso
+            $output->writeln('');
+            $output->write($process->getOutput());
+            $output->writeln('');
+            
+            return Command::SUCCESS;
+            
+        } catch (\Exception $e) {
+            $output->writeln('');
+            $output->writeln('<error>✗ Error inesperado: ' . $e->getMessage() . '</error>');
+            $output->writeln('');
+            return Command::FAILURE;
+        }
     }
 
     private function listPlugins(WpCliService $wpcli, OutputInterface $output): int
@@ -135,11 +204,8 @@ class PluginsCommand extends Command
 
     private function install(WpCliService $wpcli, OutputInterface $output, string $plugin): int
     {
-        $output->writeln("<info>Instalando {$plugin}...</info>");
         $process = $wpcli->pluginInstall($plugin);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Instalando plugin: {$plugin}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin instalado</info>');
@@ -150,11 +216,8 @@ class PluginsCommand extends Command
 
     private function activate(WpCliService $wpcli, OutputInterface $output, string $plugin): int
     {
-        $output->writeln("<info>Activando {$plugin}...</info>");
         $process = $wpcli->pluginActivate($plugin);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Activando plugin: {$plugin}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin activado</info>');
@@ -165,11 +228,8 @@ class PluginsCommand extends Command
 
     private function deactivate(WpCliService $wpcli, OutputInterface $output, string $plugin): int
     {
-        $output->writeln("<info>Desactivando {$plugin}...</info>");
         $process = $wpcli->pluginDeactivate($plugin);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Desactivando plugin: {$plugin}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin desactivado</info>');
@@ -180,11 +240,8 @@ class PluginsCommand extends Command
 
     private function uninstall(WpCliService $wpcli, OutputInterface $output, string $plugin): int
     {
-        $output->writeln("<info>Desinstalando {$plugin}...</info>");
         $process = $wpcli->pluginUninstall($plugin);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Desinstalando plugin: {$plugin}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin desinstalado</info>');
@@ -195,11 +252,8 @@ class PluginsCommand extends Command
 
     private function update(WpCliService $wpcli, OutputInterface $output): int
     {
-        $output->writeln('<info>Actualizando todos los plugins...</info>');
         $process = $wpcli->pluginUpdate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Actualizando todos los plugins');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugins actualizados</info>');
@@ -399,11 +453,8 @@ class PluginsCommand extends Command
                     $this->uninstall($wpcli, $output, $plugin);
                     return;
                 case 4:
-                    $output->writeln("<info>Obteniendo información de {$plugin}...</info>");
                     $process = $wpcli->custom("plugin get {$plugin}");
-                    $process->run(function ($type, $buffer) use ($output) {
-                        $output->write($buffer);
-                    });
+                    $this->runWithLoader($process, $output, "Consultando información del plugin: {$plugin}");
                     break;
                 case 5:
                     $this->deletePluginFolder($input, $output, $plugin, $pluginsDir);
@@ -527,6 +578,22 @@ class PluginsCommand extends Command
         
         $output->writeln('<error>Error al comprimir plugin</error>');
         return Command::FAILURE;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 
 }

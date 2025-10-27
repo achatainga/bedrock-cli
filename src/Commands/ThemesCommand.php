@@ -31,8 +31,9 @@ class ThemesCommand extends Command
         while (true) {
             $choices = [
                 1 => '<fg=green>Gestionar</> tema específico',
-                2 => '<fg=green>Actualizar</> todos los temas',
-                3 => '<fg=green>Descomprimir</> ZIPs',
+                2 => '<fg=cyan>Listar desde WordPress</> (WP-CLI)',
+                3 => '<fg=green>Actualizar</> todos los temas',
+                4 => '<fg=green>Descomprimir</> ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -61,9 +62,12 @@ class ThemesCommand extends Command
                     $this->manageTheme($input, $output, $wpcli);
                     break;
                 case 2:
-                    $this->update($wpcli, $output);
+                    $this->listFromWordPress($wpcli, $output);
                     break;
                 case 3:
+                    $this->update($wpcli, $output);
+                    break;
+                case 4:
                     $this->unzipThemes($input, $output);
                     break;
             }
@@ -72,6 +76,71 @@ class ThemesCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    private function listFromWordPress(WpCliService $wpcli, OutputInterface $output): int
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    Temas desde WordPress (WP-CLI)   </> <fg=cyan;options=bold>║</>');
+        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        
+        try {
+            $process = $wpcli->custom('theme list --format=table');
+            $this->runWithLoader($process, $output, 'Consultando temas desde WordPress');
+            
+            if (!$process->isSuccessful()) {
+                $errorOutput = $process->getErrorOutput();
+                $output->writeln('');
+                $output->writeln('<error>✗ Error al consultar WordPress</error>');
+                $output->writeln('');
+                
+                // Detectar tipo de error
+                if (str_contains($errorOutput, 'Error establishing a database connection')) {
+                    $output->writeln('<fg=red>⚠️  Error de conexión a la base de datos</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Docker no está corriendo');
+                    $output->writeln('  2. Contenedor MySQL no está activo');
+                    $output->writeln('  3. Credenciales de DB incorrectas en .env');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock docker --up');
+                } elseif (str_contains($errorOutput, 'WordPress is not installed')) {
+                    $output->writeln('<fg=red>⚠️  WordPress no está instalado</>');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock install');
+                } elseif (str_contains($errorOutput, 'docker-compose') || str_contains($errorOutput, 'Cannot connect')) {
+                    $output->writeln('<fg=red>⚠️  Docker no está disponible</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Docker Desktop no está corriendo');
+                    $output->writeln('  2. Contenedores no están levantados');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  vendor/bin/bedrock doctor');
+                } else {
+                    $output->writeln('<fg=yellow>Detalles del error:</>');
+                    $output->writeln('<comment>' . trim($errorOutput) . '</comment>');
+                }
+                
+                $output->writeln('');
+                return Command::FAILURE;
+            }
+            
+            // Mostrar output exitoso
+            $output->writeln('');
+            $output->write($process->getOutput());
+            $output->writeln('');
+            
+            return Command::SUCCESS;
+            
+        } catch (\Exception $e) {
+            $output->writeln('');
+            $output->writeln('<error>✗ Error inesperado: ' . $e->getMessage() . '</error>');
+            $output->writeln('');
+            return Command::FAILURE;
+        }
     }
 
     private function listThemes(WpCliService $wpcli, OutputInterface $output): int
@@ -110,11 +179,8 @@ class ThemesCommand extends Command
 
     private function activate(WpCliService $wpcli, OutputInterface $output, string $theme): int
     {
-        $output->writeln("<info>Activando {$theme}...</info>");
         $process = $wpcli->themeActivate($theme);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Activando tema: {$theme}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Tema activado</info>');
@@ -125,11 +191,8 @@ class ThemesCommand extends Command
 
     private function delete(WpCliService $wpcli, OutputInterface $output, string $theme): int
     {
-        $output->writeln("<info>Eliminando {$theme}...</info>");
         $process = $wpcli->themeDelete($theme);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Eliminando tema: {$theme}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Tema eliminado</info>');
@@ -140,11 +203,8 @@ class ThemesCommand extends Command
 
     private function update(WpCliService $wpcli, OutputInterface $output): int
     {
-        $output->writeln('<info>Actualizando todos los temas...</info>');
         $process = $wpcli->themeUpdate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Actualizando todos los temas');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Temas actualizados</info>');
@@ -370,10 +430,23 @@ class ThemesCommand extends Command
 
     private function themeStatus(WpCliService $wpcli, OutputInterface $output, string $theme): void
     {
-        $output->writeln("<info>Obteniendo información de {$theme}...</info>");
         $process = $wpcli->custom("theme get {$theme}");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Consultando información del tema: {$theme}");
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }
