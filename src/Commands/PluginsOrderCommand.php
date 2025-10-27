@@ -153,9 +153,7 @@ echo json_encode($plugins);
 PHP;
 
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
-        $process->run();
-        
-        $output->write(" <info>✓</info>\n");
+        $this->runWithLoader($process, $output, 'Consultando WordPress');
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al obtener plugins</error>');
@@ -241,9 +239,8 @@ PHP;
 
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->setTimeout(300);
-        $process->run();
-        
-        $output->write(" <info>✓</info>\n\n");
+        $this->runWithLoader($process, $output, 'Activando plugins');
+        $output->writeln('');
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al activar plugins</error>');
@@ -293,4 +290,26 @@ PHP;
         return $deps;
     }
 
+    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        // Iniciar proceso asíncrono
+        $process->start();
+        
+        // Animar mientras el proceso corre
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000); // 80ms por frame
+        }
+        
+        // Mostrar resultado final
+        if ($process->isSuccessful()) {
+            $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+        } else {
+            $output->write("\r<comment>{$message}</comment> <error>✗</error>\n");
+        }
+    }
 }
