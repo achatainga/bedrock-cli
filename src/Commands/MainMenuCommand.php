@@ -36,7 +36,7 @@ class MainMenuCommand extends Command
                 6 => '<fg=green>Plugins</>      - Gestión de plugins',
                 7 => '<fg=green>Themes</>       - Gestión de temas',
                 8 => '<fg=green>Backup</>       - Crear backup',
-                9 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
+                9 => '<fg=red>Reinstall</>      - Reinstalar aplicación (DESTRUCTIVO)',
                 10 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
