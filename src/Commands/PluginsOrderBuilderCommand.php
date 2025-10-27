@@ -110,9 +110,47 @@ class PluginsOrderBuilderCommand extends Command
         for ($i = 0; $i < $half; $i++) {
             $num1 = $i + 1;
             $num2 = $i + $half + 1;
-            $left = isset($col1[$i]) ? sprintf("  [%2d] %-{$maxLen}s", $num1, $col1[$i]) : str_repeat(' ', $maxLen + 7);
-            $right = isset($col2[$i]) ? sprintf("  [%2d] %s", $num2, $col2[$i]) : '';
-            $output->writeln("<fg=green>{$left}</>\t<fg=green>{$right}</>");
+            
+            // Columna izquierda
+            if (isset($col1[$i])) {
+                $plugin1 = $col1[$i];
+                $isSelected1 = isset($this->activationOrder[$plugin1]);
+                $left = $this->formatPlugin($num1, $plugin1, $isSelected1, $maxLen);
+            } else {
+                $left = str_repeat(' ', $maxLen + 9);
+            }
+            
+            // Columna derecha
+            if (isset($col2[$i])) {
+                $plugin2 = $col2[$i];
+                $isSelected2 = isset($this->activationOrder[$plugin2]);
+                $right = $this->formatPlugin($num2, $plugin2, $isSelected2, $maxLen);
+            } else {
+                $right = '';
+            }
+            
+            $output->writeln("{$left}\t{$right}");
+        }
+    }
+
+    private function formatPlugin(int $num, string $plugin, bool $isSelected, int $maxLen): string
+    {
+        if ($isSelected) {
+            // Plugin seleccionado: verde con checkmark
+            $position = $this->activationOrder[$plugin];
+            return sprintf(
+                "  <fg=cyan>[</><fg=white>%2d</><fg=cyan>]</> <fg=green>%-{$maxLen}s ✓ [%d]</>",
+                $num,
+                $plugin,
+                $position
+            );
+        } else {
+            // Plugin disponible: azul y blanco
+            return sprintf(
+                "  <fg=cyan>[</><fg=white>%2d</><fg=cyan>]</> <fg=white>%-{$maxLen}s</>",
+                $num,
+                $plugin
+            );
         }
     }
 
@@ -173,7 +211,7 @@ class PluginsOrderBuilderCommand extends Command
             case 'clear':
                 $this->activationOrder = [];
                 $output->writeln('<info>✓ Orden limpiado</info>');
-                $this->displayCurrentOrder($output);
+                $this->refreshDisplay($output);
                 return null;
             
             case 'remove':
@@ -189,6 +227,14 @@ class PluginsOrderBuilderCommand extends Command
                 $this->addPlugins($command, $output);
                 return null;
         }
+    }
+
+    private function refreshDisplay(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $this->displayPluginsInColumns($output);
+        $this->displaySeparator($output);
+        $this->displayCurrentOrder($output);
     }
 
     private function addPlugins(string $input, OutputInterface $output): void
@@ -212,8 +258,7 @@ class PluginsOrderBuilderCommand extends Command
             $plugin = $this->plugins[$index - 1];
 
             if (isset($this->activationOrder[$plugin])) {
-                $output->writeln("<comment>Plugin {$plugin} ya está en el orden</comment>");
-                continue;
+                continue; // Silenciosamente ignorar duplicados
             }
 
             $this->activationOrder[$plugin] = $position++;
@@ -222,6 +267,9 @@ class PluginsOrderBuilderCommand extends Command
 
         if ($added > 0) {
             $output->writeln("<info>✓ Agregados {$added} plugin(s)</info>");
+            $output->writeln('');
+            $this->displayPluginsInColumns($output);
+            $this->displaySeparator($output);
             $this->displayCurrentOrder($output);
         }
     }
@@ -275,7 +323,7 @@ class PluginsOrderBuilderCommand extends Command
         $this->activationOrder = $newOrder;
 
         $output->writeln("<info>✓ Removido: {$plugin}</info>");
-        $this->displayCurrentOrder($output);
+        $this->refreshDisplay($output);
     }
 
     private function askDependencies(InputInterface $input, OutputInterface $output, $helper): void
