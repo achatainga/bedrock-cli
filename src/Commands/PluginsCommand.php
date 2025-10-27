@@ -45,13 +45,13 @@ class PluginsCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Gestionar</>                - Plugin específico',
+                1 => '<fg=green>Gestionar</>                 - Plugin específico',
                 2 => '<fg=cyan>Listar desde WordPress</>    - Consultar con WP-CLI',
-                3 => '<fg=green>Instalar</>                 - Desde repositorio',
-                4 => '<fg=green>Actualizar</>               - Todos los plugins',
-                5 => '<fg=green>Descomprimir</>             - Instalar desde ZIPs',
-                6 => '<fg=yellow>Orden de Activación</>     - Gestionar secuencia de carga',
-                7 => '<fg=magenta>Construir Orden</>        - Constructor interactivo',
+                3 => '<fg=green>Instalar</>                  - Desde repositorio',
+                4 => '<fg=green>Actualizar</>                - Todos los plugins',
+                5 => '<fg=green>Descomprimir</>              - Instalar desde ZIPs',
+                6 => '<fg=yellow>Orden de Activación</>       - Gestionar secuencia de carga',
+                7 => '<fg=magenta>Construir Orden</>           - Constructor interactivo',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
