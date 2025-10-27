@@ -29,21 +29,11 @@ class OptionsPullCommand extends Command
             mkdir($configDir, 0755, true);
         }
 
-        $options = $this->getOptions($input, $output);
-        
-        if (empty($options)) {
-            $output->writeln('<comment>No se encontraron opciones para exportar</comment>');
-            return Command::SUCCESS;
-        }
+        $prefix = $input->getArgument('prefix');
+        $all = $input->getOption('all');
+        $exclude = $input->getOption('exclude');
 
-        $count = 0;
-        foreach ($options as $optionName) {
-            if ($this->shouldPull($optionName, $input)) {
-                if ($this->pullOption($optionName, $configDir, $output)) {
-                    $count++;
-                }
-            }
-        }
+        $count = $this->pullOptionsBatch($prefix, $all, $exclude, $configDir, $output);
 
         $output->writeln('');
         $output->writeln("<info>✓ Exportadas {$count} opciones exitosamente</info>");
@@ -51,87 +41,78 @@ class OptionsPullCommand extends Command
         return Command::SUCCESS;
     }
 
-    protected function getOptions(InputInterface $input, OutputInterface $output): array
+    protected function pullOptionsBatch(?string $prefix, bool $all, ?string $exclude, string $dir, OutputInterface $output): int
     {
-        $prefix = $input->getArgument('prefix');
-        $all = $input->getOption('all');
-
-        if ($all) {
-            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'list', '--format=json']);
-            $process->run();
-            
-            if (!$process->isSuccessful()) {
-                $output->writeln('<error>Error al listar opciones</error>');
-                return [];
-            }
-            
-            $result = json_decode($process->getOutput(), true);
-            return array_column($result, 'option_name');
-        }
-
-        if ($prefix) {
-            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'list', '--search=' . $prefix . '*', '--format=json']);
-            $process->run();
-            
-            if (!$process->isSuccessful()) {
-                $output->writeln('<error>Error al buscar opciones</error>');
-                return [];
-            }
-            
-            $result = json_decode($process->getOutput(), true);
-            return array_column($result, 'option_name');
-        }
-
-        return ['blogname', 'blogdescription', 'siteurl', 'home'];
-    }
-
-    protected function shouldPull(string $key, InputInterface $input): bool
-    {
-        $exclude = $input->getOption('exclude');
+        $excludePatterns = $exclude ? explode(',', $exclude) : [];
+        $defaultExclusions = $all ? ['_transient', '_site_transient', 'cron', '_user_roles', 'can_compress_scripts'] : [];
         
-        if (!$exclude && $input->getOption('all')) {
-            $defaultExclusions = ['_transient', '_site_transient', 'cron', '_user_roles', 'can_compress_scripts'];
-            foreach ($defaultExclusions as $pattern) {
-                if (strpos($key, $pattern) !== false) {
-                    return false;
-                }
-            }
-        }
+        $php = $this->generatePullScript($prefix, $all, $excludePatterns, $defaultExclusions);
         
-        if ($exclude) {
-            $patterns = explode(',', $exclude);
-            foreach ($patterns as $pattern) {
-                if (strpos($key, trim($pattern)) !== false) {
-                    return false;
-                }
-            }
-        }
-        
-        return true;
-    }
-
-    protected function pullOption(string $key, string $dir, OutputInterface $output): bool
-    {
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'get', $key, '--format=json']);
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(300);
         $process->run();
         
         if (!$process->isSuccessful()) {
-            $output->writeln("<comment>⊘ Opción '{$key}' no existe en WordPress</comment>");
-            return false;
+            $output->writeln('<error>Error al exportar opciones</error>');
+            return 0;
         }
 
-        $value = json_decode($process->getOutput(), true);
+        $results = json_decode($process->getOutput(), true);
         
-        $data = [
-            'key' => $key,
-            'value' => $value,
-            'type' => gettype($value),
-        ];
+        if (empty($results)) {
+            $output->writeln('<comment>No se encontraron opciones para exportar</comment>');
+            return 0;
+        }
 
-        $filename = "{$dir}/{$key}.json";
-        file_put_contents($filename, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $count = 0;
+        foreach ($results as $data) {
+            $filename = "{$dir}/{$data['key']}.json";
+            file_put_contents($filename, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            $output->writeln("<info>✓ Exportada: {$data['key']}</info>");
+            $count++;
+        }
+
+        return $count;
+    }
+
+    protected function generatePullScript(?string $prefix, bool $all, array $excludePatterns, array $defaultExclusions): string
+    {
+        $excludeJson = json_encode(array_merge($excludePatterns, $defaultExclusions));
+        $prefixJson = json_encode($prefix);
         
-        $output->writeln("<info>✓ Exportada: {$key}</info>");
-        return true;
+        return <<<PHP
+global \$wpdb;
+\$exclude = {$excludeJson};
+\$prefix = {$prefixJson};
+\$all = " . ($all ? 'true' : 'false') . ";
+
+if (\$all) {
+    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");
+} elseif (\$prefix) {
+    \$like = \$wpdb->esc_like(\$prefix) . '%';
+    \$keys = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name", \$like));
+} else {
+    \$keys = ['blogname', 'blogdescription', 'siteurl', 'home'];
+}
+
+\$results = [];
+foreach (\$keys as \$key) {
+    \$skip = false;
+    foreach (\$exclude as \$pattern) {
+        if (strpos(\$key, trim(\$pattern)) !== false) {
+            \$skip = true;
+            break;
+        }
+    }
+    if (\$skip) continue;
+    
+    \$value = get_option(\$key);
+    if (\$value !== false) {
+        \$results[] = ['key' => \$key, 'value' => \$value, 'type' => gettype(\$value)];
+    }
+}
+
+echo json_encode(\$results);
+PHP;
     }
 }

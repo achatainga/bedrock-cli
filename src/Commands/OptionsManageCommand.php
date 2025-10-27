@@ -124,10 +124,12 @@ class OptionsManageCommand extends Command
         $output->writeln("<comment>Importando '{$key}' a WordPress...</comment>");
         
         $valueJson = json_encode($data['value']);
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'update', $key, $valueJson, '--format=json']);
+        $php = "update_option('{$key}', json_decode('{$valueJson}', true)); echo 'OK';";
+        
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->run();
         
-        if ($process->isSuccessful()) {
+        if ($process->isSuccessful() && trim($process->getOutput()) === 'OK') {
             $output->writeln("<info>✓ Opción '{$key}' importada exitosamente</info>");
         } else {
             $output->writeln("<error>✗ Error al importar '{$key}'</error>");
@@ -138,7 +140,9 @@ class OptionsManageCommand extends Command
     {
         $output->writeln("<comment>Exportando '{$key}' desde WordPress...</comment>");
         
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'get', $key, '--format=json']);
+        $php = "\$v = get_option('{$key}'); echo json_encode(['key' => '{$key}', 'value' => \$v, 'type' => gettype(\$v)]);";
+        
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->run();
         
         if (!$process->isSuccessful()) {
@@ -146,13 +150,12 @@ class OptionsManageCommand extends Command
             return;
         }
 
-        $value = json_decode($process->getOutput(), true);
+        $data = json_decode($process->getOutput(), true);
         
-        $data = [
-            'key' => $key,
-            'value' => $value,
-            'type' => gettype($value),
-        ];
+        if (!$data) {
+            $output->writeln("<error>✗ Error al decodificar '{$key}'</error>");
+            return;
+        }
 
         file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         $output->writeln("<info>✓ Opción '{$key}' exportada exitosamente</info>");

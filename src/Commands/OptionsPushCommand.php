@@ -37,14 +37,10 @@ class OptionsPushCommand extends Command
             return Command::SUCCESS;
         }
 
-        $count = 0;
-        foreach ($files as $file) {
-            if ($this->pushOption($file, $input, $output)) {
-                $count++;
-            }
-        }
+        $dryRun = $input->getOption('dry-run');
+        $count = $this->pushOptionsBatch($files, $dryRun, $output);
 
-        $verb = $input->getOption('dry-run') ? 'Se importarían' : 'Importadas';
+        $verb = $dryRun ? 'Se importarían' : 'Importadas';
         $output->writeln('');
         $output->writeln("<info>✓ {$verb} {$count} opciones exitosamente</info>");
         
@@ -74,40 +70,79 @@ class OptionsPushCommand extends Command
         );
     }
 
-    protected function pushOption(string $file, InputInterface $input, OutputInterface $output): bool
+    protected function pushOptionsBatch(array $files, bool $dryRun, OutputInterface $output): int
     {
-        $data = json_decode(file_get_contents($file), true);
+        $options = [];
         
-        if (!$data || !isset($data['key'], $data['value'])) {
-            $output->writeln("<error>Archivo inválido: {$file}</error>");
-            return false;
+        foreach ($files as $file) {
+            $data = json_decode(file_get_contents($file), true);
+            if ($data && isset($data['key'], $data['value'])) {
+                $options[] = $data;
+            } else {
+                $output->writeln("<error>Archivo inválido: {$file}</error>");
+            }
         }
 
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'get', $data['key'], '--format=json']);
-        $process->run();
-        
-        $current = $process->isSuccessful() ? json_decode($process->getOutput(), true) : null;
-        
-        if ($current === $data['value']) {
-            $output->writeln("<comment>⊘ Sin cambios: {$data['key']}</comment>");
-            return false;
-        }
-        
-        if ($input->getOption('dry-run')) {
-            $output->writeln("<info>→ Se importaría: {$data['key']}</info>");
-            return true;
+        if (empty($options)) {
+            return 0;
         }
 
-        $valueJson = json_encode($data['value']);
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'option', 'update', $data['key'], $valueJson, '--format=json']);
+        $php = $this->generatePushScript($options, $dryRun);
+        
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(300);
         $process->run();
         
         if (!$process->isSuccessful()) {
-            $output->writeln("<error>✗ Error al actualizar: {$data['key']}</error>");
-            return false;
+            $output->writeln('<error>Error al importar opciones</error>');
+            return 0;
         }
 
-        $output->writeln("<info>✓ Importada: {$data['key']}</info>");
-        return true;
+        $results = json_decode($process->getOutput(), true);
+        
+        $count = 0;
+        foreach ($results as $result) {
+            if ($result['status'] === 'unchanged') {
+                $output->writeln("<comment>⊘ Sin cambios: {$result['key']}</comment>");
+            } elseif ($result['status'] === 'dry-run') {
+                $output->writeln("<info>→ Se importaría: {$result['key']}</info>");
+                $count++;
+            } elseif ($result['status'] === 'updated') {
+                $output->writeln("<info>✓ Importada: {$result['key']}</info>");
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    protected function generatePushScript(array $options, bool $dryRun): string
+    {
+        $optionsJson = json_encode($options);
+        $dryRunStr = $dryRun ? 'true' : 'false';
+        
+        return <<<PHP
+\$options = json_decode('{$optionsJson}', true);
+\$dryRun = {$dryRunStr};
+\$results = [];
+
+foreach (\$options as \$opt) {
+    \$current = get_option(\$opt['key']);
+    
+    if (\$current === \$opt['value']) {
+        \$results[] = ['key' => \$opt['key'], 'status' => 'unchanged'];
+        continue;
+    }
+    
+    if (\$dryRun) {
+        \$results[] = ['key' => \$opt['key'], 'status' => 'dry-run'];
+    } else {
+        update_option(\$opt['key'], \$opt['value']);
+        \$results[] = ['key' => \$opt['key'], 'status' => 'updated'];
+    }
+}
+
+echo json_encode(\$results);
+PHP;
     }
 }
