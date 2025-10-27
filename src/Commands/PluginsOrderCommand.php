@@ -247,17 +247,48 @@ PHP;
 
         $results = json_decode($process->getOutput(), true);
         
+        $activated = 0;
+        $skipped = 0;
+        $failed = 0;
+        $errors = [];
+        
         foreach ($results as $result) {
             if ($result['status'] === 'already_active') {
                 $output->writeln("  <comment>⊘ {$result['plugin']} (ya activo)</comment>");
+                $skipped++;
             } elseif ($result['status'] === 'activated') {
                 $output->writeln("  <info>✓ {$result['plugin']}</info>");
+                $activated++;
             } elseif ($result['status'] === 'error') {
                 $output->writeln("  <error>✗ {$result['plugin']}: {$result['message']}</error>");
+                $failed++;
+                $errors[] = ['plugin' => $result['plugin'], 'message' => $result['message']];
             }
         }
 
         $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>─── RESUMEN ───</>');
+        $output->writeln('');
+        $output->writeln("  <info>✓ Activados: {$activated}</info>");
+        $output->writeln("  <comment>⊘ Ya activos: {$skipped}</comment>");
+        $output->writeln("  <error>✗ Fallidos: {$failed}</error>");
+        
+        if (!empty($errors)) {
+            $output->writeln('');
+            $output->writeln('<fg=red;options=bold>⚠️  ERRORES DETECTADOS:</>');
+            $output->writeln('');
+            foreach ($errors as $error) {
+                $output->writeln("  <fg=red>•</> <fg=yellow>{$error['plugin']}</>: {$error['message']}");
+            }
+        }
+        
+        $output->writeln('');
+        
+        if ($failed > 0) {
+            $output->writeln('<fg=yellow>✓ Activación completada con errores</>');
+            return Command::FAILURE;
+        }
+        
         $output->writeln('<info>✓ Activación completa</info>');
         
         return Command::SUCCESS;
