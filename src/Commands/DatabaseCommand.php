@@ -80,7 +80,7 @@ class DatabaseCommand extends Command
                 7 => '<fg=green>Cambiar Prefijo</>      - de tablas',
                 8 => '<fg=green>Ejecutar Query</>       - SQL',
                 9 => '<fg=green>Seeders</>              - Gestión de seeders',
-                0 => '<fg=yellow>Volver atrás</>        - Retroceder',
+                0 => '<fg=yellow>Volver atrás</>         - Retroceder',
             ];
             
             $question = new ChoiceQuestion(
