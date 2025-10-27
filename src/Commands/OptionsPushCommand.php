@@ -91,7 +91,9 @@ class OptionsPushCommand extends Command
         
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->setTimeout(300);
-        $process->run();
+        
+        $message = $dryRun ? 'Simulando importación de opciones' : 'Importando opciones a WordPress';
+        $this->runWithLoader($process, $output, $message);
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al importar opciones</error>');
@@ -144,5 +146,21 @@ foreach (\$options as \$opt) {
 
 echo json_encode(\$results);
 PHP;
+    }
+
+    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

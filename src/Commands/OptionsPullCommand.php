@@ -50,7 +50,8 @@ class OptionsPullCommand extends Command
         
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->setTimeout(300);
-        $process->run();
+        
+        $this->runWithLoader($process, $output, 'Exportando opciones desde WordPress');
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al exportar opciones</error>');
@@ -114,5 +115,21 @@ foreach (\$keys as \$key) {
 
 echo json_encode(\$results);
 PHP;
+    }
+
+    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }
