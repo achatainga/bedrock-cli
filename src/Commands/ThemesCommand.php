@@ -30,10 +30,10 @@ class ThemesCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Gestionar</> tema específico',
-                2 => '<fg=cyan>Listar desde WordPress</> (WP-CLI)',
-                3 => '<fg=green>Actualizar</> todos los temas',
-                4 => '<fg=green>Descomprimir</> ZIPs',
+                1 => '<fg=green>Gestionar</>                 - tema específico',
+                2 => '<fg=cyan>Listar desde WordPress</>    - (WP-CLI)',
+                3 => '<fg=green>Actualizar</>                - todos los temas',
+                4 => '<fg=green>Descomprimir</>              - ZIPs',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
