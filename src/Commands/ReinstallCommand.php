@@ -30,12 +30,12 @@ class ReinstallCommand extends Command
         $output->writeln('<fg=red;options=bold>═══════════════════════════════════════════════════════════</>');
         $output->writeln('');
         $output->writeln('<fg=yellow>Esta operación realizará:</>');
-        $output->writeln('  1. <fg=red>Resetear base de datos</> (eliminar todos los datos)');
-        $output->writeln('  2. <fg=red>Eliminar WordPress</> (rm -rf web/wp)');
-        $output->writeln('  3. <fg=red>Eliminar vendor</> (rm -rf vendor)');
-        $output->writeln('  4. <fg=green>Reinstalar dependencias</> (composer install)');
-        $output->writeln('  5. <fg=green>Rebuild Docker</> (sin caché)');
-        $output->writeln('  6. <fg=green>Instalar WordPress</> (con datos guardados)');
+        $output->writeln('  1. <fg=red>Resetear base de datos</>    - (eliminar todos los datos)');
+        $output->writeln('  2. <fg=red>Eliminar WordPress</>        - (rm -rf web/wp)');
+        $output->writeln('  3. <fg=red>Eliminar vendor</>           - (rm -rf vendor)');
+        $output->writeln('  4. <fg=green>Reinstalar dependencias</> - (composer install)');
+        $output->writeln('  5. <fg=green>Rebuild Docker</>          - (sin caché)');
+        $output->writeln('  6. <fg=green>Instalar WordPress</>      - (con datos guardados)');
         $output->writeln('');
         
         if (!SecurityService::confirmDangerousAction(

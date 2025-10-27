@@ -23,7 +23,7 @@ class OptionsCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    Gestión de Opciones WP       </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    Gestión de Opciones WP       </> <fg=cyan;options=bold>        ║</>');
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Exporta e importa configuraciones de WordPress (wp_options).</comment>');
@@ -31,9 +31,9 @@ class OptionsCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Exportar</>	- Extraer opciones a JSON',
-                2 => '<fg=green>Importar</>	- Inyectar opciones desde JSON',
-                3 => '<fg=cyan>Listar</>	- Ver archivos JSON disponibles',
+                1 => '<fg=green>Exportar</>	    - Extraer opciones a JSON',
+                2 => '<fg=green>Importar</>	    - Inyectar opciones desde JSON',
+                3 => '<fg=cyan>Listar</>	    - Ver archivos JSON disponibles',
                 4 => '<fg=yellow>Gestionar</>	- Importar/Exportar opción específica',
                 0 => '<fg=red>Volver</>',
             ];

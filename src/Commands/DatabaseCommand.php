@@ -71,16 +71,16 @@ class DatabaseCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Crear</> base de datos',
-                2 => '<fg=green>Eliminar</> base de datos',
-                3 => '<fg=green>Resetear</> base de datos',
-                4 => '<fg=green>Importar</> SQL',
-                5 => '<fg=green>Exportar</> SQL',
-                6 => '<fg=green>Buscar/Reemplazar</> en DB',
-                7 => '<fg=green>Cambiar Prefijo</> de tablas',
-                8 => '<fg=green>Ejecutar Query</> SQL',
-                9 => '<fg=green>Seeders</> - Gestión de seeders',
-                0 => '<fg=yellow>Volver atrás</>',
+                1 => '<fg=green>Crear</>                - base de datos',
+                2 => '<fg=green>Eliminar</>             - base de datos',
+                3 => '<fg=green>Resetear</>             - base de datos',
+                4 => '<fg=green>Importar</>             - SQL',
+                5 => '<fg=green>Exportar</>             - SQL',
+                6 => '<fg=green>Buscar/Reemplazar</>    - en DB',
+                7 => '<fg=green>Cambiar Prefijo</>      - de tablas',
+                8 => '<fg=green>Ejecutar Query</>       - SQL',
+                9 => '<fg=green>Seeders</>              - Gestión de seeders',
+                0 => '<fg=yellow>Volver atrás</>        - Retroceder',
             ];
             
             $question = new ChoiceQuestion(

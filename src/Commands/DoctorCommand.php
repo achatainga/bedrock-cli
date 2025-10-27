@@ -23,7 +23,7 @@ class DoctorCommand extends Command
     {
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK DOCTOR - System Check  </> <fg=cyan;options=bold>║</>');
+        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK DOCTOR - System Check  </> <fg=cyan;options=bold>        ║</>');
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 

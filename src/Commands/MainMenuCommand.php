@@ -23,21 +23,21 @@ class MainMenuCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>     ║</>');
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Setup</>    - Configuración inicial',
-                2 => '<fg=green>Docker</>   - Gestión de contenedores',
-                3 => '<fg=green>Database</> - Gestión de base de datos',
-                4 => '<fg=green>Options</>  - Gestión de opciones WP',
-                5 => '<fg=green>Install</>  - Instalar WordPress',
-                6 => '<fg=green>Plugins</>  - Gestión de plugins',
-                7 => '<fg=green>Themes</>   - Gestión de temas',
-                8 => '<fg=green>Backup</>   - Crear backup',
-                9 => '<fg=red>Reinstall</>  - Reinstalar aplicación (DESTRUCTIVO)',
-                10 => '<fg=cyan>Doctor</>   - Verificar dependencias del sistema',
+                1 => '<fg=green>Setup</>        - Configuración inicial',
+                2 => '<fg=green>Docker</>       - Gestión de contenedores',
+                3 => '<fg=green>Database</>     - Gestión de base de datos',
+                4 => '<fg=green>Options</>      - Gestión de opciones WP',
+                5 => '<fg=green>Install</>      - Instalar WordPress',
+                6 => '<fg=green>Plugins</>      - Gestión de plugins',
+                7 => '<fg=green>Themes</>       - Gestión de temas',
+                8 => '<fg=green>Backup</>       - Crear backup',
+                9 => '<fg=red>Reinstall</>      - Reinstalar aplicación (DESTRUCTIVO)',
+                10 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
 

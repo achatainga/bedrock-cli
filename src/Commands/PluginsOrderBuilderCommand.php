@@ -46,7 +46,7 @@ class PluginsOrderBuilderCommand extends Command
 
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Constructor de Orden de Activación de Plugins       </> <fg=cyan;options=bold>║</>');
+        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Constructor de Orden de Activación de Plugins       </> <fg=cyan;options=bold>       ║</>');
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<comment>Selecciona plugins en el orden que deseas activarlos.</comment>');
