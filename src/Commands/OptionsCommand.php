@@ -8,12 +8,12 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Cursor;
 
-class MainMenuCommand extends Command
+class OptionsCommand extends Command
 {
     protected function configure(): void
     {
-        $this->setName('menu')
-             ->setDescription('Abre el menú interactivo');
+        $this->setName('options')
+             ->setDescription('Gestión de opciones de WordPress (wp_options)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -23,22 +23,15 @@ class MainMenuCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    Gestión de Opciones WP       </> <fg=cyan;options=bold>║</>');
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Setup</> - Configuración inicial',
-                2 => '<fg=green>Docker</> - Gestión de contenedores',
-                3 => '<fg=green>Database</> - Gestión de base de datos',
-                4 => '<fg=green>Options</> - Gestión de opciones WP',
-                5 => '<fg=green>Install</> - Instalar WordPress',
-                6 => '<fg=green>Plugins</> - Gestión de plugins',
-                7 => '<fg=green>Themes</> - Gestión de temas',
-                8 => '<fg=green>Backup</> - Crear backup',
-                9 => '<fg=red>Reinstall</> - Reinstalar aplicación (DESTRUCTIVO)',
-                10 => '<fg=cyan>Doctor</> - Verificar dependencias del sistema',
-                0 => '<fg=red>Salir</>',
+                1 => '<fg=green>Pull</> - Extraer opciones a JSON',
+                2 => '<fg=green>Push</> - Inyectar opciones desde JSON',
+                3 => '<fg=cyan>List</> - Listar archivos JSON',
+                0 => '<fg=red>Volver</>',
             ];
 
             $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
@@ -52,22 +45,13 @@ class MainMenuCommand extends Command
             $selectedIndex = array_search($choice, $choices);
             
             if ($selectedIndex === 0) {
-                $output->writeln('');
-                $output->writeln('<info>Hasta luego!</info>');
                 return Command::SUCCESS;
             }
 
             $commandMap = [
-                1 => 'setup',
-                2 => 'docker',
-                3 => 'db',
-                4 => 'options',
-                5 => 'install',
-                6 => 'plugins',
-                7 => 'themes',
-                8 => 'backup',
-                9 => 'reinstall',
-                10 => 'doctor',
+                1 => 'options:pull',
+                2 => 'options:push',
+                3 => 'options:list',
             ];
 
             $commandName = $commandMap[$selectedIndex];

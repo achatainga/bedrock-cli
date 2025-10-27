@@ -23,6 +23,10 @@ use Roots\BedrockCli\Commands\PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\PluginsCompressCommand;
 use Roots\BedrockCli\Commands\PluginsStatusCommand;
 use Roots\BedrockCli\Commands\SeedCommand;
+use Roots\BedrockCli\Commands\OptionsCommand;
+use Roots\BedrockCli\Commands\OptionsPullCommand;
+use Roots\BedrockCli\Commands\OptionsPushCommand;
+use Roots\BedrockCli\Commands\OptionsListCommand;
 
 class Application extends BaseApplication
 {
@@ -51,6 +55,10 @@ class Application extends BaseApplication
             new ThemesListCommand(),
             new ThemesStatusCommand(),
             new SeedCommand(),
+            new OptionsCommand(),
+            new OptionsPullCommand(),
+            new OptionsPushCommand(),
+            new OptionsListCommand(),
         ]);
     }
 
