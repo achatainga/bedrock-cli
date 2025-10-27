@@ -83,14 +83,14 @@ class DockerCommand extends Command
         
         while (true) {
             $choices = [
-                1 => '<fg=green>Levantar</> contenedores',
-                2 => '<fg=green>Bajar</> contenedores',
-                3 => '<fg=green>Reiniciar</> contenedores',
-                4 => '<fg=green>Reconstruir</> (sin caché)',
-                5 => '<fg=green>Reconstruir</> (con caché)',
-                6 => '<fg=green>Ver estado</>',
-                7 => '<fg=green>Ver logs</>',
-                0 => '<fg=yellow>Volver atrás</>',
+                1 => '<fg=green>Levantar</>     - contenedores',
+                2 => '<fg=green>Bajar</>        - contenedores',
+                3 => '<fg=green>Reiniciar</>    - contenedores',
+                4 => '<fg=green>Reconstruir</>  - (sin caché)',
+                5 => '<fg=green>Reconstruir</>  - (con caché)',
+                6 => '<fg=green>Ver</>          - estado',
+                7 => '<fg=green>Ver</>          - logs',
+                0 => '<fg=yellow>Volver</>      - atrás',
             ];
             
             $question = new ChoiceQuestion(
