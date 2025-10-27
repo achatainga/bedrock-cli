@@ -168,8 +168,44 @@ class PluginsOrderBuilderCommand extends Command
         } else {
             $output->writeln('<fg=yellow>Orden actual (' . count($this->activationOrder) . ' plugins):</>');
             $output->writeln('');
+            
+            // Ordenar por posición
+            asort($this->activationOrder);
+            $ordered = [];
             foreach ($this->activationOrder as $plugin => $position) {
-                $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>");
+                $ordered[] = [$position, $plugin];
+            }
+            
+            // Calcular longitud máxima para alineación
+            $maxLen = 0;
+            foreach ($ordered as $item) {
+                $len = strlen($item[1]);
+                if ($len > $maxLen) $maxLen = $len;
+            }
+            
+            // Mostrar en 2 columnas
+            $half = (int)ceil(count($ordered) / 2);
+            for ($i = 0; $i < $half; $i++) {
+                $left = '';
+                $right = '';
+                
+                if (isset($ordered[$i])) {
+                    $pos = $ordered[$i][0];
+                    $plugin = $ordered[$i][1];
+                    $left = sprintf("  <fg=cyan>[%2d]</> <fg=green>%-{$maxLen}s</>", $pos, $plugin);
+                }
+                
+                if (isset($ordered[$i + $half])) {
+                    $pos = $ordered[$i + $half][0];
+                    $plugin = $ordered[$i + $half][1];
+                    $right = sprintf("  <fg=cyan>[%2d]</> <fg=green>%s</>", $pos, $plugin);
+                }
+                
+                if (!empty($right)) {
+                    $output->writeln("{$left}\t{$right}");
+                } else {
+                    $output->writeln($left);
+                }
             }
         }
     }
