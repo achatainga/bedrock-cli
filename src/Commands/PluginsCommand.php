@@ -49,6 +49,7 @@ class PluginsCommand extends Command
                 2 => '<fg=green>Instalar</> desde repositorio',
                 3 => '<fg=green>Actualizar</> todos los plugins',
                 4 => '<fg=green>Descomprimir</> ZIPs',
+                5 => '<fg=yellow>Order</> - Guardar orden de activación',
                 0 => '<fg=yellow>Volver atrás</>',
             ];
             
@@ -85,6 +86,10 @@ class PluginsCommand extends Command
                     break;
                 case 4:
                     $this->unzipPlugins($input, $output);
+                    break;
+                case 5:
+                    $command = $this->getApplication()->find('plugins:order');
+                    $command->run($input, $output);
                     break;
             }
             

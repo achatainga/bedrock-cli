@@ -22,6 +22,7 @@ use Roots\BedrockCli\Commands\PluginsActivateCommand;
 use Roots\BedrockCli\Commands\PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\PluginsCompressCommand;
 use Roots\BedrockCli\Commands\PluginsStatusCommand;
+use Roots\BedrockCli\Commands\PluginsOrderCommand;
 use Roots\BedrockCli\Commands\SeedCommand;
 use Roots\BedrockCli\Commands\OptionsCommand;
 use Roots\BedrockCli\Commands\OptionsPullCommand;
@@ -51,6 +52,7 @@ class Application extends BaseApplication
             new PluginsDeactivateCommand(),
             new PluginsListCommand(),
             new PluginsStatusCommand(),
+            new PluginsOrderCommand(),
             new ThemesActivateCommand(),
             new ThemesCompressCommand(),
             new ThemesListCommand(),
