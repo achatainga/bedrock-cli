@@ -161,7 +161,10 @@ PHP;
         $count = count($plugins);
         
         $output->writeln('');
-        $output->writeln("<info>📦 Plugins Instalados ({$count}):</info>");
+        $output->writeln('<fg=cyan;options=bold>Estado Actual de Plugins:</>');
+        $output->writeln('');
+        $output->writeln("<info>📦 Total instalados: {$count}</info>");
+        $output->writeln('<comment>Leyenda: ✓ = Activo | ○ = Inactivo | [Número] = Orden de carga</comment>');
         $output->writeln('');
 
         foreach ($plugins as $slug => $active) {
@@ -176,7 +179,8 @@ PHP;
         }
 
         $output->writeln('');
-        $output->writeln("<comment>📄 Config: {$configFile}</comment>");
+        $output->writeln('<comment>Para guardar este orden: plugins:order save</comment>');
+        $output->writeln("<comment>📄 Archivo de configuración: {$configFile}</comment>";
         
         return Command::SUCCESS;
     }
@@ -198,7 +202,10 @@ PHP;
 
         $count = count($order);
         $output->writeln('');
-        $output->writeln("<info>🚀 Activando {$count} plugins en orden...</info>");
+        $output->writeln('<fg=yellow;options=bold>Aplicando Orden de Activación:</>');
+        $output->writeln('');
+        $output->writeln("<info>🚀 Se activarán {$count} plugins en secuencia...</info>");
+        $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
         $output->writeln('');
 
         $orderJson = json_encode($order);
