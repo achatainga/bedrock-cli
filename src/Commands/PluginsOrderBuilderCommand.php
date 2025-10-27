@@ -325,14 +325,13 @@ class PluginsOrderBuilderCommand extends Command
 
         unset($this->activationOrder[$plugin]);
         
-        // Renumerar
-        $this->activationOrder = array_values($this->activationOrder);
-        $newOrder = [];
+        // Renumerar manteniendo los nombres de plugins
+        $plugins = array_keys($this->activationOrder);
+        $this->activationOrder = [];
         $pos = 1;
-        foreach ($this->activationOrder as $p) {
-            $newOrder[$p] = $pos++;
+        foreach ($plugins as $p) {
+            $this->activationOrder[$p] = $pos++;
         }
-        $this->activationOrder = $newOrder;
 
         $output->writeln("<info>✓ Removido: {$plugin}</info>");
         $this->refreshDisplay($output);
