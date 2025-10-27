@@ -247,6 +247,12 @@ PHP;
 
         $results = json_decode($process->getOutput(), true);
         
+        if (!is_array($results)) {
+            $output->writeln('<error>Error al procesar resultados</error>');
+            $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
+            return Command::FAILURE;
+        }
+        
         $activated = 0;
         $skipped = 0;
         $failed = 0;
