@@ -313,7 +313,7 @@ class PluginsOrderBuilderCommand extends Command
         $output->writeln('<comment>Creado: ' . ($data['created_at'] ?? 'N/A') . '</comment>');
         $output->writeln('');
 
-        $question = new ConfirmationQuestion('<fg=yellow>¿Aplicar este orden? [y/N]:</> ', false);
+        $question = new ConfirmationQuestion('<fg=yellow>¿Cargar para editar? [y/N]:</> ', false);
         
         if (!$helper->ask($input, $output, $question)) {
             return false;
@@ -323,17 +323,9 @@ class PluginsOrderBuilderCommand extends Command
         $this->dependencies = $data['dependencies'] ?? [];
 
         $output->writeln('');
-        $output->writeln('<info>✓ Orden cargado exitosamente</info>');
-        $output->writeln('');
+        $output->writeln('<info>✓ Orden cargado - Ahora puedes editarlo</info>');
 
-        // Preguntar si guardar con nuevo nombre
-        $question = new ConfirmationQuestion('<fg=yellow>¿Guardar con nuevo nombre? [y/N]:</> ', false);
-        
-        if ($helper->ask($input, $output, $question)) {
-            $this->saveActivationOrder($input, $output, $helper, $this->activationOrder);
-        }
-
-        return true;
+        return false; // Continuar al modo de edición
     }
 
     private function displayCompactHelp(OutputInterface $output): void
