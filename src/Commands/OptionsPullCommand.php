@@ -14,7 +14,8 @@ class OptionsPullCommand extends Command
     protected function configure(): void
     {
         $this->setName('options:pull')
-             ->setDescription('Extraer opciones de WordPress a archivos JSON')
+             ->setAliases(['options:export', 'options:exportar'])
+             ->setDescription('Exportar opciones de WordPress a archivos JSON')
              ->addArgument('prefix', InputArgument::OPTIONAL, 'Prefijo de opciones a extraer')
              ->addOption('all', null, InputOption::VALUE_NONE, 'Extraer todas las opciones')
              ->addOption('exclude', null, InputOption::VALUE_REQUIRED, 'Patrones a excluir (separados por coma)');
@@ -31,7 +32,7 @@ class OptionsPullCommand extends Command
         $options = $this->getOptions($input, $output);
         
         if (empty($options)) {
-            $output->writeln('<comment>No se encontraron opciones</comment>');
+            $output->writeln('<comment>No se encontraron opciones para exportar</comment>');
             return Command::SUCCESS;
         }
 
@@ -45,7 +46,7 @@ class OptionsPullCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln("<info>✓ Extraídas {$count} opciones exitosamente</info>");
+        $output->writeln("<info>✓ Exportadas {$count} opciones exitosamente</info>");
         
         return Command::SUCCESS;
     }
@@ -115,7 +116,7 @@ class OptionsPullCommand extends Command
         $process->run();
         
         if (!$process->isSuccessful()) {
-            $output->writeln("<comment>⊘ Opción '{$key}' no encontrada</comment>");
+            $output->writeln("<comment>⊘ Opción '{$key}' no existe en WordPress</comment>");
             return false;
         }
 
@@ -130,7 +131,7 @@ class OptionsPullCommand extends Command
         $filename = "{$dir}/{$key}.json";
         file_put_contents($filename, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         
-        $output->writeln("<info>✓ Extraída: {$key}</info>");
+        $output->writeln("<info>✓ Exportada: {$key}</info>");
         return true;
     }
 }

@@ -14,7 +14,8 @@ class OptionsPushCommand extends Command
     protected function configure(): void
     {
         $this->setName('options:push')
-             ->setDescription('Inyectar opciones desde archivos JSON a WordPress')
+             ->setAliases(['options:import', 'options:importar'])
+             ->setDescription('Importar opciones desde archivos JSON a WordPress')
              ->addArgument('key', InputArgument::OPTIONAL, 'Clave específica o prefijo')
              ->addOption('all', null, InputOption::VALUE_NONE, 'Inyectar todas las opciones')
              ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Simular sin aplicar cambios');
@@ -43,7 +44,7 @@ class OptionsPushCommand extends Command
             }
         }
 
-        $verb = $input->getOption('dry-run') ? 'Se inyectarían' : 'Inyectadas';
+        $verb = $input->getOption('dry-run') ? 'Se importarían' : 'Importadas';
         $output->writeln('');
         $output->writeln("<info>✓ {$verb} {$count} opciones exitosamente</info>");
         
@@ -93,7 +94,7 @@ class OptionsPushCommand extends Command
         }
         
         if ($input->getOption('dry-run')) {
-            $output->writeln("<info>→ Se inyectaría: {$data['key']}</info>");
+            $output->writeln("<info>→ Se importaría: {$data['key']}</info>");
             return true;
         }
 
@@ -106,7 +107,7 @@ class OptionsPushCommand extends Command
             return false;
         }
 
-        $output->writeln("<info>✓ Inyectada: {$data['key']}</info>");
+        $output->writeln("<info>✓ Importada: {$data['key']}</info>");
         return true;
     }
 }

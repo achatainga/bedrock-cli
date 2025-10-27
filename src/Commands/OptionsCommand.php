@@ -28,9 +28,10 @@ class OptionsCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Pull</> - Extraer opciones a JSON',
-                2 => '<fg=green>Push</> - Inyectar opciones desde JSON',
-                3 => '<fg=cyan>List</> - Listar archivos JSON',
+                1 => '<fg=green>Exportar</> - Extraer opciones a JSON',
+                2 => '<fg=green>Importar</> - Inyectar opciones desde JSON',
+                3 => '<fg=cyan>Listar</> - Ver archivos JSON disponibles',
+                4 => '<fg=yellow>Gestionar</> - Importar/Exportar opción específica',
                 0 => '<fg=red>Volver</>',
             ];
 
@@ -52,6 +53,7 @@ class OptionsCommand extends Command
                 1 => 'options:pull',
                 2 => 'options:push',
                 3 => 'options:list',
+                4 => 'options:manage',
             ];
 
             $commandName = $commandMap[$selectedIndex];
