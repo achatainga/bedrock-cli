@@ -180,7 +180,7 @@ PHP;
 
         $output->writeln('');
         $output->writeln('<comment>Para guardar este orden: plugins:order save</comment>');
-        $output->writeln("<comment>📄 Archivo de configuración: {$configFile}</comment>";
+        $output->writeln("<comment>📄 Archivo de configuración: {$configFile}</comment>");
         
         return Command::SUCCESS;
     }
