@@ -44,6 +44,11 @@ class PluginsOrderBuilderCommand extends Command
 
         $this->plugins = array_values($this->plugins);
 
+        // Preguntar si cargar archivo existente
+        if ($this->askLoadExisting($input, $output, $helper)) {
+            return Command::SUCCESS;
+        }
+
         // Mostrar header y plugins disponibles
         $this->displayHeader($output);
         $this->displayPluginsInColumns($output);
@@ -226,6 +231,109 @@ class PluginsOrderBuilderCommand extends Command
         $output->writeln('    <comment>Guardar y salir</comment>');
         $output->writeln('  <fg=cyan>cancel</>');
         $output->writeln('    <comment>Cancelar sin guardar</comment>');
+    }
+
+    private function askLoadExisting(InputInterface $input, OutputInterface $output, $helper): bool
+    {
+        $configDir = getcwd() . '/config/plugins';
+        
+        if (!is_dir($configDir)) {
+            return false;
+        }
+
+        $files = glob($configDir . '/activation-order-*.json');
+        
+        if (empty($files)) {
+            return false;
+        }
+
+        $output->writeln('');
+        $question = new ConfirmationQuestion('<fg=yellow>¿Cargar orden guardado? [y/N]:</> ', false);
+        
+        if (!$helper->ask($input, $output, $question)) {
+            return false;
+        }
+
+        // Listar archivos
+        $output->writeln('');
+        $output->writeln('<fg=cyan>Archivos guardados:</>');
+        $output->writeln('');
+
+        $fileList = [];
+        foreach ($files as $i => $file) {
+            $basename = basename($file);
+            $fileList[$i + 1] = $file;
+            $output->writeln(sprintf('  <fg=cyan>[</><fg=yellow>%2d</><fg=cyan>]</> <fg=white>%s</>', $i + 1, $basename));
+        }
+
+        $output->writeln('');
+        $question = new Question('<fg=yellow>Selecciona archivo (número o Enter para cancelar):</> ');
+        $selection = trim($helper->ask($input, $output, $question));
+
+        if (empty($selection) || !is_numeric($selection)) {
+            return false;
+        }
+
+        $index = (int)$selection;
+        if (!isset($fileList[$index])) {
+            $output->writeln('<error>Selección inválida</error>');
+            return false;
+        }
+
+        return $this->loadOrderFile($fileList[$index], $input, $output, $helper);
+    }
+
+    private function loadOrderFile(string $filepath, InputInterface $input, OutputInterface $output, $helper): bool
+    {
+        $content = file_get_contents($filepath);
+        $data = json_decode($content, true);
+
+        if (!isset($data['activation_order'])) {
+            $output->writeln('<error>Archivo inválido</error>');
+            return false;
+        }
+
+        // Preview
+        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>Preview del orden:</>');
+        $output->writeln('');
+
+        $order = $data['activation_order'];
+        asort($order);
+        
+        foreach ($order as $plugin => $position) {
+            $depInfo = '';
+            if (isset($data['dependencies'][$plugin])) {
+                $depInfo = ' <fg=yellow>↳ ' . implode(', ', $data['dependencies'][$plugin]) . '</>';
+            }
+            $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
+        }
+
+        $output->writeln('');
+        $output->writeln('<comment>Creado: ' . ($data['created_at'] ?? 'N/A') . '</comment>');
+        $output->writeln('');
+
+        $question = new ConfirmationQuestion('<fg=yellow>¿Aplicar este orden? [y/N]:</> ', false);
+        
+        if (!$helper->ask($input, $output, $question)) {
+            return false;
+        }
+
+        $this->activationOrder = $order;
+        $this->dependencies = $data['dependencies'] ?? [];
+
+        $output->writeln('');
+        $output->writeln('<info>✓ Orden cargado exitosamente</info>');
+        $output->writeln('');
+
+        // Preguntar si guardar con nuevo nombre
+        $question = new ConfirmationQuestion('<fg=yellow>¿Guardar con nuevo nombre? [y/N]:</> ', false);
+        
+        if ($helper->ask($input, $output, $question)) {
+            $this->saveActivationOrder($input, $output, $helper, $this->activationOrder);
+        }
+
+        return true;
     }
 
     private function displayCompactHelp(OutputInterface $output): void
