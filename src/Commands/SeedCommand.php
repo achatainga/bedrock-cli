@@ -34,9 +34,8 @@ class SeedCommand extends Command
         }
         
         if ($input->getOption('fresh')) {
-            $output->writeln('<info>🔄 Reseteando base de datos...</info>');
             $process = $wpcli->dbReset();
-            $process->run();
+            $this->runWithLoader($process, $output, 'Reseteando base de datos');
             if (!$process->isSuccessful()) {
                 $output->writeln('<error>Error reseteando DB</error>');
                 return Command::FAILURE;
@@ -63,15 +62,11 @@ class SeedCommand extends Command
             return Command::FAILURE;
         }
         
-        $output->writeln("<info>🌱 Seeding: {$class}</info>");
-        
         $dockerPath = str_replace(getcwd(), '/var/www/html', $file);
         $dockerPath = str_replace('\\', '/', $dockerPath);
         
         $process = $wpcli->custom("eval-file {$dockerPath}");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "🌱 Ejecutando seeder: {$class}");
         
         if ($process->isSuccessful()) {
             $output->writeln("<info>✓ {$class} completado</info>");
@@ -111,5 +106,21 @@ class SeedCommand extends Command
         
         $output->writeln('<info>✓ Seeding completado exitosamente</info>');
         return Command::SUCCESS;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

@@ -160,14 +160,11 @@ class DockerCommand extends Command
 
     private function down(DockerService $docker, OutputInterface $output): int
     {
-        $output->writeln('<info>Bajando contenedores...</info>');
         $process = $docker->down();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Deteniendo contenedores Docker');
         
         if ($process->isSuccessful()) {
-            $output->writeln('<info>✓ Contenedores bajados</info>');
+            $output->writeln('<info>✓ Contenedores detenidos</info>');
             return Command::SUCCESS;
         }
         
@@ -176,11 +173,8 @@ class DockerCommand extends Command
 
     private function restart(DockerService $docker, OutputInterface $output): int
     {
-        $output->writeln('<info>Reiniciando contenedores...</info>');
         $process = $docker->restart();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Reiniciando contenedores Docker');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores reiniciados</info>');
@@ -300,5 +294,21 @@ class DockerCommand extends Command
         $output->writeln('');
         
         return false;
+    }
+
+    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

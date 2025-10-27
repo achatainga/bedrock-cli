@@ -141,11 +141,8 @@ class DatabaseCommand extends Command
 
     private function create(WpCliService $wpcli, OutputInterface $output): int
     {
-        $output->writeln('<info>Creando base de datos...</info>');
         $process = $wpcli->dbCreate();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Creando base de datos');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos creada</info>');
@@ -169,11 +166,8 @@ class DatabaseCommand extends Command
             return Command::SUCCESS;
         }
         
-        $output->writeln('<info>Eliminando base de datos...</info>');
         $process = $wpcli->dbDrop();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Eliminando base de datos');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos eliminada</info>');
@@ -186,11 +180,8 @@ class DatabaseCommand extends Command
 
     private function import(WpCliService $wpcli, OutputInterface $output, string $file): int
     {
-        $output->writeln("<info>Importando {$file}...</info>");
         $process = $wpcli->dbImport($file);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Importando base de datos desde {$file}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos importada</info>');
@@ -202,11 +193,8 @@ class DatabaseCommand extends Command
 
     private function export(WpCliService $wpcli, OutputInterface $output, string $file): int
     {
-        $output->writeln("<info>Exportando a {$file}...</info>");
         $process = $wpcli->dbExport($file);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Exportando base de datos a {$file}");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos exportada</info>');
@@ -229,11 +217,8 @@ class DatabaseCommand extends Command
             return Command::SUCCESS;
         }
         
-        $output->writeln('<info>Reseteando base de datos...</info>');
         $process = $wpcli->dbReset();
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, 'Reseteando base de datos');
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Base de datos reseteada</info>');
@@ -262,13 +247,9 @@ class DatabaseCommand extends Command
         }
         
         $output->writeln('');
-        $output->writeln("<info>Buscando '{$search}' y reemplazando por '{$replace}'...</info>");
-        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
         
         $process = $wpcli->custom("search-replace '{$search}' '{$replace}' --skip-columns=guid --all-tables");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Buscando '{$search}' y reemplazando por '{$replace}'");
         
         if ($process->isSuccessful()) {
             $output->writeln('');
@@ -299,13 +280,9 @@ class DatabaseCommand extends Command
         }
         
         $output->writeln('');
-        $output->writeln("<info>Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'...</info>");
-        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
         
         $process = $wpcli->custom("db prefix replace {$oldPrefix} {$newPrefix} --yes --include-multiple-prefixes");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'");
         
         if ($process->isSuccessful()) {
             $output->writeln('');
@@ -339,13 +316,8 @@ class DatabaseCommand extends Command
 
     private function searchReplaceDirect(OutputInterface $output, WpCliService $wpcli, string $search, string $replace): int
     {
-        $output->writeln("<info>Buscando '{$search}' y reemplazando por '{$replace}'...</info>");
-        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
-        
         $process = $wpcli->custom("search-replace '{$search}' '{$replace}' --skip-columns=guid --all-tables");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Buscando '{$search}' y reemplazando por '{$replace}'");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Reemplazo completado exitosamente</info>');
@@ -358,13 +330,8 @@ class DatabaseCommand extends Command
 
     private function prefixReplaceDirect(OutputInterface $output, WpCliService $wpcli, string $oldPrefix, string $newPrefix): int
     {
-        $output->writeln("<info>Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'...</info>");
-        $output->writeln('<comment>Esto puede tomar varios minutos...</comment>');
-        
         $process = $wpcli->custom("db prefix replace {$oldPrefix} {$newPrefix} --yes --include-multiple-prefixes");
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $this->runWithLoader($process, $output, "Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'");
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Prefijo cambiado exitosamente</info>');
@@ -542,5 +509,21 @@ PHP;
         $output->writeln('<comment>Edita el archivo para agregar tu lógica</comment>');
         
         return Command::SUCCESS;
+    }
+
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }

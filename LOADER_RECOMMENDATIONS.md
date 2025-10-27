@@ -10,74 +10,49 @@
 - ✅ `PluginsOrderCommand::listPlugins()` - "Consultando WordPress"
 - ✅ `PluginsOrderCommand::activateInOrder()` - "Activando plugins"
 
----
-
-## 🎯 Recomendaciones de Alta Prioridad
-
 ### DatabaseCommand
-**Operaciones lentas que se beneficiarían del loader:**
-
-1. **searchReplace()** - Línea ~280
-   - Mensaje: "Buscando y reemplazando en base de datos"
-   - Razón: Puede tardar varios minutos en bases de datos grandes
-
-2. **prefixReplace()** - Línea ~320
-   - Mensaje: "Cambiando prefijo de tablas"
-   - Razón: Operación crítica que modifica estructura
-
-3. **import()** - Línea ~200
-   - Mensaje: "Importando base de datos"
-   - Razón: Archivos SQL grandes tardan tiempo
-
-4. **export()** - Línea ~220
-   - Mensaje: "Exportando base de datos"
-   - Razón: Bases de datos grandes tardan en exportar
-
-5. **reset()** - Línea ~240
-   - Mensaje: "Reseteando base de datos"
-   - Razón: Operación destructiva que tarda
+- ✅ `create()` - "Creando base de datos"
+- ✅ `drop()` - "Eliminando base de datos"
+- ✅ `import()` - "Importando base de datos desde {$file}"
+- ✅ `export()` - "Exportando base de datos a {$file}"
+- ✅ `reset()` - "Reseteando base de datos"
+- ✅ `searchReplace()` - "Buscando '{$search}' y reemplazando por '{$replace}'"
+- ✅ `prefixReplace()` - "Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'"
+- ✅ `searchReplaceDirect()` - "Buscando '{$search}' y reemplazando por '{$replace}'"
+- ✅ `prefixReplaceDirect()` - "Cambiando prefijo de '{$oldPrefix}' a '{$newPrefix}'"
 
 ### DockerCommand
-**Operaciones que tardan en completarse:**
-
-1. **up()** - Línea ~160
-   - Mensaje: "Levantando contenedores Docker"
-   - Razón: Puede tardar 10-30 segundos
-
-2. **rebuild()** - Línea ~220
-   - Mensaje: "Reconstruyendo contenedores" / "Compilando imagen Docker"
-   - Razón: Build puede tardar varios minutos
-
-3. **down()** - Línea ~180
-   - Mensaje: "Deteniendo contenedores Docker"
-   - Razón: Puede tardar 5-15 segundos
+- ✅ `down()` - "Deteniendo contenedores Docker"
+- ✅ `restart()` - "Reiniciando contenedores Docker"
+- ❌ `up()` - No implementado (usa passthru, no Process)
+- ❌ `rebuild()` - No implementado (usa passthru, no Process)
 
 ### SeedCommand
-**Operaciones de seeding:**
-
-1. **runSeeder()** - Línea ~60
-   - Mensaje: "Ejecutando seeder: {$class}"
-   - Razón: Seeders pueden insertar muchos datos
-
-2. **runDatabaseSeeder()** - Línea ~90
-   - Mensaje: "Ejecutando todos los seeders"
-   - Razón: Múltiples seeders pueden tardar
+- ✅ `runSeeder()` - "🌱 Ejecutando seeder: {$class}"
+- ✅ Fresh mode - "Reseteando base de datos"
 
 ---
 
-## 🔧 Comandos de Media Prioridad
+## ❌ No Implementable
 
-### PluginsCompressCommand
-- **compress()** - Al comprimir plugins grandes
-- Mensaje: "Comprimiendo plugin: {$name}"
+### DockerCommand - up() y rebuild()
+**Razón**: Usan `passthru()` en lugar de `Process`, lo que impide el loader animado.
+- `up()` usa: `passthru('docker-compose up -d')`
+- `rebuild()` usa: `passthru('docker-compose build --no-cache')`
 
-### ThemesCompressCommand
-- **compress()** - Al comprimir temas
-- Mensaje: "Comprimiendo tema: {$name}"
+**Alternativa**: Mantener output en tiempo real con passthru (más útil para builds largos)
+
+### PluginsCompressCommand y ThemesCompressCommand
+**Razón**: Usan `ZipService::compress()` que no retorna `Process`, sino boolean.
+**Alternativa**: Refactorizar ZipService para usar Process (baja prioridad)
+
+---
+
+## 🚧 Pendientes de Implementación
 
 ### BackupCommand
-- **createBackup()** - Al crear backups completos
-- Mensaje: "Creando backup del proyecto"
+**Estado**: Comando no implementado aún
+- Cuando se implemente, agregar loader para operaciones de backup
 
 ---
 
@@ -158,18 +133,21 @@ $this->runWithLoader($process, $output, 'Exportando base de datos');
 
 ---
 
-## 📊 Priorización
+## 📊 Estado de Implementación
 
-**Alta Prioridad (implementar primero):**
-1. DatabaseCommand - searchReplace, prefixReplace, import, export
-2. DockerCommand - up, rebuild, down
-3. SeedCommand - runSeeder, runDatabaseSeeder
+**✅ Completado (100%):**
+- DatabaseCommand: 9/9 operaciones con loader
+- DockerCommand: 2/2 operaciones implementables (down, restart)
+- SeedCommand: 2/2 operaciones con loader
+- OptionsCommand: 2/2 operaciones con loader
+- PluginsOrderCommand: 2/2 operaciones con loader
 
-**Media Prioridad:**
-4. PluginsCompressCommand
-5. ThemesCompressCommand
-6. BackupCommand
+**❌ No Implementable:**
+- DockerCommand: up, rebuild (usan passthru)
+- PluginsCompressCommand (usa ZipService sin Process)
+- ThemesCompressCommand (usa ZipService sin Process)
 
-**Baja Prioridad:**
-- Operaciones rápidas (<2 segundos)
-- Comandos poco usados
+**🚧 Pendiente:**
+- BackupCommand (comando no implementado)
+
+**Total: 17 loaders implementados en 5 comandos**
