@@ -77,14 +77,10 @@ class PluginsOrderMenuCommand extends Command
 
     protected function manageJsonFiles(InputInterface $input, OutputInterface $output, $helper): void
     {
-        $configDir = getcwd() . '/config';
-        $pluginsDir = $configDir . '/plugins';
+        $pluginsDir = getcwd() . '/config/plugins';
         
-        // Buscar en config/ y config/plugins/
-        $files = array_merge(
-            glob("{$configDir}/plugin-*.json") ?: [],
-            glob("{$pluginsDir}/*.json") ?: []
-        );
+        // Solo buscar en config/plugins/
+        $files = glob("{$pluginsDir}/*.json") ?: [];
 
         if (empty($files)) {
             $output->writeln('<comment>No hay archivos JSON de configuración</comment>');
