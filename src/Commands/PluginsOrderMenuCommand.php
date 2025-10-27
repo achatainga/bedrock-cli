@@ -31,11 +31,11 @@ class PluginsOrderMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=cyan>Ver Estado</>\t\t\t- Listar plugins y su orden (solo lectura)',
-                2 => '<fg=green>Guardar Orden</>\t\t- Capturar secuencia actual de plugins activos',
-                3 => '<fg=yellow>Aplicar Orden</>\t\t- Activar plugins según configuración guardada',
-                4 => '<fg=magenta>Configuraciones</>\t\t- Ver/usar archivos JSON guardados',
-                0 => '<fg=red>Volver</>\t\t\t\t(sin cambios)',
+                1 => '<fg=cyan>Ver Estado</>            - Listar plugins y su orden (solo lectura)',
+                2 => '<fg=green>Guardar Orden</>        - Capturar secuencia actual de plugins activos',
+                3 => '<fg=yellow>Aplicar Orden</>       - Activar plugins según configuración guardada',
+                4 => '<fg=magenta>Configuraciones</>    - Ver/usar archivos JSON guardados',
+                0 => '<fg=red>Volver</>                 (sin cambios)',
             ];
 
             $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
@@ -142,10 +142,10 @@ class PluginsOrderMenuCommand extends Command
         $output->writeln('');
 
         $choices = [
-            1 => '<fg=cyan>Ver Contenido</>\t\t- Mostrar plugins y orden (solo lectura)',
-            2 => '<fg=yellow>Aplicar Ahora</>\t\t- Activar plugins con este orden',
-            3 => '<fg=green>Hacer Predeterminado</>\t- Copiar a activation-order.json',
-            0 => '<fg=red>Volver</>\t\t\t(sin cambios)',
+            1 => '<fg=cyan>Ver Contenido</>             - Mostrar plugins y orden (solo lectura)',
+            2 => '<fg=yellow>Aplicar Ahora</>           - Activar plugins con este orden',
+            3 => '<fg=green>Hacer Predeterminado</>     - Copiar a activation-order.json',
+            0 => '<fg=red>Volver</>                     (sin cambios)',
         ];
 
         $question = new ChoiceQuestion('<fg=yellow>¿Qué deseas hacer?</>', $choices, 1);
