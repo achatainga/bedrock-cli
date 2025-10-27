@@ -121,7 +121,6 @@ PHP;
         $deps = $config['dependencies'] ?? [];
 
         $output->writeln('');
-        $output->write('<comment>⏳ Consultando WordPress...</comment>');
 
         $php = <<<'PHP'
 $plugins = [];
@@ -210,7 +209,6 @@ PHP;
         $output->writeln("<info>🚀 Se activarán {$count} plugins en secuencia...</info>");
         $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
         $output->writeln('');
-        $output->write('<comment>⏳ Activando plugins...</comment>');
 
         $orderJson = json_encode($order);
         $php = <<<PHP

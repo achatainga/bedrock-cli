@@ -31,11 +31,11 @@ class PluginsOrderMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=cyan>Ver Estado</>\t\t- Listar plugins y su orden (solo lectura)',
+                1 => '<fg=cyan>Ver Estado</>\t\t\t- Listar plugins y su orden (solo lectura)',
                 2 => '<fg=green>Guardar Orden</>\t\t- Capturar secuencia actual de plugins activos',
                 3 => '<fg=yellow>Aplicar Orden</>\t\t- Activar plugins según configuración guardada',
-                4 => '<fg=magenta>Configuraciones</>\t- Ver/usar archivos JSON guardados',
-                0 => '<fg=red>Volver</>\t\t\t(sin cambios)',
+                4 => '<fg=magenta>Configuraciones</>\t\t- Ver/usar archivos JSON guardados',
+                0 => '<fg=red>Volver</>\t\t\t\t(sin cambios)',
             ];
 
             $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);

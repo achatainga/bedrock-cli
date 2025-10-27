@@ -28,16 +28,16 @@ class MainMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Setup</> - Configuración inicial',
-                2 => '<fg=green>Docker</> - Gestión de contenedores',
-                3 => '<fg=green>Database</> - Gestión de base de datos',
-                4 => '<fg=green>Options</> - Gestión de opciones WP',
-                5 => '<fg=green>Install</> - Instalar WordPress',
-                6 => '<fg=green>Plugins</> - Gestión de plugins',
-                7 => '<fg=green>Themes</> - Gestión de temas',
-                8 => '<fg=green>Backup</> - Crear backup',
-                9 => '<fg=red>Reinstall</> - Reinstalar aplicación (DESTRUCTIVO)',
-                10 => '<fg=cyan>Doctor</> - Verificar dependencias del sistema',
+                1 => '<fg=green>Setup</>\t\t- Configuración inicial',
+                2 => '<fg=green>Docker</>\t\t- Gestión de contenedores',
+                3 => '<fg=green>Database</>\t\t- Gestión de base de datos',
+                4 => '<fg=green>Options</>\t\t- Gestión de opciones WP',
+                5 => '<fg=green>Install</>\t\t- Instalar WordPress',
+                6 => '<fg=green>Plugins</>\t\t- Gestión de plugins',
+                7 => '<fg=green>Themes</>\t\t- Gestión de temas',
+                8 => '<fg=green>Backup</>\t\t- Crear backup',
+                9 => '<fg=red>Reinstall</>\t\t- Reinstalar aplicación (DESTRUCTIVO)',
+                10 => '<fg=cyan>Doctor</>\t\t- Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
