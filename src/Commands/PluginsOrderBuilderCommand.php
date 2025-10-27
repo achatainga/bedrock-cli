@@ -5,13 +5,16 @@ namespace Roots\BedrockCli\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
-use Symfony\Component\Console\Cursor;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Roots\BedrockCli\Services\UnzipService;
 
 class PluginsOrderBuilderCommand extends Command
 {
+    private array $plugins = [];
+    private array $activationOrder = [];
+    private array $dependencies = [];
+
     protected function configure(): void
     {
         $this->setName('plugins:order:build')
@@ -30,203 +33,296 @@ class PluginsOrderBuilderCommand extends Command
             return Command::FAILURE;
         }
 
-        $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+        $this->plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
             return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
         });
 
-        if (empty($plugins)) {
+        if (empty($this->plugins)) {
             $output->writeln('<comment>No hay plugins instalados</comment>');
             return Command::FAILURE;
         }
 
-        $plugins = array_values($plugins);
-        $activationOrder = [];
-        $dependencies = [];
-        $position = 1;
+        $this->plugins = array_values($this->plugins);
 
+        // Mostrar header y plugins disponibles
+        $this->displayHeader($output);
+        $this->displayPluginsInColumns($output);
+        $this->displaySeparator($output);
+        $this->displayCurrentOrder($output);
+        $this->displaySeparator($output);
+        $this->displayHelp($output);
+
+        // Loop de comandos
+        while (true) {
+            $question = new Question("\n<fg=yellow>></> ");
+            $command = trim($helper->ask($input, $output, $question));
+
+            if (empty($command)) {
+                continue;
+            }
+
+            $result = $this->processCommand($command, $output);
+
+            if ($result === 'save') {
+                break;
+            } elseif ($result === 'cancel') {
+                $output->writeln('<comment>Operación cancelada</comment>');
+                return Command::SUCCESS;
+            }
+        }
+
+        if (empty($this->activationOrder)) {
+            $output->writeln('<comment>No se seleccionaron plugins</comment>');
+            return Command::SUCCESS;
+        }
+
+        // Preguntar por dependencias
+        $this->askDependencies($input, $output, $helper);
+
+        // Recalcular orden basado en dependencias
+        $finalOrder = $this->calculateOrderWithDependencies();
+
+        // Guardar
+        $this->saveActivationOrder($input, $output, $helper, $finalOrder);
+
+        return Command::SUCCESS;
+    }
+
+    private function displayHeader(OutputInterface $output): void
+    {
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Constructor de Orden de Activación de Plugins       </> <fg=cyan;options=bold>       ║</>');
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
         $output->writeln('');
-        $output->writeln('<comment>Selecciona plugins en el orden que deseas activarlos.</comment>');
-        $output->writeln('<comment>Puedes definir dependencias para cada plugin.</comment>');
+        $output->writeln('<fg=cyan>Plugins disponibles:</>');
         $output->writeln('');
+    }
 
-        while (!empty($plugins)) {
-            // Mostrar plugins disponibles en 2 columnas
-            $this->displayPluginsInColumns($output, $plugins, $activationOrder);
+    private function displayPluginsInColumns(OutputInterface $output): void
+    {
+        $half = (int)ceil(count($this->plugins) / 2);
+        $col1 = array_slice($this->plugins, 0, $half);
+        $col2 = array_slice($this->plugins, $half);
 
-            $choices = [];
-            foreach ($plugins as $index => $plugin) {
-                $choices[(string)($index + 1)] = "<fg=green>{$plugin}</>";
+        $maxLen = max(array_map('strlen', $this->plugins));
+
+        for ($i = 0; $i < $half; $i++) {
+            $num1 = $i + 1;
+            $num2 = $i + $half + 1;
+            $left = isset($col1[$i]) ? sprintf("  [%2d] %-{$maxLen}s", $num1, $col1[$i]) : str_repeat(' ', $maxLen + 7);
+            $right = isset($col2[$i]) ? sprintf("  [%2d] %s", $num2, $col2[$i]) : '';
+            $output->writeln("<fg=green>{$left}</>\t<fg=green>{$right}</>");
+        }
+    }
+
+    private function displaySeparator(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan>' . str_repeat('━', 60) . '</>');
+    }
+
+    private function displayCurrentOrder(OutputInterface $output): void
+    {
+        $output->writeln('');
+        if (empty($this->activationOrder)) {
+            $output->writeln('<comment>Orden actual: [vacío]</comment>');
+        } else {
+            $output->writeln('<fg=yellow>Orden actual (' . count($this->activationOrder) . ' plugins):</>');
+            $output->writeln('');
+            foreach ($this->activationOrder as $plugin => $position) {
+                $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>");
             }
-            $choices['s'] = '<fg=yellow>Guardar y salir</>';
-            $choices['0'] = '<fg=red>Cancelar</>';
+        }
+    }
 
-            $question = new ChoiceQuestion(
-                '<fg=yellow>Selecciona el siguiente plugin (o "s" para guardar):</>', 
-                $choices, 
-                's'
-            );
-            $question->setAutocompleterValues(null);
-            $choice = $helper->ask($input, $output, $question);
+    private function displayHelp(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=yellow>Comandos:</>');
+        $output->writeln('  <fg=cyan><números></>');
+        $output->writeln('    <comment>Ej: 44,10,18 o 7-12 (agregar plugins)</comment>');
+        $output->writeln('  <fg=cyan>list</>');
+        $output->writeln('    <comment>Ver orden actual</comment>');
+        $output->writeln('  <fg=cyan>remove <pos></>');
+        $output->writeln('    <comment>Quitar posición del orden</comment>');
+        $output->writeln('  <fg=cyan>clear</>');
+        $output->writeln('    <comment>Limpiar todo el orden</comment>');
+        $output->writeln('  <fg=cyan>save</>');
+        $output->writeln('    <comment>Guardar y salir</comment>');
+        $output->writeln('  <fg=cyan>cancel</>');
+        $output->writeln('    <comment>Cancelar sin guardar</comment>');
+    }
 
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+    private function processCommand(string $command, OutputInterface $output): ?string
+    {
+        $parts = explode(' ', $command);
+        $action = strtolower($parts[0]);
 
-            if ($choice === '<fg=yellow>Guardar y salir</>') {
-                break;
-            }
+        switch ($action) {
+            case 'save':
+                return 'save';
+            
+            case 'cancel':
+                return 'cancel';
+            
+            case 'list':
+                $this->displayCurrentOrder($output);
+                return null;
+            
+            case 'clear':
+                $this->activationOrder = [];
+                $output->writeln('<info>✓ Orden limpiado</info>');
+                $this->displayCurrentOrder($output);
+                return null;
+            
+            case 'remove':
+                if (!isset($parts[1])) {
+                    $output->writeln('<error>Uso: remove <posición></error>');
+                    return null;
+                }
+                $this->removePosition((int)$parts[1], $output);
+                return null;
+            
+            default:
+                // Intentar parsear como números/rangos
+                $this->addPlugins($command, $output);
+                return null;
+        }
+    }
 
-            if ($choice === '<fg=red>Cancelar</>') {
-                $output->writeln('<comment>Operación cancelada</comment>');
-                return Command::SUCCESS;
-            }
+    private function addPlugins(string $input, OutputInterface $output): void
+    {
+        $indices = $this->parseIndices($input);
+        
+        if (empty($indices)) {
+            $output->writeln('<error>Formato inválido. Usa: 1,2,3 o 1-5</error>');
+            return;
+        }
 
-            // Extraer nombre del plugin
-            preg_match('/<fg=green>(.*?)<\/>/', $choice, $matches);
-            $selectedPlugin = $matches[1] ?? null;
+        $added = 0;
+        $position = count($this->activationOrder) + 1;
 
-            if (!$selectedPlugin) {
+        foreach ($indices as $index) {
+            if ($index < 1 || $index > count($this->plugins)) {
+                $output->writeln("<error>Índice {$index} fuera de rango</error>");
                 continue;
             }
 
-            // Preguntar por dependencias
-            $output->writeln('');
-            $output->writeln("<info>Plugin seleccionado: {$selectedPlugin}</info>");
+            $plugin = $this->plugins[$index - 1];
+
+            if (isset($this->activationOrder[$plugin])) {
+                $output->writeln("<comment>Plugin {$plugin} ya está en el orden</comment>");
+                continue;
+            }
+
+            $this->activationOrder[$plugin] = $position++;
+            $added++;
+        }
+
+        if ($added > 0) {
+            $output->writeln("<info>✓ Agregados {$added} plugin(s)</info>");
+            $this->displayCurrentOrder($output);
+        }
+    }
+
+    private function parseIndices(string $input): array
+    {
+        $indices = [];
+        $parts = explode(',', $input);
+
+        foreach ($parts as $part) {
+            $part = trim($part);
             
-            $depQuestion = new ChoiceQuestion(
-                '<fg=yellow>¿Tiene dependencias? (plugins que deben activarse antes):</>', 
-                ['no' => '<fg=cyan>No tiene dependencias</>', 'si' => '<fg=yellow>Sí, seleccionar dependencias</>'],
-                'no'
-            );
-            $depQuestion->setAutocompleterValues(null);
-            $hasDeps = $helper->ask($input, $output, $depQuestion);
-
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
-
-            $pluginDeps = [];
-            if ($hasDeps === '<fg=yellow>Sí, seleccionar dependencias</>') {
-                $pluginDeps = $this->selectDependencies($input, $output, $helper, $selectedPlugin, $plugins, $activationOrder);
+            if (strpos($part, '-') !== false) {
+                // Rango: 7-12
+                list($start, $end) = explode('-', $part);
+                $start = (int)trim($start);
+                $end = (int)trim($end);
+                
+                if ($start > 0 && $end >= $start) {
+                    for ($i = $start; $i <= $end; $i++) {
+                        $indices[] = $i;
+                    }
+                }
+            } elseif (is_numeric($part)) {
+                // Número simple
+                $indices[] = (int)$part;
             }
-
-            // Agregar al orden
-            $activationOrder[$selectedPlugin] = $position;
-            if (!empty($pluginDeps)) {
-                $dependencies[$selectedPlugin] = $pluginDeps;
-            }
-            $position++;
-
-            // Remover de la lista
-            $plugins = array_values(array_filter($plugins, fn($p) => $p !== $selectedPlugin));
-
-            $output->writeln('');
-            $output->writeln("<info>✓ {$selectedPlugin} agregado en posición {$activationOrder[$selectedPlugin]}</info>");
-            $output->writeln('');
         }
 
-        if (empty($activationOrder)) {
-            $output->writeln('<comment>No se seleccionaron plugins</comment>');
-            return Command::SUCCESS;
-        }
-
-        // Recalcular orden basado en dependencias
-        $finalOrder = $this->calculateOrderWithDependencies($activationOrder, $dependencies);
-
-        // Guardar
-        $this->saveActivationOrder($input, $output, $helper, $finalOrder, $dependencies);
-
-        return Command::SUCCESS;
+        return array_unique($indices);
     }
 
-    private function displayPluginsInColumns(OutputInterface $output, array $plugins, array $selected): void
+    private function removePosition(int $position, OutputInterface $output): void
     {
-        $output->writeln('<fg=cyan>Plugins disponibles:</>');
-        $output->writeln('');
-
-        $half = (int)ceil(count($plugins) / 2);
-        $col1 = array_slice($plugins, 0, $half);
-        $col2 = array_slice($plugins, $half);
-
-        $maxLen = max(array_map('strlen', $plugins));
-
-        for ($i = 0; $i < $half; $i++) {
-            $left = isset($col1[$i]) ? sprintf("  [%2d] %-{$maxLen}s", $i + 1, $col1[$i]) : str_repeat(' ', $maxLen + 7);
-            $right = isset($col2[$i]) ? sprintf("  [%2d] %s", $i + $half + 1, $col2[$i]) : '';
-            $output->writeln("<fg=green>{$left}</>\t<fg=green>{$right}</>");
+        $plugin = array_search($position, $this->activationOrder);
+        
+        if ($plugin === false) {
+            $output->writeln("<error>Posición {$position} no encontrada</error>");
+            return;
         }
 
-        if (!empty($selected)) {
-            $output->writeln('');
-            $output->writeln('<fg=yellow>Orden actual: ' . count($selected) . ' plugins seleccionados</>' );
+        unset($this->activationOrder[$plugin]);
+        
+        // Renumerar
+        $this->activationOrder = array_values($this->activationOrder);
+        $newOrder = [];
+        $pos = 1;
+        foreach ($this->activationOrder as $p) {
+            $newOrder[$p] = $pos++;
         }
-        $output->writeln('');
+        $this->activationOrder = $newOrder;
+
+        $output->writeln("<info>✓ Removido: {$plugin}</info>");
+        $this->displayCurrentOrder($output);
     }
 
-    private function selectDependencies(InputInterface $input, OutputInterface $output, $helper, string $plugin, array $availablePlugins, array $alreadySelected): array
+    private function askDependencies(InputInterface $input, OutputInterface $output, $helper): void
     {
-        $deps = [];
-        $candidates = array_merge(array_keys($alreadySelected), $availablePlugins);
-        $candidates = array_filter($candidates, fn($p) => $p !== $plugin);
-
-        if (empty($candidates)) {
-            $output->writeln('<comment>No hay otros plugins disponibles como dependencias</comment>');
-            return [];
+        $output->writeln('');
+        $question = new ConfirmationQuestion('<fg=yellow>¿Definir dependencias? [y/N]:</> ', false);
+        
+        if (!$helper->ask($input, $output, $question)) {
+            return;
         }
 
         $output->writeln('');
-        $output->writeln("<comment>Selecciona las dependencias de {$plugin}:</comment>");
-        $output->writeln('<comment>(Plugins que deben activarse ANTES de este)</comment>');
+        $output->writeln('<comment>Para cada plugin, ingresa los números de sus dependencias separados por comas.</comment>');
+        $output->writeln('<comment>Presiona Enter si no tiene dependencias.</comment>');
         $output->writeln('');
 
-        while (true) {
-            $choices = [];
-            foreach ($candidates as $index => $candidate) {
-                if (!in_array($candidate, $deps)) {
-                    $choices[(string)($index + 1)] = "<fg=cyan>{$candidate}</>";
+        foreach ($this->activationOrder as $plugin => $position) {
+            $output->writeln("<fg=cyan>Plugin [{$position}]: {$plugin}</>");
+            $question = new Question('  <fg=yellow>Dependencias (números):</> ');
+            $deps = trim($helper->ask($input, $output, $question));
+
+            if (!empty($deps)) {
+                $depIndices = $this->parseIndices($deps);
+                $depPlugins = [];
+
+                foreach ($depIndices as $idx) {
+                    if ($idx < 1 || $idx > count($this->plugins)) {
+                        continue;
+                    }
+                    $depPlugin = $this->plugins[$idx - 1];
+                    if (isset($this->activationOrder[$depPlugin]) && $depPlugin !== $plugin) {
+                        $depPlugins[] = $depPlugin;
+                    }
+                }
+
+                if (!empty($depPlugins)) {
+                    $this->dependencies[$plugin] = $depPlugins;
+                    $output->writeln('  <info>✓ Dependencias: ' . implode(', ', $depPlugins) . '</info>');
                 }
             }
-            $choices['0'] = '<fg=green>Terminar selección</>';
-
-            if (count($choices) === 1) {
-                break;
-            }
-
-            $question = new ChoiceQuestion(
-                '<fg=yellow>Selecciona una dependencia (o 0 para terminar):</>', 
-                $choices, 
-                '0'
-            );
-            $question->setAutocompleterValues(null);
-            $choice = $helper->ask($input, $output, $question);
-
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
-
-            if ($choice === '<fg=green>Terminar selección</>') {
-                break;
-            }
-
-            preg_match('/<fg=cyan>(.*?)<\/>/', $choice, $matches);
-            $dep = $matches[1] ?? null;
-
-            if ($dep) {
-                $deps[] = $dep;
-                $output->writeln("<info>✓ Dependencia agregada: {$dep}</info>");
-            }
+            $output->writeln('');
         }
-
-        return $deps;
     }
 
-    private function calculateOrderWithDependencies(array $order, array $dependencies): array
+    private function calculateOrderWithDependencies(): array
     {
-        // Ajustar posiciones basadas en dependencias
+        $order = $this->activationOrder;
         $changed = true;
         $maxIterations = 100;
         $iteration = 0;
@@ -235,10 +331,9 @@ class PluginsOrderBuilderCommand extends Command
             $changed = false;
             $iteration++;
 
-            foreach ($dependencies as $plugin => $deps) {
+            foreach ($this->dependencies as $plugin => $deps) {
                 foreach ($deps as $dep) {
                     if (isset($order[$dep]) && isset($order[$plugin])) {
-                        // Si la dependencia tiene mayor posición, intercambiar
                         if ($order[$dep] > $order[$plugin]) {
                             $temp = $order[$dep];
                             $order[$dep] = $order[$plugin];
@@ -250,7 +345,6 @@ class PluginsOrderBuilderCommand extends Command
             }
         }
 
-        // Renumerar secuencialmente
         asort($order);
         $position = 1;
         $finalOrder = [];
@@ -261,7 +355,7 @@ class PluginsOrderBuilderCommand extends Command
         return $finalOrder;
     }
 
-    private function saveActivationOrder(InputInterface $input, OutputInterface $output, $helper, array $order, array $dependencies): void
+    private function saveActivationOrder(InputInterface $input, OutputInterface $output, $helper, array $order): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>Orden final calculado:</>');
@@ -269,8 +363,8 @@ class PluginsOrderBuilderCommand extends Command
 
         asort($order);
         foreach ($order as $plugin => $position) {
-            $depInfo = isset($dependencies[$plugin]) ? ' <fg=yellow>↳ ' . implode(', ', $dependencies[$plugin]) . '</>' : '';
-            $output->writeln("  [{$position}] <fg=green>{$plugin}</>{$depInfo}");
+            $depInfo = isset($this->dependencies[$plugin]) ? ' <fg=yellow>↳ ' . implode(', ', $this->dependencies[$plugin]) . '</>' : '';
+            $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
         }
 
         $output->writeln('');
@@ -292,7 +386,7 @@ class PluginsOrderBuilderCommand extends Command
         $filepath = $configDir . '/' . $filename;
         $data = [
             'activation_order' => $order,
-            'dependencies' => $dependencies,
+            'dependencies' => $this->dependencies,
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
