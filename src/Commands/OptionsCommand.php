@@ -28,10 +28,10 @@ class OptionsCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Exportar</> - Extraer opciones a JSON',
-                2 => '<fg=green>Importar</> - Inyectar opciones desde JSON',
-                3 => '<fg=cyan>Listar</> - Ver archivos JSON disponibles',
-                4 => '<fg=yellow>Gestionar</> - Importar/Exportar opción específica',
+                1 => '<fg=green>Exportar</>\t- Extraer opciones a JSON',
+                2 => '<fg=green>Importar</>\t- Inyectar opciones desde JSON',
+                3 => '<fg=cyan>Listar</>\t\t- Ver archivos JSON disponibles',
+                4 => '<fg=yellow>Gestionar</>\t- Importar/Exportar opción específica',
                 0 => '<fg=red>Volver</>',
             ];
 

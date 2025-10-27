@@ -121,8 +121,7 @@ PHP;
         $deps = $config['dependencies'] ?? [];
 
         $output->writeln('');
-        $output->write('<comment>Obteniendo estado de plugins</comment> ');
-        $this->showSpinner($output);
+        $output->write('<comment>⏳ Consultando WordPress...</comment>');
 
         $php = <<<'PHP'
 $plugins = [];
@@ -156,7 +155,7 @@ PHP;
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->run();
         
-        $output->write("\r<comment>Obteniendo estado de plugins</comment> <info>✓</info>\n");
+        $output->write(" <info>✓</info>\n");
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al obtener plugins</error>');
@@ -213,8 +212,7 @@ PHP;
         $output->writeln("<info>🚀 Se activarán {$count} plugins en secuencia...</info>");
         $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
         $output->writeln('');
-        $output->write('<comment>Activando plugins</comment> ');
-        $this->showSpinner($output);
+        $output->write('<comment>⏳ Activando plugins...</comment>');
 
         $orderJson = json_encode($order);
         $php = <<<PHP
@@ -245,7 +243,7 @@ PHP;
         $process->setTimeout(300);
         $process->run();
         
-        $output->write("\r<comment>Activando plugins</comment> <info>✓</info>\n\n");
+        $output->write(" <info>✓</info>\n\n");
         
         if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al activar plugins</error>');
@@ -295,15 +293,4 @@ PHP;
         return $deps;
     }
 
-    protected function showSpinner(OutputInterface $output): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        for ($i = 0; $i < 10; $i++) {
-            $output->write("\r<comment>Obteniendo estado de plugins</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(100000);
-        }
-    }
 }

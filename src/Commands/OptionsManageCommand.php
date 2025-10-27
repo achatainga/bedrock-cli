@@ -86,9 +86,9 @@ class OptionsManageCommand extends Command
         $output->writeln('');
 
         $choices = [
-            1 => '<fg=green>Importar</> - Inyectar a WordPress',
-            2 => '<fg=cyan>Exportar</> - Actualizar desde WordPress',
-            3 => '<fg=yellow>Ver contenido</> - Mostrar JSON',
+            1 => '<fg=green>Importar</>\t\t- Inyectar a WordPress',
+            2 => '<fg=cyan>Exportar</>\t\t- Actualizar desde WordPress',
+            3 => '<fg=yellow>Ver contenido</>\t- Mostrar JSON',
             0 => '<fg=red>Volver</>',
         ];
 
