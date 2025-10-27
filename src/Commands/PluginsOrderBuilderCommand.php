@@ -139,15 +139,15 @@ class PluginsOrderBuilderCommand extends Command
             // Plugin seleccionado: verde con checkmark
             $position = $this->activationOrder[$plugin];
             return sprintf(
-                "  <fg=cyan>[</><fg=white>%2d</><fg=cyan>]</> <fg=green>%-{$maxLen}s ✓ [%d]</>",
+                "  <fg=cyan>[</><fg=yellow>%2d</><fg=cyan>]</> <fg=green>%-{$maxLen}s ✓ [%d]</>",
                 $num,
                 $plugin,
                 $position
             );
         } else {
-            // Plugin disponible: azul y blanco
+            // Plugin disponible: números amarillos
             return sprintf(
-                "  <fg=cyan>[</><fg=white>%2d</><fg=cyan>]</> <fg=white>%-{$maxLen}s</>",
+                "  <fg=cyan>[</><fg=yellow>%2d</><fg=cyan>]</> <fg=white>%-{$maxLen}s</>",
                 $num,
                 $plugin
             );
@@ -192,6 +192,12 @@ class PluginsOrderBuilderCommand extends Command
         $output->writeln('    <comment>Cancelar sin guardar</comment>');
     }
 
+    private function displayCompactHelp(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=yellow>Comandos:</> <fg=cyan><nums></> | <fg=cyan>list</> | <fg=cyan>remove <pos></> | <fg=cyan>clear</> | <fg=cyan>save</> | <fg=cyan>cancel</>');
+    }
+
     private function processCommand(string $command, OutputInterface $output): ?string
     {
         $parts = explode(' ', $command);
@@ -206,17 +212,20 @@ class PluginsOrderBuilderCommand extends Command
             
             case 'list':
                 $this->displayCurrentOrder($output);
+                $this->displayCompactHelp($output);
                 return null;
             
             case 'clear':
                 $this->activationOrder = [];
                 $output->writeln('<info>✓ Orden limpiado</info>');
                 $this->refreshDisplay($output);
+                $this->displayCompactHelp($output);
                 return null;
             
             case 'remove':
                 if (!isset($parts[1])) {
                     $output->writeln('<error>Uso: remove <posición></error>');
+                    $this->displayCompactHelp($output);
                     return null;
                 }
                 $this->removePosition((int)$parts[1], $output);
@@ -243,6 +252,7 @@ class PluginsOrderBuilderCommand extends Command
         
         if (empty($indices)) {
             $output->writeln('<error>Formato inválido. Usa: 1,2,3 o 1-5</error>');
+            $this->displayCompactHelp($output);
             return;
         }
 
@@ -271,6 +281,7 @@ class PluginsOrderBuilderCommand extends Command
             $this->displayPluginsInColumns($output);
             $this->displaySeparator($output);
             $this->displayCurrentOrder($output);
+            $this->displayCompactHelp($output);
         }
     }
 
@@ -308,6 +319,7 @@ class PluginsOrderBuilderCommand extends Command
         
         if ($plugin === false) {
             $output->writeln("<error>Posición {$position} no encontrada</error>");
+            $this->displayCompactHelp($output);
             return;
         }
 
@@ -324,6 +336,7 @@ class PluginsOrderBuilderCommand extends Command
 
         $output->writeln("<info>✓ Removido: {$plugin}</info>");
         $this->refreshDisplay($output);
+        $this->displayCompactHelp($output);
     }
 
     private function askDependencies(InputInterface $input, OutputInterface $output, $helper): void
