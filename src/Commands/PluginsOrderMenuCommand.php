@@ -183,10 +183,27 @@ class PluginsOrderMenuCommand extends Command
         
         if (isset($data['activation_order'])) {
             $order = $data['activation_order'];
+            asort($order);
             $count = count($order);
             $output->writeln("<info>Plugins en orden ({$count}):</info>");
+            $output->writeln('');
+            
+            // Mostrar en 2 columnas
+            $plugins = [];
             foreach ($order as $plugin => $position) {
-                $output->writeln("  [{$position}] {$plugin}");
+                $plugins[] = sprintf("[%2d] %s", $position, $plugin);
+            }
+            
+            $half = (int)ceil(count($plugins) / 2);
+            $col1 = array_slice($plugins, 0, $half);
+            $col2 = array_slice($plugins, $half);
+            
+            $maxLen = max(array_map('strlen', $plugins));
+            
+            for ($i = 0; $i < $half; $i++) {
+                $left = isset($col1[$i]) ? sprintf("  %-{$maxLen}s", $col1[$i]) : str_repeat(' ', $maxLen + 2);
+                $right = isset($col2[$i]) ? "  {$col2[$i]}" : '';
+                $output->writeln("<fg=green>{$left}</>	<fg=green>{$right}</>");
             }
         }
         
