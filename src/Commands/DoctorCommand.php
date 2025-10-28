@@ -324,14 +324,14 @@ class DoctorCommand extends Command
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
-        $startTime = time();
+        $startTime = microtime(true);
         
-        while (time() - $startTime < $seconds) {
-            $elapsed = time() - $startTime;
+        while (microtime(true) - $startTime < $seconds) {
+            $elapsed = (int)(microtime(true) - $startTime);
             $remaining = $seconds - $elapsed;
             $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=yellow>({$remaining}s)</>");
             $frameIndex = ($frameIndex + 1) % count($frames);
-            sleep(1);
+            usleep(333333);
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
