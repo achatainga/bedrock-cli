@@ -31,6 +31,8 @@ use Roots\BedrockCli\Commands\OptionsPullCommand;
 use Roots\BedrockCli\Commands\OptionsPushCommand;
 use Roots\BedrockCli\Commands\OptionsListCommand;
 use Roots\BedrockCli\Commands\OptionsManageCommand;
+use Roots\BedrockCli\Commands\SnapshotCommand;
+use Roots\BedrockCli\Commands\ExportConfigCommand;
 
 class Application extends BaseApplication
 {
@@ -67,6 +69,8 @@ class Application extends BaseApplication
             new OptionsPushCommand(),
             new OptionsListCommand(),
             new OptionsManageCommand(),
+            new SnapshotCommand(),
+            new ExportConfigCommand(),
         ]);
     }
 
