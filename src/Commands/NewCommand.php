@@ -75,6 +75,9 @@ class NewCommand extends Command
         } else {
             $output->writeln('  composer install');
         }
+        $output->writeln('');
+        $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
+        $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --with-docker</comment>')
 
         return Command::SUCCESS;
     }
@@ -321,15 +324,26 @@ class NewCommand extends Command
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
+        $lastOutput = '';
 
-        $process->start();
+        $process->start(function ($type, $buffer) use (&$lastOutput, $output) {
+            $lastOutput = trim($buffer);
+            if ($output->isVerbose()) {
+                $output->writeln($buffer);
+            }
+        });
 
         while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $spinner = $frames[$frameIndex];
+            $statusLine = substr($lastOutput, 0, 80);
+            $padding = str_repeat(' ', 100);
+            
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$spinner}</> {$statusLine}{$padding}");
             $frameIndex = ($frameIndex + 1) % count($frames);
             usleep(80000);
         }
 
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+        $padding = str_repeat(' ', 100);
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>{$padding}\n");
     }
 }
