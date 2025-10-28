@@ -331,7 +331,7 @@ class DoctorCommand extends Command
             $remaining = $seconds - $elapsed;
             $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=yellow>({$remaining}s)</>");
             $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(200000);
+            usleep(80000);
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
