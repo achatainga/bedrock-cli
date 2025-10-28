@@ -135,6 +135,10 @@ class NewCommand extends Command
         $process->setTimeout(300);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
+        // Copiar acorn-boot.php a mu-plugins
+        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $this->copyStub("{$stubsDir}/mu-plugins/acorn-boot.php.stub", "{$name}/web/app/mu-plugins/acorn-boot.php", []);
+
         $output->writeln('<info>✓ Acorn instalado</info>');
     }
 
