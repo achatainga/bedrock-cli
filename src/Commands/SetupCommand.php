@@ -4,9 +4,9 @@ namespace Roots\BedrockCli\Commands;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Process\Process;
 
 class SetupCommand extends Command
 {
@@ -14,238 +14,121 @@ class SetupCommand extends Command
     {
         $this
             ->setName('setup')
-            ->setDescription('Configuración inicial del proyecto');
+            ->setDescription('Automatizar setup completo de WordPress y Acorn')
+            ->addOption('url', null, InputOption::VALUE_REQUIRED, 'URL del sitio', 'http://localhost')
+            ->addOption('title', null, InputOption::VALUE_REQUIRED, 'Título del sitio', 'Mi Sitio')
+            ->addOption('admin-user', null, InputOption::VALUE_REQUIRED, 'Usuario admin', 'admin')
+            ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'Contraseña admin', 'admin')
+            ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'Email admin', 'admin@example.com')
+            ->addOption('skip-wp-install', null, InputOption::VALUE_NONE, 'Saltar instalación de WordPress (si ya importaste SQL)')
+            ->addOption('skip-acorn', null, InputOption::VALUE_NONE, 'Saltar configuración de Acorn');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $helper = $this->getHelper('question');
-        
-        $output->writeln('');
-        $output->writeln('<info>Bienvenido al asistente de instalación</info>');
+        $output->writeln('<info>🚀 Iniciando setup automático...</info>');
         $output->writeln('');
 
-        // Confirmación
-        $confirmQuestion = new ConfirmationQuestion(
-            '<fg=yellow>¿Deseas continuar con la configuración inicial?</> [s/n] ',
-            false,
-            '/^(s|si|y|yes)/i'
-        );
-        
-        if (!$helper->ask($input, $output, $confirmQuestion)) {
-            $output->writeln('<comment>Configuración cancelada</comment>');
-            return Command::SUCCESS;
+        // 1. Verificar que estamos en un proyecto Bedrock
+        if (!file_exists('composer.json')) {
+            $output->writeln('<error>Error: No se encontró composer.json. Ejecuta este comando desde la raíz del proyecto.</error>');
+            return Command::FAILURE;
         }
 
-        // Configuración de acceso
-        $output->writeln('');
-        $output->writeln('<info>--- Configuración de Acceso a la Aplicación ---</info>');
-        $host = $helper->ask($input, $output, new Question('<question>Introduce el HOST para acceder a la aplicación</question> (default: 127.0.0.1): ', '127.0.0.1'));
-        $port = $helper->ask($input, $output, new Question('<question>Introduce el PUERTO para acceder a la aplicación</question> (default: 8024): ', '8024'));
-        $output->writeln("<comment>La aplicación será accesible en: http://{$host}:{$port}</comment>");
-        $output->writeln('<info>----------------------------------------------</info>');
-
-        // Configuración de base de datos
-        $output->writeln('');
-        $output->writeln('<info>--- Configuración de la Base de Datos ---</info>');
-        $dbName = $helper->ask($input, $output, new Question('<question>Nombre de la base de datos</question> (default: detodo24_bedrock): ', 'detodo24_bedrock'));
-        $output->writeln("<comment>Base de datos: {$dbName}</comment>");
+        // 2. Verificar que Docker está corriendo
+        $output->writeln('<comment>Verificando Docker...</comment>');
+        $process = new Process(['docker-compose', 'ps']);
+        $process->run();
         
-        $dbUser = $helper->ask($input, $output, new Question('<question>Usuario de la base de datos</question> (default: root): ', 'root'));
-        $output->writeln("<comment>Usuario: {$dbUser}</comment>");
-        
-        $dbPassQuestion = new Question('<question>Contraseña de la base de datos</question> (default: mysql): ', 'mysql');
-        $dbPassQuestion->setHidden(true);
-        $dbPassword = $helper->ask($input, $output, $dbPassQuestion);
-        $output->writeln('<comment>Contraseña ingresada.</comment>');
-        $output->writeln('<info>----------------------------------------</info>');
+        if (!$process->isSuccessful()) {
+            $output->writeln('<error>Error: Docker no está corriendo. Ejecuta: docker-compose up -d</error>');
+            return Command::FAILURE;
+        }
+        $output->writeln('<info>✓ Docker corriendo</info>');
+        $output->writeln('');
 
-        // Generar salts
-        $output->writeln('');
-        $output->writeln('<info>Generando salts de seguridad para WordPress...</info>');
-        $salts = $this->generateSalts();
-        $output->writeln('<info>Salts generados.</info>');
+        // 3. Instalar WordPress (opcional)
+        if (!$input->getOption('skip-wp-install')) {
+            $output->writeln('<comment>Instalando WordPress...</comment>');
+            
+            $url = $input->getOption('url');
+            $title = $input->getOption('title');
+            $adminUser = $input->getOption('admin-user');
+            $adminPassword = $input->getOption('admin-password');
+            $adminEmail = $input->getOption('admin-email');
+            
+            $process = new Process([
+                'docker-compose', 'exec', 'web', 'wp', 'core', 'install',
+                '--url=' . $url,
+                '--title=' . $title,
+                '--admin_user=' . $adminUser,
+                '--admin_password=' . $adminPassword,
+                '--admin_email=' . $adminEmail
+            ]);
+            $process->setTimeout(120);
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
 
-        // Crear archivo .env
-        $output->writeln('');
-        $output->writeln('<info>Creando o actualizando archivo .env...</info>');
-        $envPath = getcwd() . '/.env';
-        $envContent = $this->buildEnvContent($host, $port, $dbName, $dbUser, $dbPassword, $salts);
-        file_put_contents($envPath, $envContent);
-        $output->writeln('<info>Archivo .env generado o actualizado correctamente.</info>');
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al instalar WordPress</error>');
+                return Command::FAILURE;
+            }
+            $output->writeln('<info>✓ WordPress instalado</info>');
+            $output->writeln('');
+        } else {
+            $output->writeln('<comment>⏭️  Saltando instalación de WordPress</comment>');
+            $output->writeln('');
+        }
 
-        // Actualizar docker-compose.yml
-        $output->writeln('');
-        $output->writeln('<info>Actualizando archivo docker-compose.yml con el puerto de Nginx...</info>');
-        $this->updateDockerCompose($port, $output);
+        // 4. Configurar Acorn (opcional)
+        if (!$input->getOption('skip-acorn') && file_exists('vendor/roots/acorn')) {
+            $output->writeln('<comment>Configurando Acorn...</comment>');
+            
+            // Inicializar storage
+            $process = new Process(['docker-compose', 'exec', 'web', 'wp', 'acorn', 'acorn:init', 'storage']);
+            $process->setTimeout(60);
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
 
-        // Actualizar default.conf de Nginx
-        $output->writeln('');
-        $output->writeln('<info>Actualizando archivo ./docker/nginx/default.conf con el host...</info>');
-        $this->updateNginxConf($host, $output);
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al inicializar Acorn storage</error>');
+                return Command::FAILURE;
+            }
 
-        // Mensaje final
+            // Publicar configs
+            $process = new Process(['docker-compose', 'exec', 'web', 'wp', 'acorn', 'vendor:publish', '--tag=acorn']);
+            $process->setTimeout(60);
+            $process->run(function ($type, $buffer) use ($output) {
+                $output->write($buffer);
+            });
+
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al publicar configs de Acorn</error>');
+                return Command::FAILURE;
+            }
+
+            $output->writeln('<info>✓ Acorn configurado</info>');
+            $output->writeln('');
+        } else {
+            $output->writeln('<comment>⏭️  Saltando configuración de Acorn</comment>');
+            $output->writeln('');
+        }
+
         $output->writeln('');
-        $output->writeln('<info>Configuración de archivos completada.</info>');
-        $output->writeln("<info>Ahora puedes ejecutar 'docker-compose up -d' para levantar los contenedores con la nueva configuración.</info>");
-        $output->writeln("<info>Accede a la aplicación en: http://{$host}:{$port}</info>");
+        $output->writeln('<info>✅ Setup completado exitosamente</info>');
         $output->writeln('');
-        $output->writeln('<info>¡Asistente de instalación finalizado!</info>');
+        $output->writeln('<comment>Próximos pasos:</comment>');
+        $output->writeln('  - Visita: ' . $input->getOption('url'));
+        $output->writeln('  - Usuario: ' . $input->getOption('admin-user'));
+        $output->writeln('  - Contraseña: ' . $input->getOption('admin-password'));
         $output->writeln('');
+        $output->writeln('<comment>Comandos útiles:</comment>');
+        $output->writeln('  php vendor/bin/bedrock db:clean --old-prefix=hp2f_ --new-prefix=wp_  # Limpiar BD importada');
+        $output->writeln('  docker-compose exec web wp plugin list                                # Listar plugins');
+        $output->writeln('  docker-compose exec web wp acorn --help                               # Comandos Acorn');
 
         return Command::SUCCESS;
-    }
-
-    private function generateSalts(): array
-    {
-        $keys = ['AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 
-                 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT'];
-        $salts = [];
-        
-        foreach ($keys as $key) {
-            $salts[$key] = $this->generateSalt(64);
-        }
-        
-        return $salts;
-    }
-
-    private function generateSalt(int $length = 64): string
-    {
-        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_+=[]{};:,.<>?/~';
-        $charsLength = strlen($chars);
-        $salt = '';
-        
-        for ($i = 0; $i < $length; $i++) {
-            $salt .= $chars[random_int(0, $charsLength - 1)];
-        }
-        
-        return $salt;
-    }
-
-    private function buildEnvContent(string $host, string $port, string $dbName, string $dbUser, string $dbPassword, array $salts): string
-    {
-        return <<<EOD
-# Este archivo .env contiene las variables de entorno para configurar tu aplicación Bedrock.
-# Es leído por Bedrock al iniciar.
-
-# Configuración de la base de datos
-# Asegúrate de que estos valores coincidan con los definidos para el servicio 'mysql' en tu docker-compose.yml
-DB_NAME='{$dbName}'             # Nombre de la base de datos
-DB_USER='{$dbUser}'             # Usuario de la base de datos
-DB_PASSWORD='{$dbPassword}'     # Contraseña del usuario de la base de datos
-
-# Host de la base de datos.
-# Dentro de la red de Docker Compose, el nombre del servicio ('mysql') se resuelve automáticamente
-# a la dirección IP del contenedor MySQL.
-# ¡Es CRUCIAL que este host sea 'mysql' y no 'localhost' cuando se ejecuta dentro de Docker!
-DB_HOST='mysql'                 # <-- Apunta al nombre del servicio MySQL en Docker Compose.
-
-# Prefijo opcional para las tablas de WordPress
-# DB_PREFIX='wp_'
-
-# Entorno de la aplicación (development, staging, production)
-WP_ENV='development'            # Define el entorno actual de la aplicación.
-
-# URL principal del sitio. Debe ser accesible desde tu navegador.
-# Corresponde al mapeo de puertos de Nginx en docker-compose.yml.
-WP_HOME='http://{$host}:{$port}' # <-- Utiliza el HOST y PUERTO ingresados por el usuario.
-# URL del directorio de WordPress (siempre \${WP_HOME}/wp en Bedrock)
-WP_SITEURL="\${WP_HOME}/wp"      # <-- Se construye automáticamente a partir de WP_HOME.
-
-# Especifica la ruta opcional para el archivo debug.log de WordPress.
-# WP_DEBUG_LOG='/path/to/debug.log'
-
-# Claves de autenticación y salts de seguridad para WordPress.
-# Se generaron automáticamente durante la ejecución de este script.
-# Puedes regenerarlas en https://roots.io/salts.html si es necesario.
-AUTH_KEY='{$salts['AUTH_KEY']}'
-SECURE_AUTH_KEY='{$salts['SECURE_AUTH_KEY']}'
-LOGGED_IN_KEY='{$salts['LOGGED_IN_KEY']}'
-NONCE_KEY='{$salts['NONCE_KEY']}'
-AUTH_SALT='{$salts['AUTH_SALT']}'
-SECURE_AUTH_SALT='{$salts['SECURE_AUTH_SALT']}'
-LOGGED_IN_SALT='{$salts['LOGGED_IN_SALT']}'
-NONCE_SALT='{$salts['NONCE_SALT']}'
-
-# Asegúrate de que las claves y salts anteriores se hayan generado correctamente
-# en tu archivo .env local. Si no, puedes generarlas en https://roots.io/salts.html
-# y pegarlas aquí.
-EOD;
-    }
-
-    private function updateDockerCompose(string $port, OutputInterface $output): void
-    {
-        $dockerComposeFile = getcwd() . '/docker-compose.yml';
-        
-        if (!file_exists($dockerComposeFile)) {
-            $output->writeln('<error>Error: Archivo docker-compose.yml no encontrado.</error>');
-            return;
-        }
-
-        $lines = file($dockerComposeFile, FILE_IGNORE_NEW_LINES);
-        $newLines = [];
-        $inNginxService = false;
-        $inPortsBlock = false;
-        $updatedPorts = false;
-
-        foreach ($lines as $line) {
-            if (preg_match('/^\s*nginx:\s*.*?$/', $line)) {
-                $inNginxService = true;
-                $inPortsBlock = false;
-                $updatedPorts = false;
-            }
-
-            if ($inNginxService && preg_match('/^\s*ports:\s*.*?$/', $line)) {
-                $inPortsBlock = true;
-            }
-
-            if ($inNginxService && $inPortsBlock && preg_match('/^\s*-\s*"(\d+):80"/', $line, $matches) && !$updatedPorts) {
-                $newLine = preg_replace('/^(\s*-\s*")\d+(:80")/', '${1}' . $port . '${2}', $line);
-                $newLines[] = $newLine;
-                $output->writeln("<comment>Actualizada línea de puertos: '" . rtrim($line) . "' -> '" . rtrim($newLine) . "'</comment>");
-                $updatedPorts = true;
-            } else {
-                $newLines[] = $line;
-            }
-        }
-
-        if (!$updatedPorts) {
-            $output->writeln('<error>No se pudo encontrar o actualizar la línea de mapeo de puertos de Nginx.</error>');
-        } else {
-            file_put_contents($dockerComposeFile, implode(PHP_EOL, $newLines));
-            $output->writeln("<info>Archivo docker-compose.yml actualizado correctamente con el puerto {$port} para Nginx.</info>");
-        }
-    }
-
-    private function updateNginxConf(string $host, OutputInterface $output): void
-    {
-        $nginxConfFile = getcwd() . '/docker/nginx/default.conf';
-        
-        if (!file_exists($nginxConfFile)) {
-            $output->writeln('<error>Error: Archivo ./docker/nginx/default.conf no encontrado.</error>');
-            return;
-        }
-
-        $lines = file($nginxConfFile, FILE_IGNORE_NEW_LINES);
-        $newLines = [];
-        $updatedServerName = false;
-
-        foreach ($lines as $line) {
-            if (preg_match('/^(\s*server_name\s+)(.*?)(;?\s*)$/', $line, $matches) && !$updatedServerName) {
-                $newLine = $matches[1] . $host . $matches[3];
-                $newLines[] = $newLine;
-                $output->writeln("<comment>Actualizada línea server_name: '" . rtrim($line) . "' -> '" . rtrim($newLine) . "'</comment>");
-                $updatedServerName = true;
-            } else {
-                $newLines[] = $line;
-            }
-        }
-
-        if (!$updatedServerName) {
-            $output->writeln('<error>No se pudo encontrar o actualizar la directiva server_name.</error>');
-        } else {
-            file_put_contents($nginxConfFile, implode(PHP_EOL, $newLines));
-            $output->writeln("<info>Archivo ./docker/nginx/default.conf actualizado correctamente con el host {$host}.</info>");
-        }
     }
 }
