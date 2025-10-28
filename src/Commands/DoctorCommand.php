@@ -320,18 +320,28 @@ class DoctorCommand extends Command
         }
     }
 
-    private function waitWithLoader(OutputInterface $output, string $message, int $seconds): void
+    private function waitWithLoader(OutputInterface $output, string $message, int $maxSeconds): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
         $startTime = microtime(true);
         
-        while (microtime(true) - $startTime < $seconds) {
+        while (microtime(true) - $startTime < $maxSeconds) {
             $elapsed = (int)(microtime(true) - $startTime);
-            $remaining = $seconds - $elapsed;
+            $remaining = $maxSeconds - $elapsed;
             $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=yellow>({$remaining}s)</>");
             $frameIndex = ($frameIndex + 1) % count($frames);
             usleep(80000);
+            
+            // Verificar si Docker ya está listo
+            if ($elapsed > 5 && $elapsed % 5 === 0) {
+                $process = Process::fromShellCommandline('docker info');
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+                    return;
+                }
+            }
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
