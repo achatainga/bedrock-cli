@@ -36,6 +36,31 @@ bedrock new my-site --with-acorn --with-docker
 bedrock new my-site --with-docker --db-name=mydb --db-user=admin --db-pass=secret
 ```
 
+### Migrate Existing Database
+
+```bash
+cd my-site
+
+# Migrate database from SQL dump
+bedrock migrate \
+  --sql-file=dump.sql \
+  --old-prefix=hp2f_ \
+  --old-url=https://old-site.com \
+  --default-theme
+
+# Migrate without changing prefix
+bedrock migrate \
+  --sql-file=dump.sql \
+  --old-url=https://old-site.com \
+  --new-url=http://localhost:8080
+
+# Migrate without Acorn setup
+bedrock migrate \
+  --sql-file=dump.sql \
+  --old-url=https://old-site.com \
+  --skip-acorn
+```
+
 ### Manage Existing Project
 
 ```bash
@@ -64,8 +89,10 @@ bedrock options:push
 - `new <name>` - Create new Bedrock project
 
 ### Database Management
+- `migrate` - Migrate database from SQL dump (import + clean + search-replace)
 - `snapshot --create --name="backup"` - Create database snapshot
 - `snapshot --restore --name="backup"` - Restore database snapshot
+- `db:clean --old-prefix=old_ --new-prefix=wp_` - Clean and rename table prefixes
 - `import:core` - Import golden-image.sql + configs
 
 ### Configuration
@@ -90,6 +117,16 @@ bedrock options:push
 - `--db-user=USER` - Database user (default: root)
 - `--db-pass=PASS` - Database password (default: mysql)
 - `--force` - Overwrite if exists
+
+## Options for `migrate` Command
+
+- `--sql-file=FILE` - Path to SQL dump file (required)
+- `--old-prefix=PREFIX` - Old table prefix (default: wp_)
+- `--new-prefix=PREFIX` - New table prefix (default: wp_)
+- `--old-url=URL` - Old site URL (required)
+- `--new-url=URL` - New site URL (auto-detected from .env)
+- `--skip-acorn` - Skip Acorn configuration
+- `--default-theme` - Activate twentytwentyfive theme
 
 ## Project Structure
 
