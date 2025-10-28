@@ -23,6 +23,7 @@ class MigrateCommand extends Command
             ->addOption('new-url', null, InputOption::VALUE_OPTIONAL, 'URL nueva del sitio')
             ->addOption('skip-acorn', null, InputOption::VALUE_NONE, 'Saltar configuración de Acorn')
             ->addOption('default-theme', null, InputOption::VALUE_NONE, 'Activar tema por defecto (twentytwentyfive)')
+            ->addOption('yes', 'y', InputOption::VALUE_NONE, 'Confirmar automáticamente sin preguntar')
             ->setHelp('Automatiza la migración de una base de datos existente a un proyecto Bedrock limpio');
     }
 
@@ -91,18 +92,20 @@ class MigrateCommand extends Command
         $output->writeln('<info>✓ Docker corriendo</info>');
         $output->writeln('');
 
-        // Confirmar antes de proceder
-        $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion(
-            "<question>¿Continuar con la importación? Esto sobrescribirá la BD '{$dbName}' (y/n):</question> ",
-            false
-        );
+        // Confirmar antes de proceder (si no está en modo --yes)
+        if (!$input->getOption('yes') && !$input->getOption('no-interaction')) {
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                "<question>¿Continuar con la importación? Esto sobrescribirá la BD '{$dbName}' (y/n):</question> ",
+                false
+            );
 
-        if (!$helper->ask($input, $output, $question)) {
-            $output->writeln('<comment>Operación cancelada</comment>');
-            return Command::SUCCESS;
+            if (!$helper->ask($input, $output, $question)) {
+                $output->writeln('<comment>Operación cancelada</comment>');
+                return Command::SUCCESS;
+            }
+            $output->writeln('');
         }
-        $output->writeln('');
 
         // Paso 2: Importar SQL
         $output->writeln('<comment>2. Importando SQL dump...</comment>');
