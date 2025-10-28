@@ -307,8 +307,7 @@ class DoctorCommand extends Command
             $process = Process::fromShellCommandline('start "" "' . $dockerPath . '"');
             $process->run();
             
-            $output->writeln('<fg=yellow>Esperando 60 segundos a que Docker se inicialice...</>');
-            sleep(60);
+            $this->waitWithLoader($output, 'Esperando a que Docker se inicialice', 60);
             
             $process = Process::fromShellCommandline('docker info');
             $process->run();
@@ -319,5 +318,22 @@ class DoctorCommand extends Command
                 $output->writeln('<fg=red>✗ Docker no se inició. Inicia Docker Desktop manualmente</>');
             }
         }
+    }
+
+    private function waitWithLoader(OutputInterface $output, string $message, int $seconds): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        $startTime = time();
+        
+        while (time() - $startTime < $seconds) {
+            $elapsed = time() - $startTime;
+            $remaining = $seconds - $elapsed;
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=yellow>({$remaining}s)</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            sleep(1);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
 }
