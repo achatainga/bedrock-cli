@@ -63,17 +63,31 @@ docker-compose exec -T web wp core install \
 
 ### Acorn (Laravel para WordPress)
 
-#### Publicar Configuraciones
+#### Setup Inicial (OBLIGATORIO)
 ```bash
 # Después de levantar Docker, ejecutar UNA VEZ:
+
+# 1. Inicializar storage
+docker-compose exec web wp acorn acorn:init storage
+
+# 2. Publicar configuraciones
 docker-compose exec web wp acorn vendor:publish --tag=acorn
 ```
-Esto copia las configuraciones de Laravel a `config/` del proyecto.
 
-**Archivos publicados**:
+**Esto crea automáticamente**:
+- `app/Providers/AppServiceProvider.php` - Service provider principal
+- `app/Console/Commands/` - Comandos Artisan personalizados
+- `app/Services/` - Servicios de la aplicación
 - `config/app.php` - Configuración de aplicación
-- `config/view.php` - Sistema de vistas
+- `config/view.php` - Sistema de vistas Blade
 - `config/assets.php` - Gestión de assets
+- `config/auth.php` - Autenticación
+- `config/database.php` - Base de datos
+- `config/filesystems.php` - Almacenamiento
+- `config/logging.php` - Logs
+- `config/services.php` - Servicios externos
+- `config/session.php` - Sesiones
+- `storage/` - Logs, cache, framework
 
 #### Comandos Acorn Útiles
 ```bash
@@ -85,6 +99,12 @@ docker-compose exec web wp acorn cache:clear
 
 # Ver rutas
 docker-compose exec web wp acorn route:list
+
+# Crear comando personalizado
+docker-compose exec web wp acorn make:command MyCommand
+
+# Crear service provider
+docker-compose exec web wp acorn make:provider MyServiceProvider
 ```
 
 ---

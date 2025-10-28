@@ -103,28 +103,17 @@ class NewCommand extends Command
         $process->setTimeout(300);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
-        @mkdir("{$name}/config/acorn", 0755, true);
-        $vars = ['{{PROJECT_NAME}}' => $name];
-        $this->copyStub("{$stubsDir}/config/acorn/app.php.stub", "{$name}/config/acorn/app.php", $vars);
-
         $output->writeln('<info>✓ Acorn instalado</info>');
-        $output->writeln('<comment>Publicando configs de Acorn...</comment>');
-        
-        if ($input->getOption('with-docker')) {
-            $output->writeln('<comment>Ejecuta después de levantar Docker:</comment>');
-            $output->writeln('<comment>  docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
-        } else {
-            $process = new Process(['vendor/bin/wp', 'acorn', 'vendor:publish', '--tag=acorn'], $name);
-            $process->setTimeout(60);
-            $process->run();
-            
-            if ($process->isSuccessful()) {
-                $output->writeln('<info>✓ Configs de Acorn publicadas</info>');
-            } else {
-                $output->writeln('<comment>Ejecuta manualmente: wp acorn vendor:publish --tag=acorn</comment>');
-            }
-        }
+        $output->writeln('');
+        $output->writeln('<comment>⚠️  IMPORTANTE: Después de levantar Docker, ejecuta:</comment>');
+        $output->writeln('<comment>  docker-compose exec web wp acorn acorn:init storage</comment>');
+        $output->writeln('<comment>  docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
+        $output->writeln('');
+        $output->writeln('<comment>Esto creará:</comment>');
+        $output->writeln('<comment>  - app/Providers/AppServiceProvider.php</comment>');
+        $output->writeln('<comment>  - app/Console/Commands/</comment>');
+        $output->writeln('<comment>  - config/app.php, config/assets.php, config/view.php, etc.</comment>');
+        $output->writeln('<comment>  - storage/ (logs, cache, framework)</comment>');
     }
 
     private function installRedis(string $name, OutputInterface $output): void
