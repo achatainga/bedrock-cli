@@ -55,6 +55,7 @@ class NewCommand extends Command
 
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
+        $this->addBedrockCliToComposer($name, $output);
         $this->initGit($name, $output);
 
         $output->writeln('');
@@ -64,8 +65,11 @@ class NewCommand extends Command
         $output->writeln("  cd {$name}");
         if ($input->getOption('with-docker')) {
             $output->writeln('  docker-compose up -d');
+            $output->writeln('');
+            $output->writeln('<comment>Lee README.md para workflow completo</comment>');
+        } else {
+            $output->writeln('  composer install');
         }
-        $output->writeln('  composer install');
 
         return Command::SUCCESS;
     }
@@ -183,7 +187,37 @@ class NewCommand extends Command
         $this->copyStub("{$stubsDir}/.env.stub", "{$name}/.env", $vars);
         $this->copyStub("{$stubsDir}/.gitignore.stub", "{$name}/.gitignore", $vars);
 
+        if ($input->getOption('with-docker')) {
+            $vars['{{HTTP_PORT}}'] = $httpPort;
+            $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
+            $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+            $this->copyStub("{$stubsDir}/README.project.stub", "{$name}/README.md", $vars);
+        }
+
         $output->writeln('<info>✓ Archivo .env generado</info>');
+    }
+
+    private function addBedrockCliToComposer(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Configurando bedrock-cli...</info>');
+
+        $composerFile = "{$name}/composer.json";
+        $composer = json_decode(file_get_contents($composerFile), true);
+
+        $composer['repositories']['bedrock-cli'] = [
+            'type' => 'vcs',
+            'url' => 'https://github.com/achatainga/bedrock-cli'
+        ];
+
+        $composer['require']['achatainga/bedrock-cli'] = 'dev-develop';
+
+        file_put_contents($composerFile, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        $process = new Process(['composer', 'update', 'achatainga/bedrock-cli', '--no-interaction'], $name);
+        $process->setTimeout(300);
+        $this->runWithLoader($process, $output, 'Instalando bedrock-cli');
+
+        $output->writeln('<info>✓ bedrock-cli configurado</info>');
     }
 
     private function initGit(string $name, OutputInterface $output): void

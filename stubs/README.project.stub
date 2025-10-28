@@ -1,0 +1,256 @@
+# {{PROJECT_NAME}}
+
+Proyecto WordPress Bedrock con gestión profesional de ambientes.
+
+## 🚀 Inicio Rápido
+
+### Requisitos
+- Docker & Docker Compose
+- Composer
+- PHP 8.1+
+
+### Instalación
+
+```bash
+# Clonar proyecto
+git clone <repo-url> {{PROJECT_NAME}}
+cd {{PROJECT_NAME}}
+
+# Instalar dependencias
+composer install
+
+# Levantar Docker
+docker-compose up -d
+
+# Instalar WordPress
+docker-compose exec -T web wp core install \
+  --url="http://localhost:{{HTTP_PORT}}" \
+  --title="{{PROJECT_NAME}}" \
+  --admin_user="admin" \
+  --admin_password="admin" \
+  --admin_email="admin@{{PROJECT_NAME}}.test"
+```
+
+**Acceso**: http://localhost:{{HTTP_PORT}}
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+{{PROJECT_NAME}}/
+├── config/
+│   ├── application.php          # Configuración principal
+│   ├── environments/            # Configs por ambiente
+│   └── plugins/                 # Configs de plugins
+├── database/
+│   ├── migrations/              # Migraciones de BD
+│   ├── seeders/                 # Datos de prueba
+│   └── snapshots/               # Backups de BD
+├── scripts/
+│   └── sanitize-db.sh          # Sanitizar BD para desarrollo
+├── web/
+│   ├── app/                    # Plugins, themes, uploads
+│   └── wp/                     # WordPress core (no editar)
+├── docker-compose.yml          # Servicios Docker
+├── Dockerfile.web              # Imagen PHP personalizada
+└── .env                        # Variables de entorno (no commitear)
+```
+
+---
+
+## 🛠️ Comandos Bedrock CLI
+
+### Gestión de Base de Datos
+
+#### Crear Snapshot
+```bash
+php vendor/bin/bedrock snapshot --create --name="pre-deploy"
+```
+Crea backup en `database/snapshots/pre-deploy_TIMESTAMP.sql`
+
+#### Restaurar Snapshot
+```bash
+php vendor/bin/bedrock snapshot --restore --name="pre-deploy"
+```
+Restaura el snapshot más reciente con ese nombre.
+
+#### Listar Snapshots
+```bash
+ls -lh database/snapshots/
+```
+
+---
+
+### Gestión de Configuración
+
+#### Exportar Configuración
+```bash
+# Exportar opciones básicas
+php vendor/bin/bedrock export:config
+
+# Exportar TODAS las opciones
+php vendor/bin/bedrock export:config --all
+```
+Guarda en `config/options/*.json`
+
+#### Importar Golden Image
+```bash
+php vendor/bin/bedrock import:core
+```
+Importa `database/snapshots/golden-image.sql` + configs JSON
+
+---
+
+## 🔄 Workflow de Desarrollo
+
+### Setup Inicial (Primera vez)
+```bash
+# 1. Instalar dependencias
+composer install
+
+# 2. Levantar Docker
+docker-compose up -d
+
+# 3. Instalar WordPress
+docker-compose exec -T web wp core install \
+  --url="http://localhost:{{HTTP_PORT}}" \
+  --title="{{PROJECT_NAME}}" \
+  --admin_user="admin" \
+  --admin_password="admin" \
+  --admin_email="admin@test.local"
+
+# 4. Crear snapshot inicial
+php vendor/bin/bedrock snapshot --create --name="fresh-install"
+```
+
+### Desarrollo Diario
+```bash
+# Crear backup antes de cambios
+php vendor/bin/bedrock snapshot --create --name="before-feature-x"
+
+# Hacer cambios...
+
+# Si algo sale mal, restaurar
+php vendor/bin/bedrock snapshot --restore --name="before-feature-x"
+```
+
+### Sincronizar desde Producción
+```bash
+# 1. Exportar BD de producción (en servidor)
+# 2. Copiar SQL a database/snapshots/golden-image.sql
+# 3. Sanitizar datos sensibles
+bash scripts/sanitize-db.sh
+
+# 4. Importar en local
+php vendor/bin/bedrock import:core
+```
+
+---
+
+## 🐳 Docker
+
+### Servicios
+- **web**: PHP 8.4-FPM + WP-CLI
+- **nginx**: Servidor web (puerto {{HTTP_PORT}})
+- **mysql**: MySQL 5.7 (puerto {{MYSQL_PORT}})
+- **redis**: Redis 7 (puerto {{REDIS_PORT}})
+
+### Comandos Útiles
+```bash
+# Ver logs
+docker-compose logs -f web
+
+# Ejecutar WP-CLI
+docker-compose exec web wp plugin list
+
+# Reiniciar servicios
+docker-compose restart
+
+# Detener todo
+docker-compose down
+
+# Limpiar volúmenes (⚠️ borra BD)
+docker-compose down -v
+```
+
+---
+
+## 🔐 Variables de Entorno
+
+Archivo `.env` (no commitear):
+
+```env
+DB_NAME='{{DB_NAME}}'
+DB_USER='{{DB_USER}}'
+DB_PASSWORD='{{DB_PASSWORD}}'
+DB_HOST='mysql'
+
+WP_ENV='development'
+WP_HOME='http://localhost:{{HTTP_PORT}}'
+WP_SITEURL="${WP_HOME}/wp"
+
+# Salts generados automáticamente
+AUTH_KEY='...'
+SECURE_AUTH_KEY='...'
+# ... etc
+```
+
+---
+
+## 📝 Mejores Prácticas
+
+### ✅ Hacer
+- Crear snapshot antes de cambios importantes
+- Commitear configs en `config/options/*.json`
+- Usar `wp search-replace` para cambiar URLs
+- Mantener `.env` fuera de Git
+
+### ❌ No Hacer
+- Editar archivos en `web/wp/` (WordPress core)
+- Commitear `.env` o credenciales
+- Hacer `UPDATE` directo en SQL (usar WP-CLI)
+- Olvidar crear snapshots antes de deploy
+
+---
+
+## 🆘 Troubleshooting
+
+### Puerto ocupado
+```bash
+# Cambiar puertos en docker-compose.yml
+# Actualizar WP_HOME en .env
+```
+
+### Error de permisos
+```bash
+sudo chown -R $USER:$USER .
+```
+
+### BD no conecta
+```bash
+# Verificar que MySQL esté corriendo
+docker-compose ps
+
+# Ver logs
+docker-compose logs mysql
+```
+
+### Reset completo
+```bash
+docker-compose down -v
+docker-compose up -d
+# Re-instalar WordPress
+```
+
+---
+
+## 📚 Recursos
+
+- [Bedrock Docs](https://roots.io/bedrock/docs/)
+- [WP-CLI Commands](https://developer.wordpress.org/cli/commands/)
+- [Docker Compose Docs](https://docs.docker.com/compose/)
+
+---
+
+**Generado por**: [bedrock-cli](https://github.com/achatainga/bedrock-cli)
