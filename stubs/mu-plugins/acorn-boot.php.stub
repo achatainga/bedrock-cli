@@ -4,6 +4,11 @@ Plugin Name:  Acorn Bootloader
 Description:  Boots the Acorn framework.
 */
 
+// Solo cargar si WordPress está instalado
+if (! defined('ABSPATH') || ! is_blog_installed()) {
+    return;
+}
+
 if (! class_exists(\Roots\Acorn\Application::class)) {
     return;
 }

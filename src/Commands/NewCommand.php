@@ -60,6 +60,7 @@ class NewCommand extends Command
 
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
+        $this->copyApplicationConfig($name, $output);
         $this->addBedrockCliToComposer($name, $output);
         $this->initGit($name, $output);
 
@@ -338,6 +339,16 @@ class NewCommand extends Command
         }
         
         return true;
+    }
+
+    private function copyApplicationConfig(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Configurando application.php con guards de constantes...</info>');
+        
+        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $this->copyStub("{$stubsDir}/config/application.php.stub", "{$name}/config/application.php", []);
+        
+        $output->writeln('<info>✓ application.php configurado</info>');
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
