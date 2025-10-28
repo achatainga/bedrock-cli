@@ -11,6 +11,7 @@ services:
       - WP_CLI_STRICT_ARGS_MODE=0
     volumes:
       - ./:/var/www/html
+      - ./docker/mysql/client.cnf:/etc/mysql/conf.d/client.cnf:ro
     depends_on:
       - mysql
 
@@ -37,6 +38,7 @@ services:
       - "3307:3306"
     volumes:
       - dbdata:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/ssl.cnf:ro
 
   redis:
     image: redis:7-alpine
