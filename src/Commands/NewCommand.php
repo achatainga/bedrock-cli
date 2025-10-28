@@ -22,6 +22,9 @@ class NewCommand extends Command
             ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Nombre de la base de datos')
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Usuario de BD', 'root')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña de BD', 'mysql')
+            ->addOption('http-port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP')
+            ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
+            ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe');
     }
 
@@ -101,11 +104,18 @@ class NewCommand extends Command
         $dbUser = $input->getOption('db-user');
         $dbPass = $input->getOption('db-pass');
 
+        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $mysqlPort = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
+        $redisPort = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+
         $vars = [
             '{{PROJECT_NAME}}' => $projectName,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $dbUser,
             '{{DB_PASSWORD}}' => $dbPass,
+            '{{HTTP_PORT}}' => $httpPort,
+            '{{MYSQL_PORT}}' => $mysqlPort,
+            '{{REDIS_PORT}}' => $redisPort,
         ];
 
         $this->copyStub("{$stubsDir}/docker-compose.yml.stub", "{$name}/docker-compose.yml", $vars);
@@ -152,12 +162,14 @@ class NewCommand extends Command
 
         $stubsDir = dirname(__DIR__, 2) . '/stubs';
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
+        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
         
         $vars = [
             '{{PROJECT_NAME}}' => $name,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
+            '{{HTTP_PORT}}' => $httpPort,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),
@@ -200,6 +212,36 @@ class NewCommand extends Command
     private function generateKey(): string
     {
         return bin2hex(random_bytes(32));
+    }
+
+    private function findFreePort(int $preferred, OutputInterface $output): int
+    {
+        $port = $preferred;
+        $maxAttempts = 100;
+        
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($this->isPortFree($port)) {
+                if ($port !== $preferred) {
+                    $output->writeln("<comment>Puerto {$preferred} ocupado, usando {$port}</comment>");
+                }
+                return $port;
+            }
+            $port++;
+        }
+        
+        return $preferred;
+    }
+
+    private function isPortFree(int $port): bool
+    {
+        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+        
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        return true;
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
