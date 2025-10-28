@@ -66,6 +66,22 @@ class NewCommand extends Command
         $output->writeln('');
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
         $output->writeln('');
+        
+        // Mostrar instrucciones de Acorn si fue instalado
+        if (!$input->getOption('no-acorn')) {
+            $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
+            $output->writeln('<comment>  Después de levantar Docker, ejecuta:</comment>');
+            $output->writeln('<comment>    docker-compose exec web wp acorn acorn:init storage</comment>');
+            $output->writeln('<comment>    docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
+            $output->writeln('');
+            $output->writeln('<comment>  Esto creará automáticamente:</comment>');
+            $output->writeln('<comment>    • app/Providers/AppServiceProvider.php</comment>');
+            $output->writeln('<comment>    • app/Console/Commands/</comment>');
+            $output->writeln('<comment>    • config/app.php, config/assets.php, config/view.php</comment>');
+            $output->writeln('<comment>    • storage/ (logs, cache, framework)</comment>');
+            $output->writeln('');
+        }
+        
         $output->writeln('<comment>Próximos pasos:</comment>');
         $output->writeln("  cd {$name}");
         if ($input->getOption('with-docker')) {
@@ -110,16 +126,6 @@ class NewCommand extends Command
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
         $output->writeln('<info>✓ Acorn instalado</info>');
-        $output->writeln('');
-        $output->writeln('<comment>⚠️  IMPORTANTE: Después de levantar Docker, ejecuta:</comment>');
-        $output->writeln('<comment>  docker-compose exec web wp acorn acorn:init storage</comment>');
-        $output->writeln('<comment>  docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
-        $output->writeln('');
-        $output->writeln('<comment>Esto creará:</comment>');
-        $output->writeln('<comment>  - app/Providers/AppServiceProvider.php</comment>');
-        $output->writeln('<comment>  - app/Console/Commands/</comment>');
-        $output->writeln('<comment>  - config/app.php, config/assets.php, config/view.php, etc.</comment>');
-        $output->writeln('<comment>  - storage/ (logs, cache, framework)</comment>');
     }
 
     private function installRedis(string $name, OutputInterface $output): void
@@ -130,7 +136,7 @@ class NewCommand extends Command
         $process->setTimeout(300);
         $this->runWithLoader($process, $output, 'Instalando Redis');
 
-        $output->writeln('<info>✓ Redis configurado</info>');
+        $output->writeln('<info>✓ Redis instalado</info>');
     }
 
     private function setupDocker(string $name, InputInterface $input, OutputInterface $output): void
