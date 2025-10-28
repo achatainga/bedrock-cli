@@ -61,6 +61,65 @@ docker-compose exec -T web wp core install \
 
 ## 🛠️ Comandos Bedrock CLI
 
+### Acorn (Laravel para WordPress)
+
+#### Publicar Configuraciones
+```bash
+# Después de levantar Docker, ejecutar UNA VEZ:
+docker-compose exec web wp acorn vendor:publish --tag=acorn
+```
+Esto copia las configuraciones de Laravel a `config/` del proyecto.
+
+**Archivos publicados**:
+- `config/app.php` - Configuración de aplicación
+- `config/view.php` - Sistema de vistas
+- `config/assets.php` - Gestión de assets
+
+#### Comandos Acorn Útiles
+```bash
+# Ver todos los comandos
+docker-compose exec web wp acorn list
+
+# Limpiar caché
+docker-compose exec web wp acorn cache:clear
+
+# Ver rutas
+docker-compose exec web wp acorn route:list
+```
+
+---
+
+### Redis Object Cache
+
+#### Activar Plugin
+```bash
+# Activar plugin de Redis
+docker-compose exec web wp plugin activate redis-cache
+
+# Habilitar caché de objetos
+docker-compose exec web wp redis enable
+```
+
+#### Verificar Estado
+```bash
+# Ver info de Redis
+docker-compose exec web wp redis info
+
+# Ver estadísticas
+docker-compose exec web wp redis status
+```
+
+#### Limpiar Caché
+```bash
+# Flush completo
+docker-compose exec web wp cache flush
+
+# O directamente en Redis
+docker-compose exec redis redis-cli FLUSHDB
+```
+
+---
+
 ### Gestión de Base de Datos
 
 #### Crear Snapshot

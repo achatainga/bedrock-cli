@@ -17,8 +17,9 @@ class NewCommand extends Command
             ->setName('new')
             ->setDescription('Crear nuevo proyecto Bedrock')
             ->addArgument('name', InputArgument::REQUIRED, 'Nombre del proyecto')
-            ->addOption('with-acorn', null, InputOption::VALUE_NONE, 'Instalar Roots Acorn')
             ->addOption('with-docker', null, InputOption::VALUE_NONE, 'Generar archivos Docker')
+            ->addOption('no-acorn', null, InputOption::VALUE_NONE, 'NO instalar Roots Acorn (por defecto SÍ se instala)')
+            ->addOption('no-redis', null, InputOption::VALUE_NONE, 'NO instalar Redis (por defecto SÍ se instala)')
             ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Nombre de la base de datos')
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Usuario de BD', 'root')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña de BD', 'mysql')
@@ -45,8 +46,12 @@ class NewCommand extends Command
             return Command::FAILURE;
         }
 
-        if ($input->getOption('with-acorn')) {
-            $this->installAcorn($name, $output);
+        if (!$input->getOption('no-acorn')) {
+            $this->installAcorn($name, $input, $output);
+        }
+
+        if (!$input->getOption('no-redis')) {
+            $this->installRedis($name, $output);
         }
 
         if ($input->getOption('with-docker')) {
@@ -90,12 +95,47 @@ class NewCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function installAcorn(string $name, OutputInterface $output): void
+    private function installAcorn(string $name, InputInterface $input, OutputInterface $output): void
     {
-        $process = new Process(['composer', 'require', 'roots/acorn'], $name);
-        $process->setTimeout(300);
+        $output->writeln('<info>Instalando Roots Acorn...</info>');
 
+        $process = new Process(['composer', 'require', 'roots/acorn', '--no-interaction'], $name);
+        $process->setTimeout(300);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
+
+        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        @mkdir("{$name}/config/acorn", 0755, true);
+        $vars = ['{{PROJECT_NAME}}' => $name];
+        $this->copyStub("{$stubsDir}/config/acorn/app.php.stub", "{$name}/config/acorn/app.php", $vars);
+
+        $output->writeln('<info>✓ Acorn instalado</info>');
+        $output->writeln('<comment>Publicando configs de Acorn...</comment>');
+        
+        if ($input->getOption('with-docker')) {
+            $output->writeln('<comment>Ejecuta después de levantar Docker:</comment>');
+            $output->writeln('<comment>  docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
+        } else {
+            $process = new Process(['vendor/bin/wp', 'acorn', 'vendor:publish', '--tag=acorn'], $name);
+            $process->setTimeout(60);
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $output->writeln('<info>✓ Configs de Acorn publicadas</info>');
+            } else {
+                $output->writeln('<comment>Ejecuta manualmente: wp acorn vendor:publish --tag=acorn</comment>');
+            }
+        }
+    }
+
+    private function installRedis(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Instalando Redis Object Cache...</info>');
+
+        $process = new Process(['composer', 'require', 'rhubarbgroup/redis-cache', '--no-interaction'], $name);
+        $process->setTimeout(300);
+        $this->runWithLoader($process, $output, 'Instalando Redis');
+
+        $output->writeln('<info>✓ Redis configurado</info>');
     }
 
     private function setupDocker(string $name, InputInterface $input, OutputInterface $output): void
@@ -182,6 +222,7 @@ class NewCommand extends Command
             '{{SECURE_AUTH_SALT}}' => $this->generateKey(),
             '{{LOGGED_IN_SALT}}' => $this->generateKey(),
             '{{NONCE_SALT}}' => $this->generateKey(),
+            '{{APP_KEY}}' => 'base64:' . base64_encode(random_bytes(32)),
         ];
 
         $this->copyStub("{$stubsDir}/.env.stub", "{$name}/.env", $vars);
