@@ -322,28 +322,16 @@ class NewCommand extends Command
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
     {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        $lastOutput = '';
+        $output->writeln("<comment>{$message}...</comment>");
 
-        $process->start(function ($type, $buffer) use (&$lastOutput, $output) {
-            $lastOutput = trim($buffer);
-            if ($output->isVerbose()) {
-                $output->writeln($buffer);
-            }
+        $process->start(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
         });
 
-        while ($process->isRunning()) {
-            $spinner = $frames[$frameIndex];
-            $statusLine = substr($lastOutput, 0, 80);
-            $padding = str_repeat(' ', 100);
-            
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$spinner}</> {$statusLine}{$padding}");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
+        $process->wait();
 
-        $padding = str_repeat(' ', 100);
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>{$padding}\n");
+        if ($process->isSuccessful()) {
+            $output->writeln("<info>✓ {$message} completado</info>");
+        }
     }
 }
