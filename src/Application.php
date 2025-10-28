@@ -36,6 +36,7 @@ use Roots\BedrockCli\Commands\ExportConfigCommand;
 use Roots\BedrockCli\Commands\ImportCoreCommand;
 use Roots\BedrockCli\Commands\NewCommand;
 use Roots\BedrockCli\Commands\DbCleanCommand;
+use Roots\BedrockCli\Commands\MigrateCommand;
 
 class Application extends BaseApplication
 {
@@ -77,6 +78,7 @@ class Application extends BaseApplication
             new ImportCoreCommand(),
             new NewCommand(),
             new DbCleanCommand(),
+            new MigrateCommand(),
         ]);
     }
 
