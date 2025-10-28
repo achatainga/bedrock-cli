@@ -54,10 +54,11 @@ class SnapshotCommand extends Command
         $filename = "{$name}_{$timestamp}.sql";
         $filepath = "{$snapshotsDir}/{$filename}";
 
-        $dbName = getenv('DB_NAME') ?: 'detodo24_bedrock';
-        $dbUser = getenv('DB_USER') ?: 'root';
-        $dbPass = getenv('DB_PASSWORD') ?: 'mysql';
-        $dbHost = getenv('DB_HOST') ?: 'mysql';
+        $env = $this->loadEnv();
+        $dbName = $env['DB_NAME'] ?? 'wordpress';
+        $dbUser = $env['DB_USER'] ?? 'root';
+        $dbPass = $env['DB_PASSWORD'] ?? 'mysql';
+        $dbHost = $env['DB_HOST'] ?? 'mysql';
 
         $output->writeln("<info>Creando snapshot: {$filename}</info>");
 
@@ -113,10 +114,11 @@ class SnapshotCommand extends Command
 
         $filepath = "{$snapshotsDir}/{$selected}";
 
-        $dbName = getenv('DB_NAME') ?: 'detodo24_bedrock';
-        $dbUser = getenv('DB_USER') ?: 'root';
-        $dbPass = getenv('DB_PASSWORD') ?: 'mysql';
-        $dbHost = getenv('DB_HOST') ?: 'mysql';
+        $env = $this->loadEnv();
+        $dbName = $env['DB_NAME'] ?? 'wordpress';
+        $dbUser = $env['DB_USER'] ?? 'root';
+        $dbPass = $env['DB_PASSWORD'] ?? 'mysql';
+        $dbHost = $env['DB_HOST'] ?? 'mysql';
 
         $output->writeln("<info>Restaurando snapshot: {$selected}</info>");
 
@@ -143,6 +145,30 @@ class SnapshotCommand extends Command
 
         $output->writeln("<info>✓ Snapshot restaurado: {$selected}</info>");
         return Command::SUCCESS;
+    }
+
+    private function loadEnv(): array
+    {
+        $envFile = getcwd() . '/.env';
+        if (!file_exists($envFile)) {
+            return [];
+        }
+
+        $env = [];
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '#') === 0) {
+                continue;
+            }
+            
+            if (strpos($line, '=') !== false) {
+                list($key, $value) = explode('=', $line, 2);
+                $env[trim($key)] = trim($value, "' \"");
+            }
+        }
+        
+        return $env;
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
