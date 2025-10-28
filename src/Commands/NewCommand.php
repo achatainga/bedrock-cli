@@ -99,6 +99,9 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Instalando Roots Acorn...</info>');
 
+        $process = new Process(['composer', 'config', 'allow-plugins.mnsami/composer-custom-directory-installer', 'true'], $name);
+        $process->run();
+
         $process = new Process(['composer', 'require', 'roots/acorn', '--no-interaction'], $name);
         $process->setTimeout(300);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
