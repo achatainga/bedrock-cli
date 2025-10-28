@@ -1,135 +1,120 @@
-# Bedrock CLI - Universal CLI for Roots Bedrock
+# Bedrock CLI
 
-Herramienta de gestión para proyectos Roots Bedrock WordPress.
+Universal CLI tool for managing Roots Bedrock WordPress projects.
 
-## 🚀 Instalación
+## Installation
 
-### En proyecto Bedrock existente
-
-```bash
-cd tu-proyecto-bedrock
-composer require roots/bedrock-cli --dev
-```
-
-### Desarrollo local
+### Global Installation (Recommended)
 
 ```bash
-cd bedrock-cli
-composer install
-
-# Opción 1: Agregar al PATH (Windows)
-# Agregar c:\code\bedrock-cli a la variable PATH del sistema
-
-# Opción 2: Alias en Git Bash
-echo 'alias bedrock="/c/code/bedrock-cli/bedrock"' >> ~/.bashrc
-source ~/.bashrc
-
-# Opción 3: Usar directamente
-./bedrock list
+composer global require achatainga/bedrock-cli:dev-develop
 ```
 
-## 📖 Uso
+Make sure `~/.composer/vendor/bin` (or `%APPDATA%\Composer\vendor\bin` on Windows) is in your PATH.
 
-### Comandos con Menú Interactivo
+### Local Installation (Per Project)
 
 ```bash
-# Gestión Docker (menú)
-bedrock docker
-
-# Gestión Base de Datos (menú)
-bedrock db
-
-# Gestión Plugins (menú)
-bedrock plugins
+composer require --dev achatainga/bedrock-cli
 ```
 
-### Comandos Directos
+## Usage
+
+### Create New Project
 
 ```bash
-# Docker
-bedrock docker --up
-bedrock docker --down
-bedrock docker --restart
-bedrock docker --status
+# Basic project
+bedrock new my-site
 
-# Base de Datos
-bedrock db --create
-bedrock db --import=database.sql
-bedrock db --export=backup.sql
+# With Docker
+bedrock new my-site --with-docker
 
-# WordPress
-bedrock install
+# With Acorn (Laravel components)
+bedrock new my-site --with-acorn --with-docker
+
+# Custom database config
+bedrock new my-site --with-docker --db-name=mydb --db-user=admin --db-pass=secret
 ```
 
-## 🏗️ Arquitectura
-
-```
-bedrock-cli/
-├── bin/bedrock                 # Ejecutable
-├── src/
-│   ├── Application.php         # App principal
-│   ├── Commands/               # Comandos Symfony
-│   │   ├── DockerCommand.php
-│   │   ├── DatabaseCommand.php
-│   │   ├── InstallCommand.php
-│   │   ├── PluginsCommand.php
-│   │   ├── ThemesCommand.php
-│   │   ├── BackupCommand.php
-│   │   └── UpdateCommand.php
-│   └── Services/               # Servicios
-│       ├── DockerService.php
-│       └── WpCliService.php
-├── config/                     # Configuración
-└── composer.json
-```
-
-## 🎯 Características
-
-- ✅ **Menús interactivos** para operaciones complejas
-- ✅ **Comandos directos** para automatización
-- ✅ **Autocontenido** - No depende de scripts externos
-- ✅ **Symfony Console** - Framework robusto
-- ✅ **Paquete Composer** - Reutilizable en cualquier Bedrock
-
-## 🔧 Desarrollo
+### Manage Existing Project
 
 ```bash
-# Instalar dependencias
-composer install
+cd my-site
 
-# Ejecutar
-bedrock list
+# Database snapshots
+bedrock snapshot --create --name="backup"
+bedrock snapshot --restore --name="backup"
 
-# Probar comando
-bedrock docker --status
+# Export/Import configuration
+bedrock export:config --all
+bedrock import:core
+
+# Plugin management
+bedrock plugins:order
+bedrock plugins:order:builder
+
+# Options management
+bedrock options:pull --all
+bedrock options:push
 ```
 
-## 📦 Como Paquete Composer
+## Commands
 
-Una vez publicado, se instalará así:
+### Project Creation
+- `new <name>` - Create new Bedrock project
 
-```bash
-composer require roots/bedrock-cli --dev
+### Database Management
+- `snapshot --create --name="backup"` - Create database snapshot
+- `snapshot --restore --name="backup"` - Restore database snapshot
+- `import:core` - Import golden-image.sql + configs
 
-# Opción 1: Usar vendor/bin
-vendor/bin/bedrock docker --up
+### Configuration
+- `export:config [--all]` - Export WordPress options to JSON
+- `options:pull [--all]` - Export options to config/options/
+- `options:push` - Import options from config/options/
 
-# Opción 2: Crear alias
-echo 'alias bedrock="php $(pwd)/vendor/roots/bedrock-cli/bin/bedrock"' >> ~/.bashrc
-source ~/.bashrc
-bedrock docker --up
+### Plugins
+- `plugins:order` - Apply activation order
+- `plugins:order:builder` - Interactive order builder
+- `plugins:order:menu` - Manage saved orders
+
+### System
+- `docker` - Docker management
+- `doctor` - Check system dependencies
+
+## Options for `new` Command
+
+- `--with-acorn` - Install Roots Acorn
+- `--with-docker` - Generate Docker files
+- `--db-name=NAME` - Database name (default: project_name)
+- `--db-user=USER` - Database user (default: root)
+- `--db-pass=PASS` - Database password (default: mysql)
+- `--force` - Overwrite if exists
+
+## Project Structure
+
+```
+my-site/
+├── config/
+│   └── plugins/          # Plugin configurations
+├── database/
+│   ├── migrations/       # Database migrations
+│   ├── seeders/          # Data seeders
+│   └── snapshots/        # SQL snapshots
+├── scripts/              # Utility scripts
+├── web/                  # Bedrock web root
+├── docker-compose.yml    # Docker config (if --with-docker)
+├── Dockerfile.web        # PHP-FPM Dockerfile
+└── .env                  # Environment variables
 ```
 
-## 🚧 Estado
+## Requirements
 
-- ✅ Docker (completo)
-- ✅ Database (completo)
-- ✅ Install (completo)
-- ⏳ Plugins (esqueleto)
-- ⏳ Themes (esqueleto)
-- ⏳ Backup (esqueleto)
-- ⏳ Update (esqueleto)
+- PHP 8.0+
+- Composer
+- Docker (optional, for --with-docker)
+- Git
 
-## 📝 Licencia
+## License
 
 MIT
