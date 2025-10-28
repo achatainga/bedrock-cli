@@ -85,6 +85,7 @@ class NewCommand extends Command
             if (!$input->getOption('no-acorn')) {
                 $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
                 $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
+                $output->writeln('<comment>    docker-compose exec web wp plugin activate acorn</comment>');
                 $output->writeln('<comment>    docker-compose exec web wp acorn acorn:init storage</comment>');
                 $output->writeln('<comment>    docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
                 $output->writeln('');
