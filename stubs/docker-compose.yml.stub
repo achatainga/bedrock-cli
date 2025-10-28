@@ -1,0 +1,53 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: {{PROJECT_NAME}}_web
+    working_dir: /var/www/html
+    environment:
+      - MYSQL_PWD={{DB_PASSWORD}}
+      - WP_CLI_ALLOW_ROOT=1
+      - WP_CLI_STRICT_ARGS_MODE=0
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - mysql
+
+  nginx:
+    image: nginx:alpine
+    container_name: {{PROJECT_NAME}}_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - web
+
+  mysql:
+    image: mysql:5.7
+    container_name: {{PROJECT_NAME}}_mysql
+    restart: always
+    command: --skip-ssl --require_secure_transport=OFF
+    environment:
+      MYSQL_ROOT_PASSWORD: {{DB_PASSWORD}}
+      MYSQL_DATABASE: {{DB_NAME}}
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: {{PROJECT_NAME}}_redis
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  dbdata:
+  redisdata:

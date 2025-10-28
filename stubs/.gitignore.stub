@@ -1,0 +1,34 @@
+# Bedrock
+/.env
+/vendor
+/web/app/uploads/*
+!/web/app/uploads/.gitkeep
+
+# WordPress
+/web/wp
+
+# WP-CLI
+wp-cli.local.yml
+
+# Composer
+composer.lock
+
+# IDE
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+/docker/mysql/data
+
+# AAI
+/.io

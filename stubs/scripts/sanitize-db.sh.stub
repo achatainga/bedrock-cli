@@ -1,0 +1,19 @@
+#!/bin/bash
+# Script para sanitizar base de datos (remover datos sensibles/transaccionales)
+
+echo "Sanitizando base de datos..."
+
+# Truncar tablas transaccionales
+wp db query "TRUNCATE TABLE wp_woocommerce_sessions;"
+wp db query "TRUNCATE TABLE wp_woocommerce_order_items;"
+wp db query "TRUNCATE TABLE wp_woocommerce_order_itemmeta;"
+wp db query "TRUNCATE TABLE wp_actionscheduler_actions;"
+wp db query "TRUNCATE TABLE wp_actionscheduler_logs;"
+
+# Limpiar transients
+wp transient delete --all
+
+# Re-crear usuario admin
+wp user create admin admin@{{PROJECT_NAME}}.test --role=administrator --user_pass=admin
+
+echo "✓ Base de datos sanitizada"
