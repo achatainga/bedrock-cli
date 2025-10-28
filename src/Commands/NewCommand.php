@@ -77,7 +77,7 @@ class NewCommand extends Command
         }
         $output->writeln('');
         $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
-        $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --with-docker</comment>')
+        $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --with-docker</comment>');
 
         return Command::SUCCESS;
     }
