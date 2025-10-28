@@ -67,26 +67,35 @@ class NewCommand extends Command
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
         $output->writeln('');
         
-        // Mostrar instrucciones de Acorn si fue instalado
-        if (!$input->getOption('no-acorn')) {
-            $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
-            $output->writeln('<comment>  Después de levantar Docker, ejecuta:</comment>');
-            $output->writeln('<comment>    docker-compose exec web wp acorn acorn:init storage</comment>');
-            $output->writeln('<comment>    docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
-            $output->writeln('');
-            $output->writeln('<comment>  Esto creará automáticamente:</comment>');
-            $output->writeln('<comment>    • app/Providers/AppServiceProvider.php</comment>');
-            $output->writeln('<comment>    • app/Console/Commands/</comment>');
-            $output->writeln('<comment>    • config/app.php, config/assets.php, config/view.php</comment>');
-            $output->writeln('<comment>    • storage/ (logs, cache, framework)</comment>');
-            $output->writeln('');
-        }
-        
         $output->writeln('<comment>Próximos pasos:</comment>');
         $output->writeln("  cd {$name}");
         if ($input->getOption('with-docker')) {
             $output->writeln('  docker-compose up -d');
             $output->writeln('');
+            $output->writeln('<comment>Instalar WordPress:</comment>');
+            $output->writeln('  docker-compose exec web wp core install \\');
+            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->findFreePort(80, $output)) . ' \\');
+            $output->writeln('    --title="Mi Sitio" \\');
+            $output->writeln('    --admin_user=admin \\');
+            $output->writeln('    --admin_password=admin \\');
+            $output->writeln('    --admin_email=admin@example.com');
+            $output->writeln('');
+            
+            // Mostrar instrucciones de Acorn si fue instalado
+            if (!$input->getOption('no-acorn')) {
+                $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
+                $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
+                $output->writeln('<comment>    docker-compose exec web wp acorn acorn:init storage</comment>');
+                $output->writeln('<comment>    docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
+                $output->writeln('');
+                $output->writeln('<comment>  Esto creará automáticamente:</comment>');
+                $output->writeln('<comment>    • app/Providers/AppServiceProvider.php</comment>');
+                $output->writeln('<comment>    • app/Console/Commands/</comment>');
+                $output->writeln('<comment>    • config/app.php, config/assets.php, config/view.php</comment>');
+                $output->writeln('<comment>    • storage/ (logs, cache, framework)</comment>');
+                $output->writeln('');
+            }
+            
             $output->writeln('<comment>Lee README.md para workflow completo</comment>');
         } else {
             $output->writeln('  composer install');
