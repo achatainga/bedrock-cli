@@ -347,8 +347,10 @@ class NewCommand extends Command
         
         $stubsDir = dirname(__DIR__, 2) . '/stubs';
         $this->copyStub("{$stubsDir}/config/application.php.stub", "{$name}/config/application.php", []);
+        $this->copyStub("{$stubsDir}/config/environments/development.php.stub", "{$name}/config/environments/development.php", []);
+        $this->copyStub("{$stubsDir}/config/environments/staging.php.stub", "{$name}/config/environments/staging.php", []);
         
-        $output->writeln('<info>✓ application.php configurado</info>');
+        $output->writeln('<info>✓ application.php y environments configurados</info>');
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
