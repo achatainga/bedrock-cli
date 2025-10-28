@@ -182,9 +182,15 @@ class NewCommand extends Command
         }
 
         $stubsDir = dirname(__DIR__, 2) . '/stubs';
-        $vars = ['{{PROJECT_NAME}}' => $name];
+        $dbName = str_replace('-', '_', $name);
+        $vars = [
+            '{{PROJECT_NAME}}' => $name,
+            '{{DB_NAME}}' => $dbName
+        ];
         $this->copyStub("{$stubsDir}/scripts/sanitize-db.sh.stub", "{$name}/scripts/sanitize-db.sh", $vars);
+        $this->copyStub("{$stubsDir}/scripts/clean-database.php.stub", "{$name}/scripts/clean-database.php", $vars);
         chmod("{$name}/scripts/sanitize-db.sh", 0755);
+        chmod("{$name}/scripts/clean-database.php", 0755);
 
         $output->writeln('<info>✓ Estructura creada</info>');
     }

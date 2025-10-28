@@ -1,0 +1,100 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Script de Limpieza de Base de Datos
+ * 
+ * Limpia BD de WordPress de:
+ * - Tablas multisite residuales
+ * - Prefijos incorrectos
+ * - Opciones obsoletas
+ */
+
+if (php_sapi_name() !== 'cli') {
+    die('Este script solo puede ejecutarse desde CLI');
+}
+
+// Configuración
+$oldPrefix = $argv[1] ?? 'hp2f_';
+$newPrefix = $argv[2] ?? 'wp_';
+$dbHost = getenv('DB_HOST') ?: 'mysql';
+$dbName = getenv('DB_NAME') ?: '{{DB_NAME}}';
+$dbUser = getenv('DB_USER') ?: 'root';
+$dbPass = getenv('DB_PASSWORD') ?: 'mysql';
+
+echo "🧹 Limpieza de Base de Datos\n";
+echo "============================\n";
+echo "Prefix antiguo: {$oldPrefix}\n";
+echo "Prefix nuevo: {$newPrefix}\n";
+echo "Base de datos: {$dbName}\n\n";
+
+try {
+    $pdo = new PDO("mysql:host={$dbHost};dbname={$dbName}", $dbUser, $dbPass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // 1. Cambiar prefix de tablas
+    if ($oldPrefix !== $newPrefix) {
+        echo "📝 Cambiando prefix de tablas...\n";
+        $tables = $pdo->query("SHOW TABLES LIKE '{$oldPrefix}%'")->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($tables as $table) {
+            $newTable = str_replace($oldPrefix, $newPrefix, $table);
+            echo "  {$table} → {$newTable}\n";
+            $pdo->exec("RENAME TABLE `{$table}` TO `{$newTable}`");
+        }
+        echo "✓ Prefix cambiado\n\n";
+    }
+    
+    // 2. Eliminar tablas multisite
+    echo "🗑️  Eliminando tablas multisite...\n";
+    $multisiteTables = [
+        "{$newPrefix}blogs",
+        "{$newPrefix}blog_versions",
+        "{$newPrefix}site",
+        "{$newPrefix}sitemeta",
+        "{$newPrefix}registration_log",
+        "{$newPrefix}signups"
+    ];
+    
+    foreach ($multisiteTables as $table) {
+        $result = $pdo->query("SHOW TABLES LIKE '{$table}'")->fetch();
+        if ($result) {
+            echo "  Eliminando {$table}\n";
+            $pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+        }
+    }
+    echo "✓ Tablas multisite eliminadas\n\n";
+    
+    // 3. Limpiar opciones obsoletas
+    echo "🧼 Limpiando opciones obsoletas...\n";
+    $obsoleteOptions = [
+        'active_sitewide_plugins',
+        'WPLANG',
+        'blog_upload_space',
+        'upload_space_check_disabled'
+    ];
+    
+    foreach ($obsoleteOptions as $option) {
+        $pdo->exec("DELETE FROM `{$newPrefix}options` WHERE option_name = '{$option}'");
+        echo "  Eliminada: {$option}\n";
+    }
+    echo "✓ Opciones limpiadas\n\n";
+    
+    // 4. Actualizar usermeta con nuevo prefix
+    echo "👤 Actualizando usermeta...\n";
+    $pdo->exec("UPDATE `{$newPrefix}usermeta` SET meta_key = REPLACE(meta_key, '{$oldPrefix}', '{$newPrefix}') WHERE meta_key LIKE '{$oldPrefix}%'");
+    echo "✓ Usermeta actualizado\n\n";
+    
+    // 5. Optimizar tablas
+    echo "⚡ Optimizando tablas...\n";
+    $tables = $pdo->query("SHOW TABLES LIKE '{$newPrefix}%'")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tables as $table) {
+        $pdo->exec("OPTIMIZE TABLE `{$table}`");
+    }
+    echo "✓ Tablas optimizadas\n\n";
+    
+    echo "✅ Limpieza completada exitosamente\n";
+    
+} catch (PDOException $e) {
+    echo "❌ Error: " . $e->getMessage() . "\n";
+    exit(1);
+}
