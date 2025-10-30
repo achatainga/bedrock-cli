@@ -352,12 +352,15 @@ class SetupCommand extends Command
                     $process = $wpcli->custom("db query \"UPDATE wp_users SET user_login='{$config['adminUser']}', user_nicename='{$config['adminUser']}' WHERE ID=1\"");
                     $this->runWithLoader($process, $output, 'Cambiando username');
                     
-                    // Actualizar contraseña y email
-                    $process = $wpcli->custom("user update 1 --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --skip-email");
+                    // Actualizar contraseña y email directamente en BD
+                    $hashedPassword = password_hash($config['adminPassword'], PASSWORD_BCRYPT);
+                    $process = $wpcli->custom("db query \"UPDATE wp_users SET user_pass='$hashedPassword', user_email='{$config['adminEmail']}' WHERE ID=1\"");
                     $this->runWithLoader($process, $output, 'Actualizando credenciales');
                 } else {
-                    // No hay usuarios, crear nuevo (proyecto nuevo)
-                    $process = $wpcli->custom("user create {$config['adminUser']} {$config['adminEmail']} --user_pass='{$config['adminPassword']}' --role=administrator");
+                    // No hay usuarios, crear directamente en BD
+                    $hashedPassword = password_hash($config['adminPassword'], PASSWORD_BCRYPT);
+                    $now = date('Y-m-d H:i:s');
+                    $process = $wpcli->custom("db query \"INSERT INTO wp_users (user_login, user_pass, user_nicename, user_email, user_registered, user_status) VALUES ('{$config['adminUser']}', '$hashedPassword', '{$config['adminUser']}', '{$config['adminEmail']}', '$now', 0)\"");
                     $this->runWithLoader($process, $output, 'Creando usuario admin');
                 }
             }
