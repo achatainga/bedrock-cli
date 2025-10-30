@@ -198,7 +198,7 @@ class SetupCommand extends Command
         // Si hay flags, usarlos
         if ($input->getOption('url')) {
             return [
-                'url' => $input->getOption('url'),
+                'url' => $this->validateAndFixUrl($input->getOption('url')),
                 'title' => $input->getOption('title') ?? 'Mi Sitio',
                 'admin_user' => $input->getOption('admin-user') ?? 'admin',
                 'admin_password' => $input->getOption('admin-password') ?? 'admin',
@@ -219,6 +219,8 @@ class SetupCommand extends Command
         
         // Modo interactivo con defaults desde .env
         $url = $helper->ask($input, $output, new Question("URL del sitio [{$defaultUrl}]: ", $defaultUrl));
+        $url = $this->validateAndFixUrl($url);
+        
         $title = $helper->ask($input, $output, new Question('Título del sitio [Mi Sitio]: ', 'Mi Sitio'));
         $adminUser = $helper->ask($input, $output, new Question('Usuario admin [admin]: ', 'admin'));
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
@@ -289,18 +291,29 @@ class SetupCommand extends Command
             $output->writeln('<info>✓ WordPress instalado</info>');
         }
         
-        // Paso 1.5: Si WordPress ya existe y cambió URL, actualizar en BD
-        if ($state['wp_installed'] && $urlChanged) {
+        // Paso 1.5: Si WordPress ya existe y cambió URL o credenciales, actualizar en BD
+        if ($state['wp_installed']) {
+            if ($urlChanged) {
+                $output->writeln('');
+                $output->writeln('<comment>Actualizando URL en WordPress...</comment>');
+                
+                $process = $wpcli->custom("option update home '{$config['url']}'");
+                $this->runWithLoader($process, $output, 'Actualizando home');
+                
+                $process = $wpcli->custom("option update siteurl '{$config['url']}/wp'");
+                $this->runWithLoader($process, $output, 'Actualizando siteurl');
+                
+                $output->writeln('<info>✓ URL actualizada en WordPress</info>');
+            }
+            
+            // Actualizar usuario admin (siempre, por si cambió)
             $output->writeln('');
-            $output->writeln('<comment>Actualizando URL en WordPress...</comment>');
+            $output->writeln('<comment>Actualizando credenciales de admin...</comment>');
             
-            $process = $wpcli->custom("option update home '{$config['url']}'");
-            $this->runWithLoader($process, $output, 'Actualizando home');
+            $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' 2>/dev/null || true");
+            $this->runWithLoader($process, $output, 'Actualizando credenciales');
             
-            $process = $wpcli->custom("option update siteurl '{$config['url']}/wp'");
-            $this->runWithLoader($process, $output, 'Actualizando siteurl');
-            
-            $output->writeln('<info>✓ URL actualizada en WordPress</info>');
+            $output->writeln('<info>✓ Credenciales actualizadas</info>');
         }
         
         // Paso 2: Configurar Acorn
@@ -421,11 +434,35 @@ class SetupCommand extends Command
         return true; // URL cambió
     }
     
+    private function validateAndFixUrl(string $input): string
+    {
+        $input = trim($input);
+        
+        // Si es solo número, asumir localhost
+        if (preg_match('/^\d+$/', $input)) {
+            return "http://localhost:{$input}";
+        }
+        
+        // Si no tiene protocolo, agregar http://
+        if (!preg_match('/^https?:\/\//', $input)) {
+            return "http://{$input}";
+        }
+        
+        return $input;
+    }
+    
     private function extractPort(string $url): int
     {
-        if (preg_match('/:([0-9]+)/', $url, $matches)) {
+        // Si es solo número, retornarlo
+        if (preg_match('/^\d+$/', $url)) {
+            return (int)$url;
+        }
+        
+        // Buscar :PUERTO en URL
+        if (preg_match('/:(\d+)/', $url, $matches)) {
             return (int)$matches[1];
         }
+        
         return 80; // Default
     }
     
