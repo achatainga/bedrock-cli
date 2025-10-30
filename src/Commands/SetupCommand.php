@@ -203,9 +203,9 @@ class SetupCommand extends Command
             return [
                 'url' => $this->validateAndFixUrl($input->getOption('url')),
                 'title' => $input->getOption('title') ?? 'Mi Sitio',
-                'admin_user' => $input->getOption('admin-user') ?? 'admin',
-                'admin_password' => $input->getOption('admin-password') ?? 'admin',
-                'admin_email' => $input->getOption('admin-email') ?? 'admin@example.com',
+                'adminUser' => $input->getOption('admin-user') ?? 'admin',
+                'adminPassword' => $input->getOption('admin-password') ?? 'admin',
+                'adminEmail' => $input->getOption('admin-email') ?? 'admin@example.com',
             ];
         }
         
@@ -241,7 +241,13 @@ class SetupCommand extends Command
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
         $adminEmail = $helper->ask($input, $output, new Question('Email admin [admin@example.com]: ', 'admin@example.com'));
         
-        return compact('url', 'title', 'adminUser', 'adminPassword', 'adminEmail');
+        return [
+            'url' => $url,
+            'title' => $title,
+            'adminUser' => $adminUser,
+            'adminPassword' => $adminPassword,
+            'adminEmail' => $adminEmail
+        ];
     }
     
     private function showSummary(OutputInterface $output, array $config, array $state): void
