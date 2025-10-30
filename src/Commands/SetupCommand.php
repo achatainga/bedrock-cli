@@ -52,30 +52,46 @@ class SetupCommand extends Command
         // Mostrar estado
         $this->displayState($output, $state);
         
-        // 2. Validar prerequisitos
+        // 2. Mostrar inconsistencias si existen
+        if (!empty($state['inconsistencies'])) {
+            $this->showInconsistencies($output, $state['inconsistencies']);
+        }
+        
+        // 3. Mostrar tareas pendientes
+        if (!empty($state['pending_tasks'])) {
+            $this->showPendingTasks($output, $state['pending_tasks']);
+        }
+        
+        // 4. Validar prerequisitos
         if (!$this->validatePrerequisites($output, $state)) {
             return Command::FAILURE;
         }
         
-        // 3. Asegurar Docker corriendo
+        // 5. Determinar modo (local vs global)
+        if ($state['is_local_install']) {
+            $output->writeln('<info>➡️  Modo: Proyecto existente (instalación local)</info>');
+            $output->writeln('');
+        }
+        
+        // 6. Asegurar Docker corriendo
         if (!$this->ensureDockerRunning($input, $output, $state, $tutorialMode)) {
             return Command::FAILURE;
         }
         
-        // 4. Obtener configuración (interactivo o flags)
+        // 7. Obtener configuración (interactivo o flags)
         $config = $this->getConfiguration($input, $output, $helper, $state);
         
-        // 5. Mostrar resumen
+        // 8. Mostrar resumen
         $this->showSummary($output, $config, $state);
         
-        // 6. Confirmar
+        // 9. Confirmar
         $question = new ConfirmationQuestion('¿Continuar? (y/n): ', false);
         if (!$helper->ask($input, $output, $question)) {
             $output->writeln('<comment>Setup cancelado</comment>');
             return Command::SUCCESS;
         }
         
-        // 7. Ejecutar setup
+        // 10. Ejecutar setup
         return $this->runSetup($input, $output, $config, $state, $tutorialMode);
     }
     
@@ -298,6 +314,42 @@ class SetupCommand extends Command
         $output->writeln('');
         
         return Command::SUCCESS;
+    }
+    
+    private function showInconsistencies(OutputInterface $output, array $inconsistencies): void
+    {
+        $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias detectadas:</>');
+        $output->writeln('');
+        
+        foreach ($inconsistencies as $issue) {
+            $icon = $issue['severity'] === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
+            $output->writeln("  {$icon} {$issue['message']}");
+            $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+        }
+        
+        $output->writeln('');
+        $output->writeln('<comment>Sugerencia: Sincroniza los archivos manualmente antes de continuar</comment>');
+        $output->writeln('');
+    }
+    
+    private function showPendingTasks(OutputInterface $output, array $tasks): void
+    {
+        $output->writeln('<fg=cyan;options=bold>📝 Tareas pendientes detectadas:</>');
+        $output->writeln('');
+        
+        foreach ($tasks as $task) {
+            $icon = match($task['severity']) {
+                'critical' => '<error>❗</error>',
+                'high' => '<comment>⚠</comment>',
+                'medium' => '<info>ℹ</info>',
+                default => '<info>•</info>',
+            };
+            
+            $output->writeln("  {$icon} {$task['name']}");
+            $output->writeln("     Comando: <fg=white>{$task['command']}</>");
+        }
+        
+        $output->writeln('');
     }
     
     protected function runWithLoader(Process $process, OutputInterface $output, string $message): void

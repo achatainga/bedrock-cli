@@ -10,6 +10,7 @@ class StateDetectorService
     {
         return [
             'is_bedrock' => $this->isBedrockProject(),
+            'is_local_install' => $this->isLocalInstall(),
             'docker_installed' => $this->isDockerInstalled(),
             'docker_running' => $this->isDockerRunning(),
             'wp_installed' => $this->isWordPressInstalled(),
@@ -20,7 +21,139 @@ class StateDetectorService
             'db_exists' => $this->databaseExists(),
             'db_has_tables' => $this->databaseHasTables(),
             'config' => $this->readConfiguration(),
+            'inconsistencies' => $this->detectInconsistencies(),
+            'pending_tasks' => $this->detectPendingTasks(),
         ];
+    }
+    
+    public function isLocalInstall(): bool
+    {
+        // Local install = bedrock-cli está en require-dev del proyecto
+        $composerFile = getcwd() . '/composer.json';
+        
+        if (!file_exists($composerFile)) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents($composerFile), true);
+        return isset($composer['require-dev']['achatainga/bedrock-cli']) || 
+               isset($composer['require-dev']['roots/bedrock-cli']);
+    }
+    
+    public function detectInconsistencies(): array
+    {
+        $inconsistencies = [];
+        $env = $this->readEnvFile();
+        $docker = $this->readDockerCompose();
+        
+        if (empty($env) || empty($docker)) {
+            return $inconsistencies;
+        }
+        
+        // Verificar URL vs Puerto
+        if (isset($env['WP_HOME']) && isset($docker['http_port'])) {
+            $envPort = parse_url($env['WP_HOME'], PHP_URL_PORT) ?? 80;
+            if ($envPort != $docker['http_port']) {
+                $inconsistencies[] = [
+                    'type' => 'port_mismatch',
+                    'severity' => 'warning',
+                    'message' => "Puerto en .env ({$envPort}) no coincide con docker-compose.yml ({$docker['http_port']})",
+                    'files' => ['.env', 'docker-compose.yml'],
+                ];
+            }
+        }
+        
+        // Verificar nombre de BD
+        if (isset($env['DB_NAME']) && isset($docker['db_name'])) {
+            if ($env['DB_NAME'] !== $docker['db_name']) {
+                $inconsistencies[] = [
+                    'type' => 'db_name_mismatch',
+                    'severity' => 'error',
+                    'message' => "Nombre de BD en .env ({$env['DB_NAME']}) no coincide con docker-compose.yml ({$docker['db_name']})",
+                    'files' => ['.env', 'docker-compose.yml'],
+                ];
+            }
+        }
+        
+        // Verificar contraseña de BD
+        if (isset($env['DB_PASSWORD']) && isset($docker['db_password'])) {
+            if ($env['DB_PASSWORD'] !== $docker['db_password']) {
+                $inconsistencies[] = [
+                    'type' => 'db_password_mismatch',
+                    'severity' => 'error',
+                    'message' => "Contraseña de BD en .env no coincide con docker-compose.yml",
+                    'files' => ['.env', 'docker-compose.yml'],
+                ];
+            }
+        }
+        
+        return $inconsistencies;
+    }
+    
+    public function detectPendingTasks(): array
+    {
+        $tasks = [];
+        $state = [];
+        
+        // Detectar estado básico sin recursión
+        $state['docker_running'] = $this->isDockerRunning();
+        $state['containers_running'] = $this->areContainersRunning();
+        $state['db_exists'] = $state['containers_running'] ? $this->databaseExists() : false;
+        $state['wp_installed'] = $state['containers_running'] ? $this->isWordPressInstalled() : false;
+        $state['acorn_installed'] = $this->isAcornInstalled();
+        $state['acorn_configured'] = $this->isAcornConfigured();
+        
+        // Tarea 1: Iniciar Docker
+        if (!$state['docker_running']) {
+            $tasks[] = [
+                'name' => 'Iniciar Docker Desktop',
+                'command' => 'bedrock doctor',
+                'priority' => 1,
+                'severity' => 'critical',
+            ];
+        }
+        
+        // Tarea 2: Levantar contenedores
+        if ($state['docker_running'] && !$state['containers_running']) {
+            $tasks[] = [
+                'name' => 'Levantar contenedores',
+                'command' => 'docker-compose up -d',
+                'priority' => 2,
+                'severity' => 'critical',
+            ];
+        }
+        
+        // Tarea 3: Crear base de datos
+        if ($state['containers_running'] && !$state['db_exists']) {
+            $tasks[] = [
+                'name' => 'Crear base de datos',
+                'command' => 'docker-compose exec web wp db create',
+                'priority' => 3,
+                'severity' => 'high',
+            ];
+        }
+        
+        // Tarea 4: Instalar WordPress
+        if ($state['containers_running'] && !$state['wp_installed']) {
+            $tasks[] = [
+                'name' => 'Instalar WordPress',
+                'command' => 'bedrock setup',
+                'priority' => 4,
+                'severity' => 'high',
+            ];
+        }
+        
+        // Tarea 5: Configurar Acorn
+        if ($state['acorn_installed'] && !$state['acorn_configured']) {
+            $tasks[] = [
+                'name' => 'Configurar Acorn',
+                'command' => 'bedrock acorn',
+                'priority' => 5,
+                'severity' => 'medium',
+            ];
+        }
+        
+        return $tasks;
     }
     
     public function readConfiguration(): array

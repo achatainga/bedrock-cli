@@ -56,8 +56,18 @@ class InfoCommand extends Command
             $output->writeln('');
         }
         
-        // Tareas pendientes
-        $this->showPendingTasks($output, $state);
+        // Inconsistencias
+        if (!empty($state['inconsistencies'])) {
+            $this->showInconsistencies($output, $state['inconsistencies']);
+        }
+        
+        // Tareas pendientes (usando detección automática)
+        if (!empty($state['pending_tasks'])) {
+            $this->showPendingTasksAuto($output, $state['pending_tasks']);
+        } else {
+            $output->writeln('<fg=green>✓ No hay tareas pendientes</>');
+            $output->writeln('');
+        }
         
         // Próximos pasos sugeridos
         $this->showSuggestedActions($output, $state);
@@ -89,7 +99,41 @@ class InfoCommand extends Command
         return "  {$icon} {$message}";
     }
     
-    private function showPendingTasks(OutputInterface $output, array $state): void
+    private function showInconsistencies(OutputInterface $output, array $inconsistencies): void
+    {
+        $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias Detectadas (' . count($inconsistencies) . '):</>');
+        $output->writeln('');
+        
+        foreach ($inconsistencies as $issue) {
+            $icon = $issue['severity'] === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
+            $output->writeln("  {$icon} {$issue['message']}");
+            $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+        }
+        
+        $output->writeln('');
+    }
+    
+    private function showPendingTasksAuto(OutputInterface $output, array $tasks): void
+    {
+        $output->writeln('<fg=cyan;options=bold>📝 Tareas Pendientes (' . count($tasks) . '):</>');
+        $output->writeln('');
+        
+        foreach ($tasks as $task) {
+            $icon = match($task['severity']) {
+                'critical' => '<error>❗</error>',
+                'high' => '<comment>⚠</comment>',
+                'medium' => '<info>ℹ</info>',
+                default => '<info>•</info>',
+            };
+            
+            $output->writeln("  {$icon} {$task['name']}");
+            $output->writeln("     <comment>Comando:</comment> <fg=white>{$task['command']}</>");
+        }
+        
+        $output->writeln('');
+    }
+    
+    private function showPendingTasksOld(OutputInterface $output, array $state): void
     {
         $tasks = [];
         
