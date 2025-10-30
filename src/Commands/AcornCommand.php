@@ -6,6 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
 
 class AcornCommand extends Command
@@ -24,13 +25,14 @@ class AcornCommand extends Command
         $question = new ChoiceQuestion(
             '<question>Selecciona una acción de Acorn:</question>',
             [
-                '1' => 'Inicializar storage',
-                '2' => 'Publicar configs',
-                '3' => 'Inicializar + Publicar (ambos)',
+                '1' => 'Instalar Acorn (storage + configs)',
+                '2' => 'Inicializar storage',
+                '3' => 'Publicar configs',
                 '4' => 'Limpiar cache y storage',
-                '5' => 'Salir'
+                '5' => 'Desinstalar Acorn (eliminar todo)',
+                '6' => 'Salir'
             ],
-            '5'
+            '6'
         );
 
         $question->setErrorMessage('Opción %s inválida.');
@@ -38,21 +40,24 @@ class AcornCommand extends Command
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {
-            case 'Inicializar storage':
-                return $this->initStorage($output);
-
-            case 'Publicar configs':
-                return $this->publishConfigs($output);
-
-            case 'Inicializar + Publicar (ambos)':
+            case 'Instalar Acorn (storage + configs)':
                 $result = $this->initStorage($output);
                 if ($result === Command::SUCCESS) {
                     return $this->publishConfigs($output);
                 }
                 return $result;
 
+            case 'Inicializar storage':
+                return $this->initStorage($output);
+
+            case 'Publicar configs':
+                return $this->publishConfigs($output);
+
             case 'Limpiar cache y storage':
                 return $this->cleanStorage($output);
+
+            case 'Desinstalar Acorn (eliminar todo)':
+                return $this->uninstallAcorn($input, $output);
 
             case 'Salir':
                 $output->writeln('<comment>Operación cancelada</comment>');
@@ -134,6 +139,74 @@ class AcornCommand extends Command
         $output->writeln('  • storage/framework/sessions/');
         $output->writeln('  • storage/framework/views/');
         $output->writeln('  • storage/logs/');
+
+        return Command::SUCCESS;
+    }
+
+    private function uninstallAcorn(InputInterface $input, OutputInterface $output): int
+    {
+        $output->writeln('<error>⚠️  ADVERTENCIA: Esta acción eliminará:</error>');
+        $output->writeln('  • Todos los archivos de config/');
+        $output->writeln('  • Toda la carpeta storage/');
+        $output->writeln('  • Toda la carpeta web/app/cache/acorn/');
+        $output->writeln('');
+
+        $helper = $this->getHelper('question');
+        $question = new ConfirmationQuestion(
+            '<question>¿Estás seguro de continuar? (y/n):</question> ',
+            false
+        );
+
+        if (!$helper->ask($input, $output, $question)) {
+            $output->writeln('<comment>Operación cancelada</comment>');
+            return Command::SUCCESS;
+        }
+
+        $output->writeln('');
+        $output->writeln('<info>Desinstalando Acorn...</info>');
+
+        // Eliminar archivos de config
+        $configFiles = [
+            'config/app.php',
+            'config/assets.php',
+            'config/view.php',
+            'config/auth.php',
+            'config/database.php',
+            'config/filesystems.php',
+            'config/logging.php',
+            'config/services.php',
+            'config/session.php'
+        ];
+
+        foreach ($configFiles as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+                $output->writeln("<comment>✓ Eliminado: {$file}</comment>");
+            }
+        }
+
+        // Eliminar carpeta storage
+        $process = Process::fromShellCommandline('docker-compose exec -T web sh -c "rm -rf storage"');
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<comment>✓ Eliminado: storage/</comment>');
+        }
+
+        // Eliminar cache de acorn
+        $process = Process::fromShellCommandline('docker-compose exec -T web sh -c "rm -rf web/app/cache/acorn"');
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<comment>✓ Eliminado: web/app/cache/acorn/</comment>');
+        }
+
+        $output->writeln('');
+        $output->writeln('<info>✓ Acorn desinstalado completamente</info>');
+        $output->writeln('');
+        $output->writeln('<comment>Nota: El paquete roots/acorn sigue en composer.json</comment>');
+        $output->writeln('<comment>Para eliminarlo completamente ejecuta:</comment>');
+        $output->writeln('<info>  composer remove roots/acorn</info>');
 
         return Command::SUCCESS;
     }
