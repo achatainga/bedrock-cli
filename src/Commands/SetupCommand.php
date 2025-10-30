@@ -265,6 +265,9 @@ class SetupCommand extends Command
         $output->writeln('<info>Ejecutando setup...</info>');
         $output->writeln('');
         
+        // Paso 0: Actualizar archivos de configuración si cambió URL/puerto
+        $urlChanged = $this->updateConfigurationFiles($output, $config, $state);
+        
         // Paso 1: Instalar WordPress
         if (!$state['wp_installed'] && !$input->getOption('skip-wp-install')) {
             $output->writeln('<comment>Instalando WordPress...</comment>');            
@@ -284,6 +287,20 @@ class SetupCommand extends Command
             }
             
             $output->writeln('<info>✓ WordPress instalado</info>');
+        }
+        
+        // Paso 1.5: Si WordPress ya existe y cambió URL, actualizar en BD
+        if ($state['wp_installed'] && $urlChanged) {
+            $output->writeln('');
+            $output->writeln('<comment>Actualizando URL en WordPress...</comment>');
+            
+            $process = $wpcli->custom("option update home '{$config['url']}'");
+            $this->runWithLoader($process, $output, 'Actualizando home');
+            
+            $process = $wpcli->custom("option update siteurl '{$config['url']}/wp'");
+            $this->runWithLoader($process, $output, 'Actualizando siteurl');
+            
+            $output->writeln('<info>✓ URL actualizada en WordPress</info>');
         }
         
         // Paso 2: Configurar Acorn
@@ -350,6 +367,98 @@ class SetupCommand extends Command
         }
         
         $output->writeln('');
+    }
+    
+    private function updateConfigurationFiles(OutputInterface $output, array $config, array $state): bool
+    {
+        $env = $state['config']['env'] ?? [];
+        $docker = $state['config']['docker_compose'] ?? [];
+        
+        $currentUrl = $env['WP_HOME'] ?? '';
+        $newUrl = $config['url'];
+        
+        // Detectar si cambió URL
+        if ($currentUrl === $newUrl) {
+            return false; // No cambió
+        }
+        
+        $output->writeln('<comment>Detectado cambio de URL...</comment>');
+        $output->writeln("  Anterior: <fg=white>{$currentUrl}</>");
+        $output->writeln("  Nueva: <fg=white>{$newUrl}</>");
+        $output->writeln('');
+        
+        // Extraer puerto de URL
+        $newPort = $this->extractPort($newUrl);
+        $currentPort = $docker['web_port'] ?? 8080;
+        
+        // Actualizar .env
+        $this->updateEnvFile($newUrl);
+        $output->writeln('<info>✓ .env actualizado</info>');
+        
+        // Si cambió puerto, actualizar docker-compose.yml y reconstruir
+        if ($newPort !== $currentPort) {
+            $output->writeln("<comment>Puerto cambió de {$currentPort} a {$newPort}</comment>");
+            $this->updateDockerComposePort($newPort);
+            $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
+            
+            // Reconstruir contenedores
+            $output->writeln('<comment>Reconstruyendo contenedores...</comment>');
+            $dockerService = new DockerService();
+            
+            $process = $dockerService->down();
+            $this->runWithLoader($process, $output, 'Deteniendo contenedores');
+            
+            sleep(2);
+            
+            $process = $dockerService->up();
+            $this->runWithLoader($process, $output, 'Iniciando contenedores');
+            
+            sleep(3);
+            $output->writeln('<info>✓ Contenedores reconstruidos</info>');
+        }
+        
+        $output->writeln('');
+        return true; // URL cambió
+    }
+    
+    private function extractPort(string $url): int
+    {
+        if (preg_match('/:([0-9]+)/', $url, $matches)) {
+            return (int)$matches[1];
+        }
+        return 80; // Default
+    }
+    
+    private function updateEnvFile(string $newUrl): void
+    {
+        $envPath = getcwd() . '/.env';
+        if (!file_exists($envPath)) {
+            return;
+        }
+        
+        $content = file_get_contents($envPath);
+        $content = preg_replace(
+            "/WP_HOME=.*/",
+            "WP_HOME='{$newUrl}'",
+            $content
+        );
+        file_put_contents($envPath, $content);
+    }
+    
+    private function updateDockerComposePort(int $newPort): void
+    {
+        $dockerPath = getcwd() . '/docker-compose.yml';
+        if (!file_exists($dockerPath)) {
+            return;
+        }
+        
+        $content = file_get_contents($dockerPath);
+        $content = preg_replace(
+            '/ports:\s*-\s*"\d+:80"/',
+            "ports:\n      - \"{$newPort}:80\"",
+            $content
+        );
+        file_put_contents($dockerPath, $content);
     }
     
     protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
