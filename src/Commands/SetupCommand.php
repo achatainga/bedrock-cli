@@ -306,14 +306,25 @@ class SetupCommand extends Command
                 $output->writeln('<info>✓ URL actualizada en WordPress</info>');
             }
             
-            // Actualizar usuario admin (siempre, por si cambió)
+            // Actualizar o crear usuario admin
             $output->writeln('');
-            $output->writeln('<comment>Actualizando credenciales de admin...</comment>');
+            $output->writeln('<comment>Configurando usuario admin...</comment>');
             
-            $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' 2>/dev/null || true");
-            $this->runWithLoader($process, $output, 'Actualizando credenciales');
+            // Verificar si usuario existe
+            $checkUser = $wpcli->custom("user get {$config['adminUser']} --field=ID 2>/dev/null");
+            $checkUser->run();
             
-            $output->writeln('<info>✓ Credenciales actualizadas</info>');
+            if ($checkUser->isSuccessful()) {
+                // Usuario existe, actualizar
+                $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --role=administrator");
+                $this->runWithLoader($process, $output, 'Actualizando credenciales');
+            } else {
+                // Usuario no existe, crear
+                $process = $wpcli->custom("user create {$config['adminUser']} {$config['adminEmail']} --user_pass='{$config['adminPassword']}' --role=administrator");
+                $this->runWithLoader($process, $output, 'Creando usuario admin');
+            }
+            
+            $output->writeln('<info>✓ Usuario admin configurado</info>');
         }
         
         // Paso 2: Configurar Acorn
