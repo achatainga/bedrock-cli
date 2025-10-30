@@ -315,13 +315,30 @@ class SetupCommand extends Command
             $checkUser->run();
             
             if ($checkUser->isSuccessful()) {
-                // Usuario existe, actualizar
-                $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --role=administrator");
+                // Usuario existe, actualizar contraseña
+                $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --skip-email");
                 $this->runWithLoader($process, $output, 'Actualizando credenciales');
             } else {
-                // Usuario no existe, crear
-                $process = $wpcli->custom("user create {$config['adminUser']} {$config['adminEmail']} --user_pass='{$config['adminPassword']}' --role=administrator");
-                $this->runWithLoader($process, $output, 'Creando usuario admin');
+                // Usuario no existe, obtener primer usuario (super admin)
+                $getFirstUser = $wpcli->custom("user list --field=user_login --orderby=ID --order=ASC --number=1");
+                $getFirstUser->run();
+                
+                if ($getFirstUser->isSuccessful() && !empty(trim($getFirstUser->getOutput()))) {
+                    // Existe un usuario, cambiar su username y contraseña
+                    $firstUser = trim($getFirstUser->getOutput());
+                    
+                    // Cambiar username en BD
+                    $process = $wpcli->custom("db query \"UPDATE wp_users SET user_login='{$config['adminUser']}', user_nicename='{$config['adminUser']}' WHERE ID=1\"");
+                    $this->runWithLoader($process, $output, 'Cambiando username');
+                    
+                    // Actualizar contraseña y email
+                    $process = $wpcli->custom("user update 1 --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --skip-email");
+                    $this->runWithLoader($process, $output, 'Actualizando credenciales');
+                } else {
+                    // No hay usuarios, crear nuevo (proyecto nuevo)
+                    $process = $wpcli->custom("user create {$config['adminUser']} {$config['adminEmail']} --user_pass='{$config['adminPassword']}' --role=administrator");
+                    $this->runWithLoader($process, $output, 'Creando usuario admin');
+                }
             }
             
             $output->writeln('<info>✓ Usuario admin configurado</info>');
