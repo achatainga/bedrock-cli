@@ -37,6 +37,7 @@ use Roots\BedrockCli\Commands\ImportCoreCommand;
 use Roots\BedrockCli\Commands\NewCommand;
 use Roots\BedrockCli\Commands\DbCleanCommand;
 use Roots\BedrockCli\Commands\MigrateCommand;
+use Roots\BedrockCli\Commands\AcornCommand;
 
 class Application extends BaseApplication
 {
@@ -79,6 +80,7 @@ class Application extends BaseApplication
             new NewCommand(),
             new DbCleanCommand(),
             new MigrateCommand(),
+            new AcornCommand(),
         ]);
     }
 
