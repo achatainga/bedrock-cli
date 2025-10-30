@@ -217,11 +217,23 @@ class SetupCommand extends Command
         $output->writeln('<fg=cyan>Configuración de WordPress:</>');
         $output->writeln('');
         
-        // Modo interactivo con defaults desde .env
+        // Obtener título actual de WordPress si existe
+        $defaultTitle = 'Mi Sitio';
+        if ($state['wp_installed']) {
+            $docker = new DockerService();
+            $wpcli = new WpCliService($docker);
+            $getTitleProcess = $wpcli->custom('option get blogname 2>/dev/null');
+            $getTitleProcess->run();
+            if ($getTitleProcess->isSuccessful() && !empty(trim($getTitleProcess->getOutput()))) {
+                $defaultTitle = trim($getTitleProcess->getOutput());
+            }
+        }
+        
+        // Modo interactivo con defaults desde .env y WordPress
         $url = $helper->ask($input, $output, new Question("URL del sitio [{$defaultUrl}]: ", $defaultUrl));
         $url = $this->validateAndFixUrl($url);
         
-        $title = $helper->ask($input, $output, new Question('Título del sitio [Mi Sitio]: ', 'Mi Sitio'));
+        $title = $helper->ask($input, $output, new Question("Título del sitio [{$defaultTitle}]: ", $defaultTitle));
         $adminUser = $helper->ask($input, $output, new Question('Usuario admin [admin]: ', 'admin'));
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
         $adminEmail = $helper->ask($input, $output, new Question('Email admin [admin@example.com]: ', 'admin@example.com'));
