@@ -27,7 +27,8 @@ class SetupCommand extends Command
             ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'Email admin')
             ->addOption('skip-wp-install', null, InputOption::VALUE_NONE, 'Saltar instalación de WordPress')
             ->addOption('skip-acorn', null, InputOption::VALUE_NONE, 'Saltar configuración de Acorn')
-            ->addOption('tutorial', null, InputOption::VALUE_NONE, 'Modo tutorial (con explicaciones)');
+            ->addOption('tutorial', null, InputOption::VALUE_NONE, 'Modo tutorial (con explicaciones)')
+            ->addOption('yes', 'y', InputOption::VALUE_NONE, 'Confirmar automáticamente (no interactivo)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -85,10 +86,12 @@ class SetupCommand extends Command
         $this->showSummary($output, $config, $state);
         
         // 9. Confirmar
-        $question = new ConfirmationQuestion('¿Continuar? (y/n): ', false);
-        if (!$helper->ask($input, $output, $question)) {
-            $output->writeln('<comment>Setup cancelado</comment>');
-            return Command::SUCCESS;
+        if (!$input->getOption('yes')) {
+            $question = new ConfirmationQuestion('¿Continuar? (y/n): ', false);
+            if (!$helper->ask($input, $output, $question)) {
+                $output->writeln('<comment>Setup cancelado</comment>');
+                return Command::SUCCESS;
+            }
         }
         
         // 10. Ejecutar setup
