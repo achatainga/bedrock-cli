@@ -63,7 +63,7 @@ class SetupCommand extends Command
         }
         
         // 4. Obtener configuración (interactivo o flags)
-        $config = $this->getConfiguration($input, $output, $helper);
+        $config = $this->getConfiguration($input, $output, $helper, $state);
         
         // 5. Mostrar resumen
         $this->showSummary($output, $config, $state);
@@ -85,6 +85,13 @@ class SetupCommand extends Command
         $output->writeln($this->formatStatus($state['is_bedrock'], 'Proyecto Bedrock detectado'));
         $output->writeln($this->formatStatus($state['docker_installed'], 'Docker Desktop instalado'));
         $output->writeln($this->formatStatus($state['docker_running'], 'Docker corriendo'));
+        $output->writeln($this->formatStatus($state['containers_running'], 'Contenedores activos'));
+        $output->writeln($this->formatStatus($state['db_exists'], 'Base de datos existe'));
+        
+        if ($state['db_exists']) {
+            $output->writeln($this->formatStatus($state['db_has_tables'], 'Base de datos tiene tablas'));
+        }
+        
         $output->writeln($this->formatStatus($state['wp_installed'], 'WordPress instalado'));
         
         if ($state['acorn_installed']) {
@@ -162,10 +169,15 @@ class SetupCommand extends Command
         return true;
     }
     
-    private function getConfiguration(InputInterface $input, OutputInterface $output, $helper): array
+    private function getConfiguration(InputInterface $input, OutputInterface $output, $helper, array $state): array
     {
-        $output->writeln('<fg=cyan>Configuración de WordPress:</>');
-        $output->writeln('');
+        // Leer configuración existente del .env
+        $env = $state['config']['env'] ?? [];
+        $docker = $state['config']['docker_compose'] ?? [];
+        
+        // Defaults desde archivos existentes
+        $defaultUrl = $env['WP_HOME'] ?? 'http://localhost:8080';
+        $defaultDbName = $env['DB_NAME'] ?? $docker['db_name'] ?? 'bedrock';
         
         // Si hay flags, usarlos
         if ($input->getOption('url')) {
@@ -178,8 +190,19 @@ class SetupCommand extends Command
             ];
         }
         
-        // Modo interactivo
-        $url = $helper->ask($input, $output, new Question('URL del sitio [http://localhost:8080]: ', 'http://localhost:8080'));
+        // Mostrar configuración actual si existe
+        if (!empty($env)) {
+            $output->writeln('<fg=cyan>Configuración actual (desde .env):</>');
+            $output->writeln("  URL: <fg=white>{$defaultUrl}</>");
+            $output->writeln("  BD: <fg=white>{$defaultDbName}</>");
+            $output->writeln('');
+        }
+        
+        $output->writeln('<fg=cyan>Configuración de WordPress:</>');
+        $output->writeln('');
+        
+        // Modo interactivo con defaults desde .env
+        $url = $helper->ask($input, $output, new Question("URL del sitio [{$defaultUrl}]: ", $defaultUrl));
         $title = $helper->ask($input, $output, new Question('Título del sitio [Mi Sitio]: ', 'Mi Sitio'));
         $adminUser = $helper->ask($input, $output, new Question('Usuario admin [admin]: ', 'admin'));
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
