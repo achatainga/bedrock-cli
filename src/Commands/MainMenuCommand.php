@@ -28,17 +28,18 @@ class MainMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => '<fg=green>Setup</>        - Configuración inicial',
-                2 => '<fg=green>Docker</>       - Gestión de contenedores',
-                3 => '<fg=green>Database</>     - Gestión de base de datos',
-                4 => '<fg=green>Options</>      - Gestión de opciones WP',
-                5 => '<fg=green>Install</>      - Instalar WordPress',
-                6 => '<fg=green>Plugins</>      - Gestión de plugins',
-                7 => '<fg=green>Themes</>       - Gestión de temas',
-                8 => '<fg=green>Acorn</>        - Gestión de Roots Acorn',
-                9 => '<fg=green>Backup</>       - Crear backup',
-                10 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
-                11 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
+                1 => '<fg=cyan>Info</>         - Estado del proyecto y tareas pendientes',
+                2 => '<fg=green>Setup</>        - Configuración inicial',
+                3 => '<fg=green>Docker</>       - Gestión de contenedores',
+                4 => '<fg=green>Database</>     - Gestión de base de datos',
+                5 => '<fg=green>Options</>      - Gestión de opciones WP',
+                6 => '<fg=green>Install</>      - Instalar WordPress',
+                7 => '<fg=green>Plugins</>      - Gestión de plugins',
+                8 => '<fg=green>Themes</>       - Gestión de temas',
+                9 => '<fg=green>Acorn</>        - Gestión de Roots Acorn',
+                10 => '<fg=green>Backup</>       - Crear backup',
+                11 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
+                12 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
@@ -59,17 +60,18 @@ class MainMenuCommand extends Command
             }
 
             $commandMap = [
-                1 => 'setup',
-                2 => 'docker',
-                3 => 'db',
-                4 => 'options',
-                5 => 'install',
-                6 => 'plugins',
-                7 => 'themes',
-                8 => 'acorn',
-                9 => 'backup',
-                10 => 'reinstall',
-                11 => 'doctor',
+                1 => 'info',
+                2 => 'setup',
+                3 => 'docker',
+                4 => 'db',
+                5 => 'options',
+                6 => 'install',
+                7 => 'plugins',
+                8 => 'themes',
+                9 => 'acorn',
+                10 => 'backup',
+                11 => 'reinstall',
+                12 => 'doctor',
             ];
 
             $commandName = $commandMap[$selectedIndex];
