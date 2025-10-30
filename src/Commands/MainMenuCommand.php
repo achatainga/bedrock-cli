@@ -35,9 +35,10 @@ class MainMenuCommand extends Command
                 5 => '<fg=green>Install</>      - Instalar WordPress',
                 6 => '<fg=green>Plugins</>      - Gestión de plugins',
                 7 => '<fg=green>Themes</>       - Gestión de temas',
-                8 => '<fg=green>Backup</>       - Crear backup',
-                9 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
-                10 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
+                8 => '<fg=green>Acorn</>        - Gestión de Roots Acorn',
+                9 => '<fg=green>Backup</>       - Crear backup',
+                10 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
+                11 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
                 0 => '<fg=red>Salir</>',
             ];
 
@@ -65,9 +66,10 @@ class MainMenuCommand extends Command
                 5 => 'install',
                 6 => 'plugins',
                 7 => 'themes',
-                8 => 'backup',
-                9 => 'reinstall',
-                10 => 'doctor',
+                8 => 'acorn',
+                9 => 'backup',
+                10 => 'reinstall',
+                11 => 'doctor',
             ];
 
             $commandName = $commandMap[$selectedIndex];
