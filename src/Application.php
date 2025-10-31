@@ -42,6 +42,10 @@ use BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
 use BedrockCli\Commands\Profile\ListCommand as ProfileListCommand;
 use BedrockCli\Commands\Profile\ShowCommand as ProfileShowCommand;
 use BedrockCli\Commands\Profile\DeleteCommand as ProfileDeleteCommand;
+use BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
+use BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
+use BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
+use BedrockCli\Commands\Theme\InfoCommand as ThemeInfoCommand;
 
 class Application extends BaseApplication
 {
@@ -89,6 +93,10 @@ class Application extends BaseApplication
             new ProfileListCommand(),
             new ProfileShowCommand(),
             new ProfileDeleteCommand(),
+            new PluginSearchCommand(),
+            new PluginInfoCommand(),
+            new ThemeSearchCommand(),
+            new ThemeInfoCommand(),
         ]);
     }
 
