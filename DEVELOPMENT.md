@@ -7,7 +7,7 @@
 ```
 c:/code/
 ├── bedrock-cli/              # Este repositorio
-├── detodo24-bedrock/         # Proyecto que usa bedrock-cli
+├── my-project/               # Proyecto que usa bedrock-cli
 └── custom-utilities/         # Scripts de automatización
     └── bedrock-cli-push.sh
 ```
@@ -18,15 +18,15 @@ c:/code/
 # Desde cualquier lugar
 bash c:/code/custom-utilities/bedrock-cli-push.sh "feat: Mi cambio"
 
-# O desde detodo24-bedrock
-cd c:/code/detodo24-bedrock
+# O desde my-project
+cd c:/code/my-project
 composer bedrock-push
 ```
 
 **El script hace:**
 1. ✅ Commit en `bedrock-cli`
 2. ✅ Push a GitHub (rama `develop`)
-3. ✅ `composer update` en `detodo24-bedrock`
+3. ✅ `composer update` en `my-project`
 
 ### Flujo Manual
 
@@ -40,8 +40,8 @@ git add .
 git commit -m "feat: Mi cambio"
 git push origin develop
 
-# 3. Actualizar en detodo24-bedrock
-cd c:/code/detodo24-bedrock
+# 3. Actualizar en my-project
+cd c:/code/my-project
 composer update roots/bedrock-cli
 
 # 4. Probar
@@ -61,7 +61,7 @@ php bin/bedrock docker --help
 ### Pruebas con Bedrock
 
 ```bash
-cd c:/code/detodo24-bedrock
+cd c:/code/my-project
 vendor/bin/bedrock docker --up
 vendor/bin/bedrock db --create
 vendor/bin/bedrock install
@@ -113,7 +113,7 @@ Host github.com
 
 ## 📦 Como Paquete Composer
 
-En `detodo24-bedrock/composer.json`:
+En `my-project/composer.json`:
 
 ```json
 {

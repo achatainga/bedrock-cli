@@ -235,7 +235,7 @@ class DatabaseCommand extends Command
         
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>ℹ️  Buscar y Reemplazar en Base de Datos</>');
-        $output->writeln('<fg=yellow>Ejemplo: https://detodo24.com → http://127.0.0.1:8024</>');
+        $output->writeln('<fg=yellow>Ejemplo: https://example.com → http://localhost:8080</>');
         $output->writeln('');
         
         $search = $helper->ask($input, $output, new Question('<fg=yellow>Buscar:</> '));

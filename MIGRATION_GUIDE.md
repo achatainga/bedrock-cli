@@ -43,7 +43,7 @@ bedrock migrate \
   --sql-file=dump.sql \
   --old-prefix=hp2f_ \
   --new-prefix=wp_ \
-  --old-url=https://detodo24.com
+  --old-url=https://example.com
 ```
 
 **What happens:**

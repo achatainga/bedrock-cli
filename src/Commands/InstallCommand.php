@@ -38,11 +38,11 @@ class InstallCommand extends Command
             return Command::SUCCESS;
         }
         
-        $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://127.0.0.1:8024]: ', 'http://127.0.0.1:8024'));
-        $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Detodo24]: ', 'Detodo24'));
-        $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [detodo24]: ', 'detodo24'));
-        $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [detodo24]: ', 'detodo24'));
-        $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [detodo24@detodo24.com]: ', 'detodo24@detodo24.com'));
+        $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://localhost:8080]: ', 'http://localhost:8080'));
+        $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Mi Sitio]: ', 'Mi Sitio'));
+        $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [admin]: ', 'admin'));
+        $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [admin]: ', 'admin'));
+        $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [admin@example.com]: ', 'admin@example.com'));
 
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);

@@ -55,7 +55,7 @@ class ImportCoreCommand extends Command
 
     private function importSnapshot(string $filepath, OutputInterface $output): int
     {
-        $dbName = getenv('DB_NAME') ?: 'detodo24_bedrock';
+        $dbName = getenv('DB_NAME') ?: 'bedrock';
         $dbUser = getenv('DB_USER') ?: 'root';
         $dbPass = getenv('DB_PASSWORD') ?: 'mysql';
         $dbHost = getenv('DB_HOST') ?: 'mysql';
