@@ -255,7 +255,57 @@ class StateDetectorService
         $dbName = $env['DB_NAME'] ?? 'bedrock';
         $dbUser = $env['DB_USER'] ?? 'root';
         $dbPass = $env['DB_PASSWORD'] ?? 'mysql';
+        $prefix = $this->getTablePrefix();
         
+        $process = new Process([
+            'docker-compose', 'exec', '-T', 'mysql',
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName,
+            '-e', "SHOW TABLES LIKE '{$prefix}%';"
+        ]);
+        $process->run();
+        
+        $output = $process->getOutput();
+        return $process->isSuccessful() && !empty(trim($output)) && str_contains($output, $prefix);
+    }
+    
+    public function getTablePrefix(): string
+    {
+        $env = $this->readEnvFile();
+        
+        // 1. PRIORIDAD ABSOLUTA: Usar DB_PREFIX de .env si existe
+        if (isset($env['DB_PREFIX']) && !empty($env['DB_PREFIX'])) {
+            return rtrim($env['DB_PREFIX'], '_') . '_';
+        }
+        
+        // 2. Detectar prefijo desde config/application.php
+        $wpConfig = getcwd() . '/config/application.php';
+        if (file_exists($wpConfig)) {
+            $content = file_get_contents($wpConfig);
+            if (preg_match("/Config::define\('DB_PREFIX',\s*'([^']+)'/", $content, $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        // 3. Intentar detectar desde base de datos (solo si no está en .env)
+        if ($this->areContainersRunning() && $this->databaseExists()) {
+            $detected = $this->detectPrefixFromDatabase();
+            if ($detected) {
+                return $detected;
+            }
+        }
+        
+        // 4. Usar prefijo por defecto de WordPress
+        return 'wp_';
+    }
+    
+    private function detectPrefixFromDatabase(): ?string
+    {
+        $env = $this->readEnvFile();
+        $dbName = $env['DB_NAME'] ?? 'bedrock';
+        $dbUser = $env['DB_USER'] ?? 'root';
+        $dbPass = $env['DB_PASSWORD'] ?? 'mysql';
+        
+        // Obtener todas las tablas
         $process = new Process([
             'docker-compose', 'exec', '-T', 'mysql',
             'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName,
@@ -263,8 +313,47 @@ class StateDetectorService
         ]);
         $process->run();
         
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+        
         $output = $process->getOutput();
-        return $process->isSuccessful() && !empty(trim($output)) && str_contains($output, 'Tables_in_');
+        $lines = explode("\n", trim($output));
+        
+        // Extraer prefijos únicos
+        $prefixes = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || str_contains($line, 'Tables_in_')) {
+                continue;
+            }
+            
+            // Extraer prefijo (todo antes del primer _)
+            if (preg_match('/^([a-z0-9]+)_/', $line, $matches)) {
+                $prefix = $matches[1] . '_';
+                $prefixes[$prefix] = true;
+            }
+        }
+        
+        // Validar cada prefijo consultando la tabla options
+        foreach (array_keys($prefixes) as $prefix) {
+            $testProcess = new Process([
+                'docker-compose', 'exec', '-T', 'mysql',
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName,
+                '-e', "SELECT option_value FROM {$prefix}options WHERE option_name='siteurl' LIMIT 1;"
+            ]);
+            $testProcess->run();
+            
+            // Si la consulta es exitosa y retorna una URL, este es el prefijo correcto
+            if ($testProcess->isSuccessful()) {
+                $result = trim($testProcess->getOutput());
+                if (!empty($result) && !str_contains($result, 'ERROR') && str_contains($result, 'http')) {
+                    return $prefix;
+                }
+            }
+        }
+        
+        return null;
     }
     
     private function isBedrockProject(): bool
