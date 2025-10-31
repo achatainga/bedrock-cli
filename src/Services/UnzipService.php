@@ -16,7 +16,8 @@ class UnzipService
 
     public function detectProjectRoot(): string
     {
-        $root = dirname(dirname(dirname(dirname(dirname(__DIR__)))));
+        // Usar el directorio actual de trabajo (donde se ejecuta el comando)
+        $root = getcwd();
         return str_replace('\\', '/', $root);
     }
 
