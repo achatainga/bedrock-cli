@@ -5,7 +5,6 @@ namespace Roots\BedrockCli;
 use Symfony\Component\Console\Application as BaseApplication;
 use Roots\BedrockCli\Commands\DockerCommand;
 use Roots\BedrockCli\Commands\DatabaseCommand;
-use Roots\BedrockCli\Commands\InstallCommand;
 use Roots\BedrockCli\Commands\PluginsCommand;
 use Roots\BedrockCli\Commands\ThemesCommand;
 use Roots\BedrockCli\Commands\BackupCommand;
@@ -52,7 +51,6 @@ class Application extends BaseApplication
             new DatabaseCommand(),
             new DockerCommand(),
             new DoctorCommand(),
-            new InstallCommand(),
             new PluginsCommand(),
             new ReinstallCommand(),
             new SetupCommand(),

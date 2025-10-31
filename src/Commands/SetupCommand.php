@@ -27,6 +27,10 @@ class SetupCommand extends Command
             ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'Email admin')
             ->addOption('skip-wp-install', null, InputOption::VALUE_NONE, 'Saltar instalación de WordPress')
             ->addOption('skip-acorn', null, InputOption::VALUE_NONE, 'Saltar configuración de Acorn')
+            ->addOption('skip-theme', null, InputOption::VALUE_NONE, 'Saltar activación de tema')
+            ->addOption('skip-plugins', null, InputOption::VALUE_NONE, 'Saltar activación de plugins')
+            ->addOption('theme', null, InputOption::VALUE_REQUIRED, 'Tema a activar')
+            ->addOption('plugins', null, InputOption::VALUE_REQUIRED, 'Plugins a activar (separados por coma)')
             ->addOption('tutorial', null, InputOption::VALUE_NONE, 'Modo tutorial (con explicaciones)')
             ->addOption('yes', 'y', InputOption::VALUE_NONE, 'Confirmar automáticamente (no interactivo)');
     }
@@ -381,6 +385,16 @@ class SetupCommand extends Command
             $output->writeln('<info>✓ Acorn configurado</info>');
         }
         
+        // Paso 3: Activar tema
+        if (!$input->getOption('skip-theme')) {
+            $this->setupTheme($input, $output, $wpcli, $helper);
+        }
+        
+        // Paso 4: Activar plugins
+        if (!$input->getOption('skip-plugins')) {
+            $this->setupPlugins($input, $output, $wpcli, $helper);
+        }
+        
         // Resumen final
         $output->writeln('');
         $output->writeln('<fg=green;options=bold>✓ Setup completado exitosamente</>');
@@ -546,6 +560,111 @@ class SetupCommand extends Command
             $content
         );
         file_put_contents($dockerPath, $content);
+    }
+    
+    private function setupTheme(InputInterface $input, OutputInterface $output, WpCliService $wpcli, $helper): void
+    {
+        $output->writeln('');
+        $output->writeln('<comment>Configurando tema...</comment>');
+        
+        // Si hay flag --theme, usarlo
+        if ($input->getOption('theme')) {
+            $theme = $input->getOption('theme');
+        } else {
+            // Listar temas disponibles
+            $themesDir = getcwd() . '/web/app/themes';
+            if (!is_dir($themesDir)) {
+                $output->writeln('<comment>No hay temas disponibles</comment>');
+                return;
+            }
+            
+            $themes = array_filter(scandir($themesDir), function($item) use ($themesDir) {
+                return $item !== '.' && $item !== '..' && is_dir($themesDir . '/' . $item);
+            });
+            
+            if (empty($themes)) {
+                $output->writeln('<comment>No hay temas disponibles</comment>');
+                return;
+            }
+            
+            $output->writeln('<fg=cyan>Temas disponibles:</>');
+            foreach ($themes as $idx => $t) {
+                $output->writeln("  " . ($idx + 1) . ". {$t}");
+            }
+            $output->writeln('');
+            
+            $question = new Question('¿Qué tema deseas activar? (nombre o número): ');
+            $answer = $helper->ask($input, $output, $question);
+            
+            if (is_numeric($answer)) {
+                $themes = array_values($themes);
+                $theme = $themes[(int)$answer - 1] ?? null;
+            } else {
+                $theme = $answer;
+            }
+        }
+        
+        if ($theme) {
+            $process = $wpcli->custom("theme activate {$theme}");
+            $this->runWithLoader($process, $output, "Activando tema {$theme}");
+            
+            if ($process->isSuccessful()) {
+                $output->writeln("<info>✓ Tema '{$theme}' activado</info>");
+            }
+        }
+    }
+    
+    private function setupPlugins(InputInterface $input, OutputInterface $output, WpCliService $wpcli, $helper): void
+    {
+        $output->writeln('');
+        $output->writeln('<comment>Configurando plugins...</comment>');
+        
+        // Si hay flag --plugins, usarlo
+        if ($input->getOption('plugins')) {
+            $pluginsToActivate = explode(',', $input->getOption('plugins'));
+        } else {
+            // Listar plugins disponibles
+            $pluginsDir = getcwd() . '/web/app/plugins';
+            if (!is_dir($pluginsDir)) {
+                $output->writeln('<comment>No hay plugins disponibles</comment>');
+                return;
+            }
+            
+            $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+                return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
+            });
+            
+            if (empty($plugins)) {
+                $output->writeln('<comment>No hay plugins disponibles</comment>');
+                return;
+            }
+            
+            $output->writeln('<fg=cyan>Plugins disponibles:</>');
+            foreach ($plugins as $idx => $p) {
+                $output->writeln("  " . ($idx + 1) . ". {$p}");
+            }
+            $output->writeln('');
+            
+            $question = new Question('¿Qué plugins deseas activar? (nombres separados por coma, o Enter para omitir): ', '');
+            $answer = $helper->ask($input, $output, $question);
+            
+            if (empty($answer)) {
+                return;
+            }
+            
+            $pluginsToActivate = array_map('trim', explode(',', $answer));
+        }
+        
+        foreach ($pluginsToActivate as $plugin) {
+            if (empty($plugin)) continue;
+            
+            $process = $wpcli->custom("plugin activate {$plugin}");
+            $this->runWithLoader($process, $output, "Activando plugin {$plugin}");
+            
+            if ($process->isSuccessful()) {
+                $output->writeln("<info>✓ Plugin '{$plugin}' activado</info>");
+            }
+        }
     }
     
     protected function runWithLoader(Process $process, OutputInterface $output, string $message): void

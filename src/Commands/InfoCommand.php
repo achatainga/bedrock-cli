@@ -56,6 +56,12 @@ class InfoCommand extends Command
             $output->writeln('');
         }
         
+        // Estado de temas y plugins
+        if ($state['wp_installed']) {
+            $this->showThemesStatus($output);
+            $this->showPluginsStatus($output);
+        }
+        
         // Inconsistencias
         if (!empty($state['inconsistencies'])) {
             $this->showInconsistencies($output, $state['inconsistencies']);
@@ -167,6 +173,112 @@ class InfoCommand extends Command
         $output->writeln('');
     }
     
+    private function showThemesStatus(OutputInterface $output): void
+    {
+        $themesDir = getcwd() . '/web/app/themes';
+        if (!is_dir($themesDir)) {
+            return;
+        }
+        
+        $themes = array_filter(scandir($themesDir), function($item) use ($themesDir) {
+            return $item !== '.' && $item !== '..' && is_dir($themesDir . '/' . $item);
+        });
+        
+        if (empty($themes)) {
+            return;
+        }
+        
+        // Obtener tema activo desde WordPress
+        $activeTheme = $this->getActiveTheme();
+        
+        $output->writeln('<fg=cyan;options=bold>Temas:</>');
+        
+        if ($activeTheme) {
+            $output->writeln("  <info>✓</info> Activo: <fg=green;options=bold>{$activeTheme}</>");
+        }
+        
+        $availableThemes = array_filter($themes, fn($t) => $t !== $activeTheme);
+        if (!empty($availableThemes)) {
+            $output->writeln('  Disponibles: ' . implode(', ', $availableThemes));
+        }
+        
+        $output->writeln('');
+    }
+    
+    private function showPluginsStatus(OutputInterface $output): void
+    {
+        $pluginsDir = getcwd() . '/web/app/plugins';
+        if (!is_dir($pluginsDir)) {
+            return;
+        }
+        
+        $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+            return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
+        });
+        
+        if (empty($plugins)) {
+            return;
+        }
+        
+        // Obtener plugins activos desde WordPress
+        $activePlugins = $this->getActivePlugins();
+        
+        $output->writeln('<fg=cyan;options=bold>Plugins:</>');
+        
+        if (!empty($activePlugins)) {
+            $output->writeln("  <info>✓</info> Activos (" . count($activePlugins) . "):");
+            foreach ($activePlugins as $idx => $plugin) {
+                $output->writeln("    " . ($idx + 1) . ". {$plugin}");
+            }
+        }
+        
+        $inactivePlugins = array_filter($plugins, fn($p) => !in_array($p, $activePlugins));
+        if (!empty($inactivePlugins)) {
+            $output->writeln('  Inactivos: ' . implode(', ', $inactivePlugins));
+        }
+        
+        $output->writeln('');
+    }
+    
+    private function getActiveTheme(): ?string
+    {
+        try {
+            $process = \Symfony\Component\Process\Process::fromShellCommandline(
+                'docker-compose exec -T web wp theme list --status=active --field=name 2>/dev/null',
+                getcwd()
+            );
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                return trim($process->getOutput()) ?: null;
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+        
+        return null;
+    }
+    
+    private function getActivePlugins(): array
+    {
+        try {
+            $process = \Symfony\Component\Process\Process::fromShellCommandline(
+                'docker-compose exec -T web wp plugin list --status=active --field=name 2>/dev/null',
+                getcwd()
+            );
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $output = trim($process->getOutput());
+                return $output ? explode("\n", $output) : [];
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+        
+        return [];
+    }
+    
     private function showSuggestedActions(OutputInterface $output, array $state): void
     {
         $output->writeln('<fg=cyan;options=bold>Próximos Pasos Sugeridos:</>')
@@ -179,8 +291,8 @@ class InfoCommand extends Command
         } elseif ($state['acorn_installed'] && !$state['acorn_configured']) {
             $output->writeln('  1. Configurar Acorn: <fg=white>bedrock acorn</>');
         } else {
-            $output->writeln('  1. Ver plugins: <fg=white>bedrock plugins</>');
-            $output->writeln('  2. Ver temas: <fg=white>bedrock themes</>');
+            $output->writeln('  1. Activar tema: <fg=white>bedrock themes:activate</>');
+            $output->writeln('  2. Activar plugins: <fg=white>bedrock plugins:activate</>');
             $output->writeln('  3. Crear snapshot: <fg=white>bedrock snapshot --create --name=backup</>');
         }
         
