@@ -1,8 +1,8 @@
 <?php
 
-namespace BedrockCli\Commands\Profile;
+namespace Roots\BedrockCli\Commands\Profile;
 
-use BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\ProfileService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,6 +24,7 @@ class CreateCommand extends Command
     protected function configure(): void
     {
         $this
+            ->setName('profile:create')
             ->setDescription('Crear un nuevo profile de proyecto')
             ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile');
     }

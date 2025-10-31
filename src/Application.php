@@ -38,14 +38,15 @@ use Roots\BedrockCli\Commands\DbCleanCommand;
 use Roots\BedrockCli\Commands\MigrateCommand;
 use Roots\BedrockCli\Commands\AcornCommand;
 use Roots\BedrockCli\Commands\InfoCommand;
-use BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
-use BedrockCli\Commands\Profile\ListCommand as ProfileListCommand;
-use BedrockCli\Commands\Profile\ShowCommand as ProfileShowCommand;
-use BedrockCli\Commands\Profile\DeleteCommand as ProfileDeleteCommand;
-use BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
-use BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
-use BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
-use BedrockCli\Commands\Theme\InfoCommand as ThemeInfoCommand;
+use Roots\BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
+use Roots\BedrockCli\Commands\Profile\ListCommand as ProfileListCommand;
+use Roots\BedrockCli\Commands\Profile\ShowCommand as ProfileShowCommand;
+use Roots\BedrockCli\Commands\Profile\DeleteCommand as ProfileDeleteCommand;
+use Roots\BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
+use Roots\BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
+use Roots\BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
+use Roots\BedrockCli\Commands\Theme\InfoCommand as ThemeInfoCommand;
+use Roots\BedrockCli\Commands\InitCommand;
 
 class Application extends BaseApplication
 {
@@ -97,6 +98,7 @@ class Application extends BaseApplication
             new PluginInfoCommand(),
             new ThemeSearchCommand(),
             new ThemeInfoCommand(),
+            new InitCommand(),
         ]);
     }
 

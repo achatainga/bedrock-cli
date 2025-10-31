@@ -1,6 +1,6 @@
 <?php
 
-namespace BedrockCli\Services;
+namespace Roots\\BedrockCli\\Services;
 
 class WordPressApiService
 {

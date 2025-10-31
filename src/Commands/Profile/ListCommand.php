@@ -1,8 +1,8 @@
 <?php
 
-namespace BedrockCli\Commands\Profile;
+namespace Roots\BedrockCli\Commands\Profile;
 
-use BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\ProfileService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,7 +21,8 @@ class ListCommand extends Command
 
     protected function configure(): void
     {
-        $this->setDescription('Listar profiles disponibles');
+        $this->setName('profile:list')
+            ->setDescription('Listar profiles disponibles');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
