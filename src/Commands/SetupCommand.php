@@ -308,6 +308,19 @@ class SetupCommand extends Command
             
             if (!$process->isSuccessful()) {
                 $output->writeln('<error>✗ Error al instalar WordPress</error>');
+                $output->writeln('');
+                $output->writeln('<fg=yellow>Output del comando:</>');
+                $output->writeln($process->getOutput());
+                if ($process->getErrorOutput()) {
+                    $output->writeln('<fg=yellow>Errores:</>');
+                    $output->writeln($process->getErrorOutput());
+                }
+                $output->writeln('');
+                $output->writeln('<fg=cyan>Diagnóstico:</>');
+                $output->writeln('  1. Verifica que Docker esté corriendo: docker ps');
+                $output->writeln('  2. Verifica que la BD esté accesible: docker-compose exec web wp db check');
+                $output->writeln('  3. Verifica credenciales en .env (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD)');
+                $output->writeln('');
                 return Command::FAILURE;
             }
             

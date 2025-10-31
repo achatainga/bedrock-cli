@@ -60,10 +60,25 @@ class InstallCommand extends Command
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ WordPress instalado exitosamente</info>');
+            $output->writeln('');
+            $output->writeln('<fg=cyan>Acceso:</>');
+            $output->writeln("  URL: <fg=white>{$url}</>");
+            $output->writeln("  Admin: <fg=white>{$url}/wp/wp-admin</>");
+            $output->writeln("  Usuario: <fg=white;options=bold>{$user}</>");
+            $output->writeln("  Contraseña: <fg=white;options=bold>{$pass}</>");
+            $output->writeln('');
             return Command::SUCCESS;
         }
 
         $output->writeln('<error>✗ Error al instalar WordPress</error>');
+        $output->writeln('');
+        $output->writeln('<fg=yellow>Output del comando:</>');
+        $output->writeln($process->getOutput());
+        if ($process->getErrorOutput()) {
+            $output->writeln('<fg=yellow>Errores:</>');
+            $output->writeln($process->getErrorOutput());
+        }
+        $output->writeln('');
         return Command::FAILURE;
     }
 
