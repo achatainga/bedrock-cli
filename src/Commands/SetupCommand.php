@@ -329,6 +329,10 @@ class SetupCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Configurando usuario admin...</comment>');
             
+            // Obtener prefijo de tabla
+            $stateDetector = new StateDetectorService();
+            $prefix = $stateDetector->getTablePrefix();
+            
             // Verificar si usuario existe
             $checkUser = $wpcli->custom("user get {$config['adminUser']} --field=ID 2>/dev/null");
             $checkUser->run();
@@ -343,8 +347,12 @@ class SetupCommand extends Command
                 $getFirstUser->run();
                 
                 // SIEMPRE modificar usuario ID 1 (nunca crear nuevo)
+                // Obtener prefijo de tabla desde StateDetectorService
+                $stateDetector = new StateDetectorService();
+                $prefix = $stateDetector->getTablePrefix();
+                
                 $hashedPassword = password_hash($config['adminPassword'], PASSWORD_BCRYPT);
-                $process = $wpcli->custom("db query \"UPDATE wp_users SET user_login='{$config['adminUser']}', user_nicename='{$config['adminUser']}', user_pass='$hashedPassword', user_email='{$config['adminEmail']}' WHERE ID=1\"");
+                $process = $wpcli->custom("db query \"UPDATE {$prefix}users SET user_login='{$config['adminUser']}', user_nicename='{$config['adminUser']}', user_pass='$hashedPassword', user_email='{$config['adminEmail']}' WHERE ID=1\"");
                 $this->runWithLoader($process, $output, 'Configurando usuario admin (ID 1)');
             }
             
