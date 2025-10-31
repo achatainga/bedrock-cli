@@ -10,6 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 use BedrockCli\Services\ProfileService;
 use BedrockCli\Services\ComposerService;
+use BedrockCli\Services\BlueprintService;
 
 class NewCommand extends Command
 {
@@ -65,6 +66,7 @@ class NewCommand extends Command
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
         $this->applyProfile($name, $input, $output);
+        $this->generateBlueprints($name, $input, $output);
         $this->initGit($name, $output);
 
         $output->writeln('');
@@ -356,7 +358,7 @@ class NewCommand extends Command
         $output->writeln('<info>✓ application.php y environments configurados</info>');
     }
 
-    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): void
+    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): ?array
     {
         $profileName = $input->getOption('profile');
         $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
@@ -367,22 +369,37 @@ class NewCommand extends Command
         try {
             $profile = $profileService->loadProfile($profileName);
             
-            // Generar composer.json desde profile
             $composerService->generateFromProfile($profile, $name);
-            
-            // Copiar profile al proyecto
             $composerService->copyProfileToProject($profile, $name);
             
-            // Ejecutar composer install con las nuevas dependencias
             $output->writeln('<info>Instalando dependencias del profile...</info>');
             $process = new Process(['composer', 'install', '--no-interaction'], $name);
             $process->setTimeout(600);
             $this->runWithLoader($process, $output, 'Instalando dependencias');
             
             $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
+            return $profile;
         } catch (\RuntimeException $e) {
             $output->writeln("<error>Error al aplicar profile: {$e->getMessage()}</error>");
             $output->writeln('<comment>Continuando sin profile...</comment>');
+            return null;
+        }
+    }
+
+    private function generateBlueprints(string $name, InputInterface $input, OutputInterface $output): void
+    {
+        $output->writeln('<info>Generando blueprints...</info>');
+
+        $profileService = new ProfileService();
+        $blueprintService = new BlueprintService();
+        $profileName = $input->getOption('profile');
+
+        try {
+            $profile = $profileService->loadProfile($profileName);
+            $blueprintService->generateBlueprints($profile, $name);
+            $output->writeln('<info>✓ Blueprints generados (production, staging, development)</info>');
+        } catch (\RuntimeException $e) {
+            $output->writeln("<comment>Blueprints no generados: {$e->getMessage()}</comment>");
         }
     }
 
