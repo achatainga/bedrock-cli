@@ -38,6 +38,7 @@ use Roots\BedrockCli\Commands\DbCleanCommand;
 use Roots\BedrockCli\Commands\MigrateCommand;
 use Roots\BedrockCli\Commands\AcornCommand;
 use Roots\BedrockCli\Commands\InfoCommand;
+use BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
 
 class Application extends BaseApplication
 {
@@ -81,6 +82,7 @@ class Application extends BaseApplication
             new MigrateCommand(),
             new AcornCommand(),
             new InfoCommand(),
+            new ProfileCreateCommand(),
         ]);
     }
 
