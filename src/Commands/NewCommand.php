@@ -17,7 +17,7 @@ class NewCommand extends Command
             ->setName('new')
             ->setDescription('Crear nuevo proyecto Bedrock')
             ->addArgument('name', InputArgument::REQUIRED, 'Nombre del proyecto')
-            ->addOption('with-docker', null, InputOption::VALUE_NONE, 'Generar archivos Docker')
+            ->addOption('no-docker', null, InputOption::VALUE_NONE, 'NO generar archivos Docker (por defecto SÍ se genera)')
             ->addOption('no-acorn', null, InputOption::VALUE_NONE, 'NO instalar Roots Acorn (por defecto SÍ se instala)')
             ->addOption('no-redis', null, InputOption::VALUE_NONE, 'NO instalar Redis (por defecto SÍ se instala)')
             ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Nombre de la base de datos')
@@ -54,7 +54,7 @@ class NewCommand extends Command
             $this->installRedis($name, $output);
         }
 
-        if ($input->getOption('with-docker')) {
+        if (!$input->getOption('no-docker')) {
             $this->setupDocker($name, $input, $output);
         }
 
@@ -70,7 +70,7 @@ class NewCommand extends Command
         
         $output->writeln('<comment>Próximos pasos:</comment>');
         $output->writeln("  cd {$name}");
-        if ($input->getOption('with-docker')) {
+        if (!$input->getOption('no-docker')) {
             $output->writeln('  docker-compose up -d');
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
@@ -104,7 +104,7 @@ class NewCommand extends Command
         }
         $output->writeln('');
         $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
-        $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --with-docker</comment>');
+        $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --no-docker</comment>');
 
         return Command::SUCCESS;
     }
