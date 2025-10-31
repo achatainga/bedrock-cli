@@ -39,6 +39,9 @@ use Roots\BedrockCli\Commands\MigrateCommand;
 use Roots\BedrockCli\Commands\AcornCommand;
 use Roots\BedrockCli\Commands\InfoCommand;
 use BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
+use BedrockCli\Commands\Profile\ListCommand as ProfileListCommand;
+use BedrockCli\Commands\Profile\ShowCommand as ProfileShowCommand;
+use BedrockCli\Commands\Profile\DeleteCommand as ProfileDeleteCommand;
 
 class Application extends BaseApplication
 {
@@ -83,6 +86,9 @@ class Application extends BaseApplication
             new AcornCommand(),
             new InfoCommand(),
             new ProfileCreateCommand(),
+            new ProfileListCommand(),
+            new ProfileShowCommand(),
+            new ProfileDeleteCommand(),
         ]);
     }
 
