@@ -8,6 +8,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
+use BedrockCli\Services\ProfileService;
+use BedrockCli\Services\ComposerService;
 
 class NewCommand extends Command
 {
@@ -26,7 +28,8 @@ class NewCommand extends Command
             ->addOption('http-port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP')
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
-            ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe');
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
+            ->addOption('profile', null, InputOption::VALUE_REQUIRED, 'Profile a usar', 'default');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -61,7 +64,7 @@ class NewCommand extends Command
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
-        // $this->addBedrockCliToComposer($name, $output);
+        $this->applyProfile($name, $input, $output);
         $this->initGit($name, $output);
 
         $output->writeln('');
@@ -351,6 +354,36 @@ class NewCommand extends Command
         $this->copyStub("{$stubsDir}/config/environments/staging.php.stub", "{$name}/config/environments/staging.php", []);
         
         $output->writeln('<info>✓ application.php y environments configurados</info>');
+    }
+
+    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): void
+    {
+        $profileName = $input->getOption('profile');
+        $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
+
+        $profileService = new ProfileService();
+        $composerService = new ComposerService();
+
+        try {
+            $profile = $profileService->loadProfile($profileName);
+            
+            // Generar composer.json desde profile
+            $composerService->generateFromProfile($profile, $name);
+            
+            // Copiar profile al proyecto
+            $composerService->copyProfileToProject($profile, $name);
+            
+            // Ejecutar composer install con las nuevas dependencias
+            $output->writeln('<info>Instalando dependencias del profile...</info>');
+            $process = new Process(['composer', 'install', '--no-interaction'], $name);
+            $process->setTimeout(600);
+            $this->runWithLoader($process, $output, 'Instalando dependencias');
+            
+            $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
+        } catch (\RuntimeException $e) {
+            $output->writeln("<error>Error al aplicar profile: {$e->getMessage()}</error>");
+            $output->writeln('<comment>Continuando sin profile...</comment>');
+        }
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void
