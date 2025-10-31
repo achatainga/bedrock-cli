@@ -154,4 +154,72 @@ class ProfileService
 
         copy($sourceProfile, $this->profilesPath . '/default.json');
     }
+
+    public function scanCustomPlugins(string $path): array
+    {
+        if (!is_dir($path)) {
+            throw new RuntimeException("Path '{$path}' no existe o no es un directorio");
+        }
+
+        $plugins = [];
+        $items = scandir($path);
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $pluginPath = $path . '/' . $item;
+            
+            if (!is_dir($pluginPath)) {
+                continue;
+            }
+
+            $mainFile = $pluginPath . '/' . $item . '.php';
+            
+            if (!file_exists($mainFile)) {
+                $phpFiles = glob($pluginPath . '/*.php');
+                $mainFile = !empty($phpFiles) ? $phpFiles[0] : null;
+            }
+
+            if (!$mainFile || !file_exists($mainFile)) {
+                continue;
+            }
+
+            $headers = $this->getPluginHeaders($mainFile);
+            
+            if (!empty($headers['Name'])) {
+                $plugins[$item] = [
+                    'slug' => $item,
+                    'name' => $headers['Name'],
+                    'version' => $headers['Version'] ?? 'N/A',
+                    'description' => $headers['Description'] ?? '',
+                    'path' => $pluginPath
+                ];
+            }
+        }
+
+        return $plugins;
+    }
+
+    private function getPluginHeaders(string $file): array
+    {
+        $content = file_get_contents($file, false, null, 0, 8192);
+        $headers = [];
+
+        $fields = [
+            'Name' => 'Plugin Name',
+            'Version' => 'Version',
+            'Description' => 'Description',
+            'Author' => 'Author'
+        ];
+
+        foreach ($fields as $key => $field) {
+            if (preg_match('/^[ \t\/*#@]*' . preg_quote($field, '/') . ':(.*)$/mi', $content, $match)) {
+                $headers[$key] = trim($match[1]);
+            }
+        }
+
+        return $headers;
+    }
 }

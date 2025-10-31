@@ -3,7 +3,9 @@
 namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\WordPressApiService;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -55,9 +57,17 @@ class CreateCommand extends Command
 
         // Plugins públicos
         $output->writeln('<info>🔌 PLUGINS PÚBLICOS (desde wpackagist.org)</info>');
-        $question = new Question('¿Qué plugins públicos necesitas? (separados por coma): ');
-        $pluginsInput = $helper->ask($input, $output, $question) ?: '';
-        $publicPlugins = array_filter(array_map('trim', explode(',', $pluginsInput)));
+        $question = new ConfirmationQuestion('¿Buscar plugins interactivamente? (Y/n): ', true);
+        $searchPlugins = $helper->ask($input, $output, $question);
+        
+        $publicPlugins = [];
+        if ($searchPlugins) {
+            $publicPlugins = $this->searchPluginsInteractive($input, $output, $helper);
+        } else {
+            $question = new Question('¿Qué plugins públicos necesitas? (separados por coma): ');
+            $pluginsInput = $helper->ask($input, $output, $question) ?: '';
+            $publicPlugins = array_filter(array_map('trim', explode(',', $pluginsInput)));
+        }
 
         $output->writeln('');
         $output->writeln('<comment>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</comment>');
@@ -84,9 +94,33 @@ class CreateCommand extends Command
         $hasCustomPlugins = $helper->ask($input, $output, $question);
 
         $customPluginsPath = null;
+        $customPluginsList = [];
         if ($hasCustomPlugins) {
-            $question = new Question('Path relativo a los plugins custom: ');
+            $question = new Question('Path absoluto a los plugins custom: ');
             $customPluginsPath = $helper->ask($input, $output, $question);
+            
+            if ($customPluginsPath) {
+                try {
+                    $detectedPlugins = $this->profileService->scanCustomPlugins($customPluginsPath);
+                    
+                    if (!empty($detectedPlugins)) {
+                        $output->writeln("\n<info>Plugins detectados:</info>");
+                        foreach ($detectedPlugins as $slug => $plugin) {
+                            $output->writeln("  • {$plugin['name']} ({$slug}) - v{$plugin['version']}");
+                        }
+                        
+                        $question = new ConfirmationQuestion("\n¿Agregar todos estos plugins? (Y/n): ", true);
+                        if ($helper->ask($input, $output, $question)) {
+                            $customPluginsList = array_keys($detectedPlugins);
+                        }
+                    } else {
+                        $output->writeln('<comment>No se detectaron plugins válidos en ese directorio.</comment>');
+                    }
+                } catch (\RuntimeException $e) {
+                    $output->writeln("<error>{$e->getMessage()}</error>");
+                    $customPluginsPath = null;
+                }
+            }
         }
 
         $output->writeln('');
@@ -116,7 +150,7 @@ class CreateCommand extends Command
             'plugins' => [
                 'public' => $publicPlugins,
                 'premium' => [],
-                'custom' => []
+                'custom' => $customPluginsList
             ],
             'theme' => [
                 'name' => $themeName,
@@ -180,5 +214,63 @@ class CreateCommand extends Command
         $output->writeln('');
 
         return Command::SUCCESS;
+    }
+
+    private function searchPluginsInteractive(InputInterface $input, OutputInterface $output, $helper): array
+    {
+        $apiService = new WordPressApiService();
+        $selectedPlugins = [];
+        
+        while (true) {
+            $question = new Question("\n🔍 Buscar plugin (o Enter para terminar): ");
+            $query = $helper->ask($input, $output, $question);
+            
+            if (empty($query)) {
+                break;
+            }
+            
+            $result = $apiService->searchPlugins($query, 1, 10);
+            
+            if (empty($result['plugins'])) {
+                $output->writeln('<error>No se encontraron plugins.</error>');
+                continue;
+            }
+            
+            $plugins = $result['plugins'];
+            $output->writeln("\n<comment>Resultados:</comment>\n");
+            
+            $table = new Table($output);
+            $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
+            
+            foreach ($plugins as $index => $plugin) {
+                $table->addRow([
+                    $index + 1,
+                    $plugin['name'],
+                    $plugin['slug'],
+                    number_format($plugin['active_installs'] ?? 0)
+                ]);
+            }
+            
+            $table->render();
+            
+            $question = new Question("\nSeleccionar números (ej: 1,3,5) o Enter para nueva búsqueda: ");
+            $selection = $helper->ask($input, $output, $question);
+            
+            if (empty($selection)) {
+                continue;
+            }
+            
+            $selected = array_map('trim', explode(',', $selection));
+            
+            foreach ($selected as $num) {
+                $index = (int) $num - 1;
+                if (isset($plugins[$index])) {
+                    $selectedPlugins[] = $plugins[$index]['slug'];
+                    $output->writeln("<info>✓ {$plugins[$index]['slug']}</info>");
+                }
+            }
+        }
+        
+        return $selectedPlugins;
     }
 }
