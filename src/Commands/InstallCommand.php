@@ -16,7 +16,12 @@ class InstallCommand extends Command
     {
         $this
             ->setName('install')
-            ->setDescription('Instalar WordPress core');
+            ->setDescription('Instalar WordPress core')
+            ->addOption('url', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'URL del sitio')
+            ->addOption('title', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Título del sitio')
+            ->addOption('admin-user', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Usuario admin')
+            ->addOption('admin-password', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Contraseña admin')
+            ->addOption('admin-email', null, \Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'Email admin');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -33,16 +38,26 @@ class InstallCommand extends Command
             '/^(s|si|y|yes)/i'
         );
         
-        if (!$helper->ask($input, $output, $confirmQuestion)) {
-            $output->writeln('<comment>Instalación cancelada</comment>');
-            return Command::SUCCESS;
+        // Si hay opciones, usarlas directamente
+        if ($input->getOption('url')) {
+            $url = $input->getOption('url');
+            $title = $input->getOption('title') ?? 'Mi Sitio';
+            $user = $input->getOption('admin-user') ?? 'admin';
+            $pass = $input->getOption('admin-password') ?? 'admin';
+            $email = $input->getOption('admin-email') ?? 'admin@example.com';
+        } else {
+            // Modo interactivo
+            if (!$helper->ask($input, $output, $confirmQuestion)) {
+                $output->writeln('<comment>Instalación cancelada</comment>');
+                return Command::SUCCESS;
+            }
+            
+            $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://localhost:8080]: ', 'http://localhost:8080'));
+            $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Mi Sitio]: ', 'Mi Sitio'));
+            $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [admin]: ', 'admin'));
+            $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [admin]: ', 'admin'));
+            $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [admin@example.com]: ', 'admin@example.com'));
         }
-        
-        $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://localhost:8080]: ', 'http://localhost:8080'));
-        $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Mi Sitio]: ', 'Mi Sitio'));
-        $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [admin]: ', 'admin'));
-        $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [admin]: ', 'admin'));
-        $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [admin@example.com]: ', 'admin@example.com'));
 
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
