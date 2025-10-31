@@ -289,7 +289,7 @@ class SetupCommand extends Command
         $output->writeln('');
         
         // Paso 0: Actualizar archivos de configuración si cambió URL/puerto
-        $urlChanged = $this->updateConfigurationFiles($output, $config, $state);
+        [$urlChanged, $oldUrl] = $this->updateConfigurationFiles($output, $config, $state);
         
         // Paso 1: Instalar WordPress
         if (!$state['wp_installed'] && !$input->getOption('skip-wp-install')) {
@@ -319,7 +319,7 @@ class SetupCommand extends Command
                 $output->writeln('<comment>Actualizando URL en WordPress...</comment>');
                 
                 // Usar search-replace para actualizar URLs en toda la BD
-                $process = $wpcli->custom("search-replace '{$currentUrl}' '{$config['url']}' --all-tables --skip-columns=guid");
+                $process = $wpcli->custom("search-replace '{$oldUrl}' '{$config['url']}' --all-tables --skip-columns=guid");
                 $this->runWithLoader($process, $output, 'Reemplazando URLs en BD');
                 
                 $output->writeln('<info>✓ URL actualizada en WordPress</info>');
@@ -425,7 +425,7 @@ class SetupCommand extends Command
         $output->writeln('');
     }
     
-    private function updateConfigurationFiles(OutputInterface $output, array $config, array $state): bool
+    private function updateConfigurationFiles(OutputInterface $output, array $config, array $state): array
     {
         $env = $state['config']['env'] ?? [];
         $docker = $state['config']['docker_compose'] ?? [];
@@ -435,7 +435,7 @@ class SetupCommand extends Command
         
         // Detectar si cambió URL
         if ($currentUrl === $newUrl) {
-            return false; // No cambió
+            return [false, $currentUrl]; // No cambió
         }
         
         $output->writeln('<comment>Detectado cambio de URL...</comment>');
@@ -474,7 +474,7 @@ class SetupCommand extends Command
         }
         
         $output->writeln('');
-        return true; // URL cambió
+        return [true, $currentUrl]; // URL cambió
     }
     
     private function validateAndFixUrl(string $input): string
