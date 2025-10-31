@@ -344,17 +344,8 @@ class SetupCommand extends Command
                 $process = $wpcli->custom("user update {$config['adminUser']} --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --skip-email");
                 $this->runWithLoader($process, $output, 'Actualizando credenciales');
             } else {
-                // Usuario no existe, obtener primer usuario (super admin)
-                $getFirstUser = $wpcli->custom("user list --field=user_login --orderby=ID --order=ASC --number=1");
-                $getFirstUser->run();
-                
-                // SIEMPRE modificar usuario ID 1 (nunca crear nuevo)
-                // Obtener prefijo de tabla desde StateDetectorService
-                $stateDetector = new StateDetectorService();
-                $prefix = $stateDetector->getTablePrefix();
-                
-                $hashedPassword = password_hash($config['adminPassword'], PASSWORD_BCRYPT);
-                $process = $wpcli->custom("db query \"UPDATE {$prefix}users SET user_login='{$config['adminUser']}', user_nicename='{$config['adminUser']}', user_pass='$hashedPassword', user_email='{$config['adminEmail']}' WHERE ID=1\"");
+                // Usuario no existe, modificar usuario ID 1 usando wp user update
+                $process = $wpcli->custom("user update 1 --user_login='{$config['adminUser']}' --user_nicename='{$config['adminUser']}' --user_pass='{$config['adminPassword']}' --user_email='{$config['adminEmail']}' --skip-email");
                 $this->runWithLoader($process, $output, 'Configurando usuario admin (ID 1)');
             }
             
