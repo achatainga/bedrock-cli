@@ -67,6 +67,7 @@ class NewCommand extends Command
         $this->copyApplicationConfig($name, $output);
         $this->applyProfile($name, $input, $output);
         $this->generateBlueprints($name, $input, $output);
+        $this->copySeeders($name, $output);
         $this->initGit($name, $output);
 
         $output->writeln('');
@@ -401,6 +402,34 @@ class NewCommand extends Command
         } catch (\RuntimeException $e) {
             $output->writeln("<comment>Blueprints no generados: {$e->getMessage()}</comment>");
         }
+    }
+
+    private function copySeeders(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Copiando seeders...</info>');
+
+        $stubsDir = dirname(__DIR__, 2) . '/stubs/seeders';
+        $seedersDir = "{$name}/database/seeders";
+
+        $seeders = [
+            'DatabaseSeeder.php.stub',
+            'CoreSeeder.php.stub',
+            'WooCommerceSeeder.php.stub',
+            'ThemeSeeder.php.stub',
+            'PluginsSeeder.php.stub',
+            'ProductsSeeder.php.stub',
+        ];
+
+        foreach ($seeders as $seeder) {
+            $source = "{$stubsDir}/{$seeder}";
+            $destination = "{$seedersDir}/" . str_replace('.stub', '', $seeder);
+            
+            if (file_exists($source)) {
+                copy($source, $destination);
+            }
+        }
+
+        $output->writeln('<info>✓ Seeders copiados (compatibles con Acorn y wp eval-file)</info>');
     }
 
     private function runWithLoader(Process $process, OutputInterface $output, string $message): void

@@ -1,0 +1,31 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class ThemeSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->configureThemeOptions();
+    }
+
+    private function configureThemeOptions(): void
+    {
+        // Configurar logo
+        // update_option('site_logo', $attachment_id);
+        
+        // Configurar colores
+        set_theme_mod('background_color', 'ffffff');
+        
+        // Configurar widgets
+        // update_option('sidebars_widgets', [...]);
+    }
+}
+
+// Compatibilidad con wp eval-file
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new ThemeSeeder())->run();
+}

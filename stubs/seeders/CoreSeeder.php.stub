@@ -1,0 +1,69 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class CoreSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->createPages();
+        $this->createMenus();
+        $this->configureOptions();
+    }
+
+    private function createPages(): void
+    {
+        $pages = [
+            ['title' => 'Home', 'slug' => 'home', 'template' => 'template-home.php'],
+            ['title' => 'About', 'slug' => 'about', 'template' => ''],
+            ['title' => 'Contact', 'slug' => 'contact', 'template' => ''],
+        ];
+
+        foreach ($pages as $page) {
+            $exists = get_page_by_path($page['slug']);
+            if ($exists) continue;
+
+            $page_id = wp_insert_post([
+                'post_title' => $page['title'],
+                'post_name' => $page['slug'],
+                'post_type' => 'page',
+                'post_status' => 'publish',
+                'post_content' => '',
+            ]);
+
+            if ($page['template']) {
+                update_post_meta($page_id, '_wp_page_template', $page['template']);
+            }
+        }
+    }
+
+    private function createMenus(): void
+    {
+        $menu_name = 'Primary Menu';
+        $menu_exists = wp_get_nav_menu_object($menu_name);
+
+        if (!$menu_exists) {
+            $menu_id = wp_create_nav_menu($menu_name);
+            
+            $locations = get_theme_mod('nav_menu_locations');
+            $locations['primary_navigation'] = $menu_id;
+            set_theme_mod('nav_menu_locations', $locations);
+        }
+    }
+
+    private function configureOptions(): void
+    {
+        update_option('permalink_structure', '/%postname%/');
+        update_option('timezone_string', 'America/New_York');
+        update_option('date_format', 'F j, Y');
+        update_option('time_format', 'g:i a');
+    }
+}
+
+// Compatibilidad con wp eval-file
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new CoreSeeder())->run();
+}

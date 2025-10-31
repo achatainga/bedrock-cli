@@ -1,0 +1,41 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class ProductsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        if (!class_exists('WooCommerce')) {
+            return;
+        }
+
+        $this->createProducts();
+    }
+
+    private function createProducts(): void
+    {
+        $products = [
+            ['name' => 'Sample Product 1', 'price' => '19.99', 'sku' => 'PROD-001'],
+            ['name' => 'Sample Product 2', 'price' => '29.99', 'sku' => 'PROD-002'],
+            ['name' => 'Sample Product 3', 'price' => '39.99', 'sku' => 'PROD-003'],
+        ];
+
+        foreach ($products as $data) {
+            $product = new \WC_Product_Simple();
+            $product->set_name($data['name']);
+            $product->set_regular_price($data['price']);
+            $product->set_sku($data['sku']);
+            $product->set_status('publish');
+            $product->save();
+        }
+    }
+}
+
+// Compatibilidad con wp eval-file
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new ProductsSeeder())->run();
+}
