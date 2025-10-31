@@ -1,0 +1,92 @@
+<?php
+
+namespace Roots\BedrockCli\Commands\Profile;
+
+use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\ComposerService;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+
+class ApplyCommand extends Command
+{
+    private ProfileService $profileService;
+    private ComposerService $composerService;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->profileService = new ProfileService();
+        $this->composerService = new ComposerService();
+    }
+
+    protected function configure(): void
+    {
+        $this
+            ->setName('profile:apply')
+            ->setDescription('Aplicar un profile a un proyecto existente')
+            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $name = $input->getArgument('name');
+        
+        if (!$this->profileService->profileExists($name)) {
+            $output->writeln("<error>El profile '{$name}' no existe</error>");
+            return Command::FAILURE;
+        }
+
+        $projectRoot = $this->detectProjectRoot();
+        if (!$projectRoot) {
+            $output->writeln('<error>No estás en un proyecto Bedrock</error>');
+            return Command::FAILURE;
+        }
+
+        $helper = $this->getHelper('question');
+        $question = new ConfirmationQuestion(
+            "<question>¿Aplicar profile '{$name}' a este proyecto? Esto modificará composer.json (Y/n):</question> ",
+            false
+        );
+
+        if (!$helper->ask($input, $output, $question)) {
+            $output->writeln('<comment>Operación cancelada</comment>');
+            return Command::SUCCESS;
+        }
+
+        $profile = $this->profileService->loadProfile($name);
+        
+        $output->writeln('');
+        $output->writeln('<info>Aplicando profile...</info>');
+        
+        // Regenerar composer.json
+        $this->composerService->generateFromProfile($profile, $projectRoot);
+        $output->writeln('✓ composer.json actualizado');
+        
+        // Actualizar .bedrock/profile.json
+        $this->composerService->copyProfileToProject($profile, $projectRoot);
+        $output->writeln('✓ .bedrock/profile.json actualizado');
+        
+        $output->writeln('');
+        $output->writeln('<comment>Ejecuta:</comment> composer update');
+        $output->writeln('');
+
+        return Command::SUCCESS;
+    }
+
+    private function detectProjectRoot(): ?string
+    {
+        $current = getcwd();
+        
+        while ($current !== dirname($current)) {
+            if (file_exists("{$current}/web/wp-config.php") || file_exists("{$current}/config/application.php")) {
+                return $current;
+            }
+            $current = dirname($current);
+        }
+        
+        return null;
+    }
+}
