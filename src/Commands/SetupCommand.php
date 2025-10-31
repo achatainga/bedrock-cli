@@ -195,7 +195,9 @@ class SetupCommand extends Command
         $docker = $state['config']['docker_compose'] ?? [];
         
         // Defaults desde archivos existentes
-        $defaultUrl = $env['WP_HOME'] ?? 'http://localhost:8080';
+        // Usar puerto de docker-compose si existe, sino usar el de .env
+        $dockerPort = $docker['web_port'] ?? null;
+        $defaultUrl = $dockerPort ? "http://localhost:{$dockerPort}" : ($env['WP_HOME'] ?? 'http://localhost:8080');
         $defaultDbName = $env['DB_NAME'] ?? $docker['db_name'] ?? 'bedrock';
         
         // Si hay flags, usarlos
@@ -517,8 +519,9 @@ class SetupCommand extends Command
         }
         
         $content = file_get_contents($envPath);
+        // Reemplazar toda la línea WP_HOME, no solo el valor
         $content = preg_replace(
-            "/WP_HOME=.*/",
+            "/^WP_HOME=.*/m",
             "WP_HOME='{$newUrl}'",
             $content
         );
