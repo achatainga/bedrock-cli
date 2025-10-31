@@ -387,11 +387,13 @@ class SetupCommand extends Command
         
         // Paso 3: Activar tema
         if (!$input->getOption('skip-theme')) {
+            $helper = $this->getHelper('question');
             $this->setupTheme($input, $output, $wpcli, $helper);
         }
         
         // Paso 4: Activar plugins
         if (!$input->getOption('skip-plugins')) {
+            $helper = $this->getHelper('question');
             $this->setupPlugins($input, $output, $wpcli, $helper);
         }
         
