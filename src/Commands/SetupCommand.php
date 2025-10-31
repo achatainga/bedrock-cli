@@ -294,13 +294,13 @@ class SetupCommand extends Command
         // Paso 1: Instalar WordPress
         if (!$state['wp_installed'] && !$input->getOption('skip-wp-install')) {
             $output->writeln('<comment>Instalando WordPress...</comment>');            
-            $process = $wpcli->coreInstall(
-                $config['url'],
-                $config['title'],
-                $config['adminUser'],
-                $config['adminPassword'],
-                $config['adminEmail']
-            );
+            $process = $wpcli->coreInstall([
+                'url' => $config['url'],
+                'title' => $config['title'],
+                'admin_user' => $config['adminUser'],
+                'admin_password' => $config['adminPassword'],
+                'admin_email' => $config['adminEmail']
+            ]);
             
             $this->runWithLoader($process, $output, 'Instalando WordPress');
             
