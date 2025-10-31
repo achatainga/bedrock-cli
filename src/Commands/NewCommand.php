@@ -250,7 +250,7 @@ class NewCommand extends Command
         $this->copyStub("{$stubsDir}/.env.stub", "{$name}/.env", $vars);
         $this->copyStub("{$stubsDir}/.gitignore.stub", "{$name}/.gitignore", $vars);
 
-        if ($input->getOption('with-docker')) {
+        if (!$input->getOption('no-docker')) {
             $vars['{{HTTP_PORT}}'] = $httpPort;
             $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
             $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
