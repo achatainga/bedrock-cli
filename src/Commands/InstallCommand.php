@@ -52,11 +52,30 @@ class InstallCommand extends Command
                 return Command::SUCCESS;
             }
             
-            $url = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://localhost:8080]: ', 'http://localhost:8080'));
+            // URL con validación
+            $url = null;
+            while (!$url) {
+                $urlInput = $helper->ask($input, $output, new Question('<fg=yellow>URL del sitio</> [http://localhost:8080]: ', 'http://localhost:8080'));
+                $url = $this->validateAndFixUrl($urlInput);
+                if (!$url) {
+                    $output->writeln('<error>URL inválida. Usa formato: http://localhost:8080 o solo el puerto: 8080</error>');
+                }
+            }
+            
             $title = $helper->ask($input, $output, new Question('<fg=yellow>Título del sitio</> [Mi Sitio]: ', 'Mi Sitio'));
             $user = $helper->ask($input, $output, new Question('<fg=yellow>Usuario admin</> [admin]: ', 'admin'));
             $pass = $helper->ask($input, $output, new Question('<fg=yellow>Contraseña</> [admin]: ', 'admin'));
-            $email = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [admin@example.com]: ', 'admin@example.com'));
+            
+            // Email con validación
+            $email = null;
+            while (!$email) {
+                $emailInput = $helper->ask($input, $output, new Question('<fg=yellow>Email</> [admin@example.com]: ', 'admin@example.com'));
+                if (filter_var($emailInput, FILTER_VALIDATE_EMAIL)) {
+                    $email = $emailInput;
+                } else {
+                    $output->writeln('<error>Email inválido. Usa formato: usuario@dominio.com</error>');
+                }
+            }
         }
 
         $docker = new DockerService();
@@ -97,6 +116,37 @@ class InstallCommand extends Command
         return Command::FAILURE;
     }
 
+    private function validateAndFixUrl(string $input): ?string
+    {
+        $input = trim($input);
+        
+        // Si está vacío, retornar null
+        if (empty($input)) {
+            return null;
+        }
+        
+        // Si es solo número, asumir localhost con ese puerto
+        if (preg_match('/^\d+$/', $input)) {
+            $port = (int)$input;
+            if ($port < 1 || $port > 65535) {
+                return null; // Puerto inválido
+            }
+            return "http://localhost:{$port}";
+        }
+        
+        // Si no tiene protocolo, agregar http://
+        if (!preg_match('/^https?:\/\//', $input)) {
+            $input = "http://{$input}";
+        }
+        
+        // Validar que sea una URL válida
+        if (filter_var($input, FILTER_VALIDATE_URL)) {
+            return $input;
+        }
+        
+        return null;
+    }
+    
     protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
