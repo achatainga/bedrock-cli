@@ -67,11 +67,11 @@ class ThemesManageCommand extends Command
         $output->writeln('');
 
         if (!empty($themes)) {
-            $output->writeln("<info>Themes instalados (" . count($themes) . "):</info>");
+            $output->writeln("<fg=cyan>Themes instalados (" . count($themes) . "):</>");
             $output->writeln('');
             
             $table = new Table($output);
-            $table->setHeaders(['Slug', 'Versión']);
+            $table->setHeaders(['<fg=cyan>Slug</>', '<fg=cyan>Versión</>']);
             foreach ($themes as $theme) {
                 $table->addRow([$theme['slug'], $theme['version']]);
             }
@@ -82,15 +82,15 @@ class ThemesManageCommand extends Command
             $output->writeln('');
         }
 
-        $output->writeln('<info>¿Qué deseas hacer?</info>');
+        $output->writeln('<fg=cyan>¿Qué deseas hacer?</>');
         $output->writeln('');
-        $output->writeln(' <info>[1]</info> 🔍 Buscar e instalar theme');
-        $output->writeln(' <info>[2]</info> 🗑️  Desinstalar theme');
-        $output->writeln(' <info>[3]</info> 📊 Ver detalles de theme');
-        $output->writeln(' <info>[0]</info> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[1]</> 🔍 Buscar e instalar theme');
+        $output->writeln(' <fg=cyan>[2]</> 🗑️  Desinstalar theme');
+        $output->writeln(' <fg=cyan>[3]</> 📊 Ver detalles de theme');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {

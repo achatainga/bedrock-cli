@@ -74,7 +74,7 @@ class PluginsManageCommand extends Command
             $output->writeln('');
             
             $table = new Table($output);
-            $table->setHeaders(['Slug', 'Versión']);
+            $table->setHeaders(['<fg=cyan>Slug</>', '<fg=cyan>Versión</>']);
             foreach ($plugins as $plugin) {
                 $table->addRow([$plugin['slug'], $plugin['version']]);
             }

@@ -66,10 +66,10 @@ class DependenciesManageCommand extends Command
             $dev = array_filter($dependencies, fn($d) => $d['dev']);
 
             if (!empty($prod)) {
-                $output->writeln("<info>Dependencias de producción (" . count($prod) . "):</info>");
+                $output->writeln("<fg=cyan>Dependencias de producción (" . count($prod) . "):</>");
                 $output->writeln('');
                 $table = new Table($output);
-                $table->setHeaders(['Paquete', 'Versión']);
+                $table->setHeaders(['<fg=cyan>Paquete</>', '<fg=cyan>Versión</>']);
                 foreach ($prod as $dep) {
                     $table->addRow([$dep['package'], $dep['version']]);
                 }
@@ -78,10 +78,10 @@ class DependenciesManageCommand extends Command
             }
 
             if (!empty($dev)) {
-                $output->writeln("<info>Dependencias de desarrollo (" . count($dev) . "):</info>");
+                $output->writeln("<fg=cyan>Dependencias de desarrollo (" . count($dev) . "):</>");
                 $output->writeln('');
                 $table = new Table($output);
-                $table->setHeaders(['Paquete', 'Versión']);
+                $table->setHeaders(['<fg=cyan>Paquete</>', '<fg=cyan>Versión</>']);
                 foreach (array_slice($dev, 0, 5) as $dep) {
                     $table->addRow([$dep['package'], $dep['version']]);
                 }
@@ -96,16 +96,16 @@ class DependenciesManageCommand extends Command
             $output->writeln('');
         }
 
-        $output->writeln('<info>¿Qué deseas hacer?</info>');
+        $output->writeln('<fg=cyan>¿Qué deseas hacer?</>');
         $output->writeln('');
-        $output->writeln(' <info>[1]</info> ➕ Agregar dependencia');
-        $output->writeln(' <info>[2]</info> 🗑️  Remover dependencia');
-        $output->writeln(' <info>[3]</info> 🔄 Actualizar dependencias');
-        $output->writeln(' <info>[4]</info> 📥 Instalar dependencias');
-        $output->writeln(' <info>[0]</info> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[1]</> ➕ Agregar dependencia');
+        $output->writeln(' <fg=cyan>[2]</> 🗑️  Remover dependencia');
+        $output->writeln(' <fg=cyan>[3]</> 🔄 Actualizar dependencias');
+        $output->writeln(' <fg=cyan>[4]</> 📥 Instalar dependencias');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {

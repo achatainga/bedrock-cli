@@ -60,12 +60,12 @@ class ManageCommand extends Command
         }
         
         $output->writeln('');
-        $output->writeln('<info>¿Qué deseas gestionar?</info>');
+        $output->writeln('<fg=cyan>¿Qué deseas gestionar?</>');
         $output->writeln('');
-        $output->writeln(' <info>[1]</info> 🔌 Plugins');
-        $output->writeln(' <info>[2]</info> 🎨 Themes');
-        $output->writeln(' <info>[3]</info> 📦 Dependencias Composer');
-        $output->writeln(' <info>[0]</info> ❌ Salir');
+        $output->writeln(' <fg=cyan>[1]</> 🔌 Plugins');
+        $output->writeln(' <fg=cyan>[2]</> 🎨 Themes');
+        $output->writeln(' <fg=cyan>[3]</> 📦 Dependencias Composer');
+        $output->writeln(' <fg=cyan>[0]</> ❌ Salir');
         $output->writeln('');
 
         $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
