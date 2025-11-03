@@ -362,7 +362,7 @@ class MenuCommand extends Command
             
             $choices = [
                 1 => '<fg=cyan>Ejecutar todos</> los seeders',
-                2 => '<fg=cyan>Ejecutar todos</> (fresh - resetea DB),'
+                2 => '<fg=cyan>Ejecutar todos</> (fresh - resetea DB)',
                 3 => '<fg=cyan>Crear nuevo</> seeder',
             ];
             
