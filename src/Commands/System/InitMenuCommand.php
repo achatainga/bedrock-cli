@@ -22,9 +22,9 @@ class InitMenuCommand extends Command
         $helper = $this->getHelper('question');
         
         $output->writeln('');
-        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-        $output->writeln('<cyan>║</cyan>   🚀 INIT - Inicializar Ambiente    <cyan>║</cyan>');
-        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   🚀 INIT - Inicializar Ambiente    <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<comment>Inicializa el proyecto para diferentes ambientes (production, staging, development).</comment>');
         $output->writeln('');

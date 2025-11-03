@@ -91,9 +91,9 @@ class AcornCommand extends Command
     private function showStatus(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-        $output->writeln('<cyan>║</cyan>   🌱 ACORN - Roots Acorn           <cyan>║</cyan>');
-        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   🌱 ACORN - Roots Acorn           <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<comment>Gestiona Roots Acorn: instalar, configurar, limpiar cache.</comment>');
         $output->writeln('');

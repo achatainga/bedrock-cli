@@ -24,9 +24,9 @@ class SearchMenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-            $output->writeln('<cyan>║</cyan>   🔍 SEARCH - WordPress.org        <cyan>║</cyan>');
-            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   🔍 SEARCH - WordPress.org        <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Busca plugins y temas en el repositorio de WordPress.org.</comment>');
             $output->writeln('');

@@ -71,9 +71,9 @@ class MenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-            $output->writeln('<cyan>║</cyan>   🗄️  DATABASE - Base de Datos       <cyan>║</cyan>');
-            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   🗄️  DATABASE - Base de Datos       <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Operaciones de base de datos: crear, importar, exportar, seeders.</comment>');
             $output->writeln('');

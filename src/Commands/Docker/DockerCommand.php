@@ -83,9 +83,9 @@ class DockerCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-            $output->writeln('<cyan>║</cyan>   🐳 DOCKER - Contenedores          <cyan>║</cyan>');
-            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   🐳 DOCKER - Contenedores          <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Gestiona contenedores Docker del proyecto.</comment>');
             $output->writeln('');

@@ -22,9 +22,9 @@ class MenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-            $output->writeln('<cyan>║</cyan>   ⚙️  OPTIONS - wp_options          <cyan>║</cyan>');
-            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   ⚙️  OPTIONS - wp_options          <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Exporta e importa configuraciones de WordPress (wp_options).</comment>');
             $output->writeln('<comment>Útil para sincronizar configuraciones entre entornos.</comment>');
@@ -45,7 +45,7 @@ class MenuCommand extends Command
                 continue;
             }
             
-            if ($selectedIndex === 0) {
+            if ($selectedIndex === '0') {
                 return Command::SUCCESS;
             }
 
