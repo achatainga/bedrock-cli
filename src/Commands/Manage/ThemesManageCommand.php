@@ -125,7 +125,8 @@ class ThemesManageCommand extends Command
         }
 
         $output->writeln('<info>Buscando...</info>');
-        $results = $this->wpApi->searchThemes($query);
+        $response = $this->wpApi->searchThemes($query);
+        $results = $response['themes'] ?? [];
 
         if (empty($results)) {
             $output->writeln('<comment>No se encontraron themes</comment>');

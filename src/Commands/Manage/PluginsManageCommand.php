@@ -125,7 +125,8 @@ class PluginsManageCommand extends Command
         }
 
         $output->writeln('<info>Buscando...</info>');
-        $results = $this->wpApi->searchPlugins($query);
+        $response = $this->wpApi->searchPlugins($query);
+        $results = $response['plugins'] ?? [];
 
         if (empty($results)) {
             $output->writeln('<comment>No se encontraron plugins</comment>');
