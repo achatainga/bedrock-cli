@@ -12,6 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Helper\Table;
 
 class PluginsManageCommand extends Command
@@ -55,19 +56,21 @@ class PluginsManageCommand extends Command
         }
     }
 
+    private array $pendingPlugins = [];
+
     private function showMenu(InputInterface $input, OutputInterface $output): string
     {
         $helper = $this->getHelper('question');
         $plugins = $this->pluginManager->list();
 
         $output->writeln('');
-        $output->writeln('<fg=green;options=bold>╔════════════════════════════════════════╗</>');
-        $output->writeln('<fg=green;options=bold>║</>   <fg=yellow;options=bold>🔌 GESTIÓN DE PLUGINS</><fg=green;options=bold>             ║</>');
-        $output->writeln('<fg=green;options=bold>╚════════════════════════════════════════╝</>');
+        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  🔌 GESTIÓN DE PLUGINS          </> <fg=cyan;options=bold>    ║</>');
+        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
         if (!empty($plugins)) {
-            $output->writeln("<info>Plugins instalados (" . count($plugins) . "):</info>");
+            $output->writeln("<fg=green>✓ Plugins instalados (" . count($plugins) . "):</>");
             $output->writeln('');
             
             $table = new Table($output);
@@ -77,17 +80,24 @@ class PluginsManageCommand extends Command
             }
             $table->render();
             $output->writeln('');
-        } else {
-            $output->writeln('<comment>No hay plugins instalados</comment>');
+        }
+
+        if (!empty($this->pendingPlugins)) {
+            $output->writeln("<fg=yellow>⏳ Plugins pendientes de instalar (" . count($this->pendingPlugins) . "):</>");
+            foreach ($this->pendingPlugins as $slug => $version) {
+                $output->writeln("  • {$slug} ({$version})");
+            }
             $output->writeln('');
         }
 
-        $output->writeln('<info>¿Qué deseas hacer?</info>');
+        $output->writeln('<fg=yellow>¿Qué deseas hacer?</>');
         $output->writeln('');
-        $output->writeln(' <info>[1]</info> 🔍 Buscar e instalar plugin');
-        $output->writeln(' <info>[2]</info> 🗑️  Desinstalar plugin');
-        $output->writeln(' <info>[3]</info> 📊 Ver detalles de plugin');
-        $output->writeln(' <info>[0]</info> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[1]</> 🔍 Buscar y agregar a cola');
+        $output->writeln(' <fg=green>[2]</> ⚡ Instalar plugins pendientes');
+        $output->writeln(' <fg=red>[3]</> 🗑️  Desinstalar plugin');
+        $output->writeln(' <fg=blue>[4]</> 📊 Ver detalles de plugin');
+        $output->writeln(' <fg=magenta>[5]</> 🧹 Limpiar cola');
+        $output->writeln(' <fg=red>[0]</> ⬅️  Volver');
         $output->writeln('');
 
         $question = new Question('<fg=yellow>Opción:</> ', '0');
@@ -95,13 +105,21 @@ class PluginsManageCommand extends Command
 
         switch ($choice) {
             case '1':
-                $this->searchAndInstall($input, $output);
+                $this->searchAndQueue($input, $output);
                 return 'continue';
             case '2':
-                $this->uninstall($input, $output, $plugins);
+                $this->installPending($input, $output);
                 return 'continue';
             case '3':
+                $this->uninstall($input, $output, $plugins);
+                return 'continue';
+            case '4':
                 $this->showDetails($input, $output, $plugins);
+                return 'continue';
+            case '5':
+                $this->pendingPlugins = [];
+                $output->writeln('<info>✓ Cola limpiada</info>');
+                $this->waitForEnter($input, $output);
                 return 'continue';
             case '0':
                 return 'exit';
@@ -112,7 +130,7 @@ class PluginsManageCommand extends Command
         }
     }
 
-    private function searchAndInstall(InputInterface $input, OutputInterface $output): void
+    private function searchAndQueue(InputInterface $input, OutputInterface $output): void
     {
         $helper = $this->getHelper('question');
         
@@ -179,28 +197,20 @@ class PluginsManageCommand extends Command
         $slug = $plugins[$index]['slug'];
         
         $output->writeln('');
-        $output->writeln("<info>Instalando plugin: {$slug}</info>");
+        $question = new Question("<fg=yellow>Versión (Enter para última):</> ", '*');
+        $version = $helper->ask($input, $output, $question);
         
-        $this->pluginManager->add($slug);
+        $this->pendingPlugins[$slug] = $version;
         
-        $exitCode = $this->dependencyManager->require(
-            "wpackagist-plugin/{$slug}",
-            null,
-            false,
-            function($buffer) use ($output) {
-                $output->write($buffer);
-            }
-        );
-
-        if ($exitCode === 0) {
-            $output->writeln('');
-            $output->writeln('<info>✓ Plugin instalado correctamente</info>');
-        } else {
-            $output->writeln('');
-            $output->writeln('<error>✗ Error al instalar plugin</error>');
+        $output->writeln("<info>✓ Plugin '{$slug}' ({$version}) agregado a la cola</info>");
+        $output->writeln('');
+        
+        $question = new ConfirmationQuestion('<fg=yellow>¿Buscar otro plugin? (Y/n):</> ', true);
+        if (!$helper->ask($input, $output, $question)) {
+            return;
         }
-
-        $this->waitForEnter($input, $output);
+        
+        $this->searchAndQueue($input, $output);
     }
 
     private function uninstall(InputInterface $input, OutputInterface $output, array $plugins): void
@@ -298,6 +308,45 @@ class PluginsManageCommand extends Command
         $output->writeln("<info>Descripción:</info>");
         $output->writeln(wordwrap(strip_tags($info['short_description']), 70));
 
+        $this->waitForEnter($input, $output);
+    }
+
+    private function installPending(InputInterface $input, OutputInterface $output): void
+    {
+        if (empty($this->pendingPlugins)) {
+            $output->writeln('<comment>No hay plugins pendientes</comment>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
+
+        $output->writeln('');
+        $output->writeln('<info>Instalando ' . count($this->pendingPlugins) . ' plugin(s)...</info>');
+        $output->writeln('');
+
+        foreach ($this->pendingPlugins as $slug => $version) {
+            $output->writeln("<fg=cyan>➤ Instalando {$slug} ({$version})...</>");
+            
+            $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
+            
+            $exitCode = $this->dependencyManager->require(
+                "wpackagist-plugin/{$slug}",
+                $version === '*' ? null : $version,
+                false,
+                function($buffer) use ($output) {
+                    $output->write($buffer);
+                }
+            );
+
+            if ($exitCode === 0) {
+                $output->writeln("<fg=green>✓ {$slug} instalado</>");
+            } else {
+                $output->writeln("<fg=red>✗ Error al instalar {$slug}</>");
+            }
+            $output->writeln('');
+        }
+
+        $this->pendingPlugins = [];
+        $output->writeln('<info>✓ Instalación completada</info>');
         $this->waitForEnter($input, $output);
     }
 
