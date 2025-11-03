@@ -29,29 +29,29 @@ class MainMenuCommand extends Command
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
             $output->writeln(' <fg=cyan>[1]</> 🩺 Doctor   - Verificar dependencias');
-            $output->writeln(' <fg=cyan>[2]</> ⚙️ Setup    - Configuración inicial');
+            $output->writeln(' <fg=cyan>[2]</> ⚙️  Setup    - Configuración inicial');
             $output->writeln(' <fg=cyan>[3]</> 📋 Profiles - Crear/gestionar profiles');
             $output->writeln('');
             
             $output->writeln('<fg=green>⚡ DESARROLLO</>');
             $output->writeln(' <fg=cyan>[4]</> 🐳 Docker   - Levantar/bajar contenedores');
-            $output->writeln(' <fg=cyan>[5]</> 🎛️ Manage   - Plugins, Themes, Dependencies');
-            $output->writeln(' <fg=cyan>[6]</> 🗄️ Database - Gestión de base de datos');
+            $output->writeln(' <fg=cyan>[5]</> 🎛️  Manage   - Plugins, Themes, Dependencies');
+            $output->writeln(' <fg=cyan>[6]</> 🗄️  Database - Gestión de base de datos');
             $output->writeln('');
             
             $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
             $output->writeln(' <fg=cyan>[7]</> 🔍 Search   - Buscar en WordPress.org');
-            $output->writeln(' <fg=cyan>[8]</> ℹ️ Info     - Estado del proyecto');
+            $output->writeln(' <fg=cyan>[8]</> ℹ️  Info     - Estado del proyecto');
             $output->writeln('');
             
             $output->writeln('<fg=magenta>🔧 AVANZADO</>');
             $output->writeln(' <fg=cyan>[9]</> 🚀 Init     - Inicializar ambiente');
             $output->writeln('');
             
-            $output->writeln(' <fg=cyan>[O]</> ⚙️ Options   - Gestión de wp_options');
+            $output->writeln(' <fg=cyan>[O]</> ⚙️  Options   - Gestión de wp_options');
             $output->writeln(' <fg=cyan>[A]</> 🌱 Acorn    - Roots Acorn');
             $output->writeln(' <fg=cyan>[B]</> 💾 Backup   - Crear backup');
-            $output->writeln(' <fg=cyan>[R]</> 🗑️ Reinstall - Reinstalar (DESTRUCTIVO)');
+            $output->writeln(' <fg=cyan>[R]</> 🗑️  Reinstall - Reinstalar (DESTRUCTIVO)');
             $output->writeln('');
             
             $output->writeln(' <fg=red>[0]</> ❌ Salir');
