@@ -37,7 +37,7 @@ class MenuCommand extends Command
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
 
-            $question = new Question('Opción [0-4]: ', '0');
+            $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {

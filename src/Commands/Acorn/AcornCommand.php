@@ -201,7 +201,7 @@ class AcornCommand extends Command
         $output->writeln('');
         $output->writeln('<info>═══ Ventajas y Desventajas ═══</info>');
         $output->writeln('');
-        $output->writeln('<fg=green>VENTAJAS:</>');
+        $output->writeln('<fg=cyan>VENTAJAS:</>');
         $output->writeln('  ✓ Código más limpio y organizado');
         $output->writeln('  ✓ Desarrollo más rápido (Blade, helpers)');
         $output->writeln('  ✓ Mejor separación de lógica y vista');
@@ -209,7 +209,7 @@ class AcornCommand extends Command
         $output->writeln('  ✓ Asset pipeline moderno');
         $output->writeln('  ✓ Comunidad Laravel + WordPress');
         $output->writeln('');
-        $output->writeln('<fg=red>DESVENTAJAS:</>');
+        $output->writeln('<fg=cyan>DESVENTAJAS:</>');
         $output->writeln('  ✗ Curva de aprendizaje (Laravel)');
         $output->writeln('  ✗ Overhead adicional (~5-10 MB)');
         $output->writeln('  ✗ Algunos plugins pueden no funcionar');

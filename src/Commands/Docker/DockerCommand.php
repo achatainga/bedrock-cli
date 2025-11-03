@@ -84,7 +84,7 @@ class DockerCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║</>   🐳 DOCKER - Contenedores          <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>║</>   🐳 DOCKER - Contenedores        <fg=cyan>║</>');
             $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Gestiona contenedores Docker del proyecto.</comment>');
@@ -100,7 +100,7 @@ class DockerCommand extends Command
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('Opción [0-7]: ', '0');
+            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
             $index = $helper->ask($input, $output, $question);
             
             if (!is_numeric($index) || $index < 0 || $index > 7) {

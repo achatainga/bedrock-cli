@@ -41,9 +41,9 @@ class MenuCommand extends Command
         $helper = $this->getHelper('question');
         
         $output->writeln('');
-        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-        $output->writeln('<cyan>║</cyan>   📝 PROFILES - Gestión          <cyan>║</cyan>');
-        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   📝 PROFILES - Gestión            <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<comment>Crea y gestiona profiles con plugins, themes y dependencias.</comment>');
         $output->writeln('');
@@ -73,7 +73,7 @@ class MenuCommand extends Command
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('Opción [C/0]: ', '0');
+            $question = new Question('<fg=yellow>Opción [C/0]: </>', '0');
             $choice = strtoupper($helper->ask($input, $output, $question));
             
             if ($choice === 'C') {
@@ -102,7 +102,7 @@ class MenuCommand extends Command
         $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('Opción [1-' . count($profiles) . ', C, 0]: ', '0');
+        $question = new Question('<fg=yellow>Opción [1-' . count($profiles) . ', C, 0]: </>', '0');
         $choice = strtoupper($helper->ask($input, $output, $question));
 
         if ($choice === '0') {
@@ -131,12 +131,12 @@ class MenuCommand extends Command
         $isActive = ($activeProfile === $profileName);
         
         $output->writeln('');
-        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-        $output->writeln('<cyan>║</cyan>   Profile: ' . str_pad($profileName, 24) . '<cyan>║</cyan>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   Profile: ' . str_pad($profileName, 24) . '<fg=cyan>║</>');
         if ($isActive) {
-            $output->writeln('<cyan>║</cyan>   <fg=green>📌 ACTIVO en proyecto actual</><cyan>       ║</cyan>');
+            $output->writeln('<fg=cyan>║</>   <fg=cyan>📌 ACTIVO en proyecto actual</><fg=cyan>       ║</>');
         }
-        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln(' <fg=cyan>[1]</> 👁️  Ver detalles (JSON completo)');
         $output->writeln(' <fg=cyan>[2]</> ✏️  Editar (abrir en editor)');
@@ -151,7 +151,7 @@ class MenuCommand extends Command
         $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('Opción [0-4]: ', '0');
+        $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
         
         if (!is_numeric($choice) || $choice < 0 || $choice > 4) {

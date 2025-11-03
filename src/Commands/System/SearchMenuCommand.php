@@ -25,7 +25,7 @@ class SearchMenuCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║</>   🔍 SEARCH - WordPress.org        <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>║</>   🔍 SEARCH - WordPress.org      <fg=cyan>║</>');
             $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Busca plugins y temas en el repositorio de WordPress.org.</comment>');
@@ -38,7 +38,7 @@ class SearchMenuCommand extends Command
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
 
-            $question = new Question('Opción [0-4]: ', '0');
+            $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {
@@ -76,7 +76,7 @@ class SearchMenuCommand extends Command
     private function searchPlugins(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $query = $helper->ask($input, $output, new Question('<cyan>Ingresa tu búsqueda de plugin:</cyan> '));
+        $query = $helper->ask($input, $output, new Question('<fg=cyan>Ingresa tu búsqueda de plugin:</> '));
         
         if (empty($query)) {
             $output->writeln('<error>❌ Búsqueda vacía</error>');
@@ -91,7 +91,7 @@ class SearchMenuCommand extends Command
     private function pluginInfo(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $slug = $helper->ask($input, $output, new Question('<cyan>Ingresa el slug del plugin:</cyan> '));
+        $slug = $helper->ask($input, $output, new Question('<fg=cyan>Ingresa el slug del plugin:</> '));
         
         if (empty($slug)) {
             $output->writeln('<error>❌ Slug vacío</error>');
@@ -106,7 +106,7 @@ class SearchMenuCommand extends Command
     private function searchThemes(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $query = $helper->ask($input, $output, new Question('<cyan>Ingresa tu búsqueda de tema:</cyan> '));
+        $query = $helper->ask($input, $output, new Question('<fg=cyan>Ingresa tu búsqueda de tema:</> '));
         
         if (empty($query)) {
             $output->writeln('<error>❌ Búsqueda vacía</error>');
@@ -121,7 +121,7 @@ class SearchMenuCommand extends Command
     private function themeInfo(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $slug = $helper->ask($input, $output, new Question('<cyan>Ingresa el slug del tema:</cyan> '));
+        $slug = $helper->ask($input, $output, new Question('<fg=cyan>Ingresa el slug del tema:</> '));
         
         if (empty($slug)) {
             $output->writeln('<error>❌ Slug vacío</error>');

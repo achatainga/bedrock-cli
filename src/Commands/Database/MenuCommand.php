@@ -72,7 +72,7 @@ class MenuCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║</>   🗄️  DATABASE - Base de Datos       <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>║</>   🗄️  DATABASE - Base de Datos     <fg=cyan>║</>');
             $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             $output->writeln('<comment>Operaciones de base de datos: crear, importar, exportar, seeders.</comment>');
@@ -90,7 +90,7 @@ class MenuCommand extends Command
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('Opción [0-9]: ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9]: </>', '0');
             $index = $helper->ask($input, $output, $question);
             
             if (!is_numeric($index) || $index < 0 || $index > 9) {
@@ -361,19 +361,19 @@ class MenuCommand extends Command
             $output->writeln('');
             
             $choices = [
-                1 => '<fg=green>Ejecutar todos</> los seeders',
-                2 => '<fg=green>Ejecutar todos</> (fresh - resetea DB)',
+                1 => '<fg=cyan>Ejecutar todos</> los seeders',
+                2 => '<fg=cyan>Ejecutar todos</> (fresh - resetea DB),'
                 3 => '<fg=cyan>Crear nuevo</> seeder',
             ];
             
             $seederIndex = 4;
             foreach ($seeders as $seeder) {
                 $class = basename($seeder, '.php');
-                $choices[$seederIndex] = "<fg=yellow>Ejecutar:</> {$class}";
+                $choices[$seederIndex] = "<fg=cyan>Ejecutar:</> {$class}";
                 $seederIndex++;
             }
             
-            $choices[0] = '<fg=yellow>Volver</>';
+            $choices[0] = '<fg=cyan>Volver</>';
             
             $question = new ChoiceQuestion('<fg=cyan>Selecciona una opción:</>', $choices, 0);
             $question->setAutocompleterValues(null);

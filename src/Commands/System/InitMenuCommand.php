@@ -23,7 +23,7 @@ class InitMenuCommand extends Command
         
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan>║</>   🚀 INIT - Inicializar Ambiente    <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>║</>   🚀 INIT - Inicializar Ambiente  <fg=cyan>║</>');
         $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<comment>Inicializa el proyecto para diferentes ambientes (production, staging, development).</comment>');
@@ -36,7 +36,7 @@ class InitMenuCommand extends Command
         $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('Opción [0-4]: ', '0');
+        $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
         $selectedIndex = $helper->ask($input, $output, $question);
         
         if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {

@@ -68,7 +68,7 @@ class ManageCommand extends Command
         $output->writeln(' <info>[0]</info> ❌ Salir');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {
