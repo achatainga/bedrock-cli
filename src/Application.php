@@ -72,7 +72,7 @@ class Application extends BaseApplication
 {
     public function __construct()
     {
-        parent::__construct('bedrock', '1.0.0');
+        parent::__construct('bedrock', '2.0.0');
 
         $this->addCommands([
             new AcornCommand(),

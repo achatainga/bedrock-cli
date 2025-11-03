@@ -4,6 +4,9 @@ Universal CLI tool for managing Roots Bedrock WordPress projects with **Profiles
 
 ## 🚀 Features
 
+### v2.0 - Unified Management System
+- **🎛️ Interactive Management**: Manage plugins, themes, and dependencies with intuitive menus
+- **⚡ Granular Commands**: Direct commands for scripts and CI/CD automation
 - **🎨 Profiles**: Reusable project templates with plugins, themes, and configurations
 - **🔍 Interactive Search**: Search WordPress.org plugins/themes (Chocolatey-style)
 - **📋 Blueprints**: Environment-specific configurations (production/staging/development)
@@ -75,6 +78,25 @@ bedrock init --env=development
 
 ## Commands Reference
 
+### 🎛️ Unified Management (v2.0)
+
+```bash
+# Interactive menus
+bedrock manage                      # Main management menu
+bedrock manage:plugins              # Plugin management menu
+bedrock manage:themes               # Theme management menu
+bedrock manage:dependencies         # Dependency management menu
+
+# Granular commands (for scripts/CI/CD)
+bedrock add:plugin <slug> [--version] [--activate]
+bedrock add:theme <slug> [--version] [--activate]
+bedrock add:dependency <vendor/package> [--version] [--dev]
+
+bedrock remove:plugin <slug>
+bedrock remove:theme <slug>
+bedrock remove:dependency <vendor/package>
+```
+
 ### Profile Management
 
 ```bash
@@ -85,6 +107,13 @@ bedrock profile:edit <name>         # Edit profile in system editor
 bedrock profile:delete <name>       # Delete profile
 bedrock profile:export <name>       # Export profile from current project
 bedrock profile:apply <name>        # Apply profile to existing project
+bedrock profile:menu                # Interactive profile menu
+
+# Granular profile editing (v2.0)
+bedrock profile:add-plugin <profile> <slug> [--version]
+bedrock profile:remove-plugin <profile> <slug>
+bedrock profile:set-theme <profile> <slug> [--version]
+bedrock profile:add-repo <profile> --type=<type> --url=<url>
 ```
 
 ### WordPress.org Search
