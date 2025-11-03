@@ -44,17 +44,17 @@ class InitMenuCommand extends Command
             return Command::FAILURE;
         }
 
-        if ($selectedIndex === 0) {
+        if ($selectedIndex === '0') {
             return Command::SUCCESS;
         }
 
         $envMap = [
-            1 => 'production',
-            2 => 'staging',
-            3 => 'development',
+            '1' => 'production',
+            '2' => 'staging',
+            '3' => 'development',
         ];
 
-        if ($selectedIndex === 4) {
+        if ($selectedIndex === '4') {
             // Custom options
             $question = new Question('Ambiente (production/staging/development): ', 'production');
             $env = $helper->ask($input, $output, $question);
