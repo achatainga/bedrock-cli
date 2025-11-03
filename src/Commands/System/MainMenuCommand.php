@@ -23,37 +23,52 @@ class MainMenuCommand extends Command
         while (true) {
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>     ║</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ║</>');
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
-
-            $output->writeln(' <fg=cyan>[1]</>  ℹ️  Info         - Estado del proyecto');
-            $output->writeln(' <fg=green>[2]</>  ⚙️  Setup        - Configuración inicial');
-            $output->writeln(' <fg=magenta>[3]</>  📝 Profiles     - Gestión de profiles');
-            $output->writeln(' <fg=blue>[4]</>  🎛️  Manage       - Sistema unificado (v2.0)');
-            $output->writeln(' <fg=magenta>[5]</>  🚀 Init         - Inicializar ambiente');
-            $output->writeln(' <fg=yellow>[6]</>  🔍 Search       - Buscar plugins/temas');
-            $output->writeln(' <fg=green>[7]</>  🐳 Docker       - Gestión de contenedores');
-            $output->writeln(' <fg=green>[8]</>  🗄️  Database     - Gestión de base de datos');
-            $output->writeln(' <fg=green>[9]</>  ⚙️  Options      - Gestión de opciones WP');
-            $output->writeln(' <fg=green>[10]</> 🔌 Plugins      - Gestión de plugins');
-            $output->writeln(' <fg=green>[11]</> 🎨 Themes       - Gestión de temas');
-            $output->writeln(' <fg=green>[12]</> 🌱 Acorn        - Gestión de Roots Acorn');
-            $output->writeln(' <fg=green>[13]</> 💾 Backup       - Crear backup');
-            $output->writeln(' <fg=red>[14]</>  🗑️  Reinstall    - Reinstalar (DESTRUCTIVO)');
-            $output->writeln(' <fg=cyan>[15]</> 🩺 Doctor       - Verificar dependencias');
-            $output->writeln(' <fg=red>[0]</>   ❌ Salir');
+            
+            $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
+            $output->writeln(' <cyan>[1]</cyan> 🩺 Doctor   - Verificar dependencias');
+            $output->writeln(' <cyan>[2]</cyan> ⚙️ Setup    - Configuración inicial');
+            $output->writeln(' <cyan>[3]</cyan> 📋 Profiles - Crear/gestionar profiles');
+            $output->writeln('');
+            
+            $output->writeln('<fg=green>⚡ DESARROLLO</>');
+            $output->writeln(' <cyan>[4]</cyan> 🐳 Docker   - Levantar/bajar contenedores');
+            $output->writeln(' <cyan>[5]</cyan> 🎛️ Manage   - Plugins, Themes, Dependencies');
+            $output->writeln(' <cyan>[6]</cyan> 🗄️ Database - Gestión de base de datos');
+            $output->writeln('');
+            
+            $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
+            $output->writeln(' <cyan>[7]</cyan> 🔍 Search   - Buscar en WordPress.org');
+            $output->writeln(' <cyan>[8]</cyan> ℹ️ Info     - Estado del proyecto');
+            $output->writeln('');
+            
+            $output->writeln('<fg=magenta>🔧 AVANZADO</>');
+            $output->writeln(' <cyan>[9]</cyan> 🚀 Init     - Inicializar ambiente');
+            $output->writeln('');
+            
+            $output->writeln(' <cyan>[O]</cyan> ⚙️ Options   - Gestión de wp_options');
+            $output->writeln(' <cyan>[A]</cyan> 🌱 Acorn    - Roots Acorn');
+            $output->writeln(' <cyan>[B]</cyan> 💾 Backup   - Crear backup');
+            $output->writeln(' <cyan>[R]</cyan> 🗑️ Reinstall - Reinstalar (DESTRUCTIVO)');
+            $output->writeln('');
+            
+            $output->writeln(' <red>[0]</red> ❌ Salir');
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Selecciona una opción [0-15]:</> ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9, O, A, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
             
-            if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 15) {
-                $output->writeln('<error>Opción inválida. Usa 0-15.</error>');
+            $selectedIndex = strtoupper($selectedIndex);
+            
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'O', 'A', 'B', 'R'];
+            if (!in_array($selectedIndex, $validOptions)) {
+                $output->writeln('<error>Opción inválida. Usa 0-9, O, A, B, R.</error>');
                 sleep(1);
                 continue;
             }
@@ -65,21 +80,19 @@ class MainMenuCommand extends Command
             }
 
             $commandMap = [
-                '1' => 'info',
+                '1' => 'doctor',
                 '2' => 'setup',
                 '3' => 'profile:menu',
-                '4' => 'manage',
-                '5' => 'init:menu',
-                '6' => 'search:menu',
-                '7' => 'docker',
-                '8' => 'db',
-                '9' => 'options',
-                '10' => 'plugins',
-                '11' => 'themes',
-                '12' => 'acorn',
-                '13' => 'backup',
-                '14' => 'reinstall',
-                '15' => 'doctor',
+                '4' => 'docker',
+                '5' => 'manage',
+                '6' => 'db',
+                '7' => 'search:menu',
+                '8' => 'info',
+                '9' => 'init:menu',
+                'O' => 'options',
+                'A' => 'acorn',
+                'B' => 'backup',
+                'R' => 'reinstall',
             ];
 
             $commandName = $commandMap[$selectedIndex];
