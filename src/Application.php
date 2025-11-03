@@ -57,6 +57,12 @@ use Roots\BedrockCli\Commands\Manage\ManageCommand;
 use Roots\BedrockCli\Commands\Manage\PluginsManageCommand;
 use Roots\BedrockCli\Commands\Manage\ThemesManageCommand;
 use Roots\BedrockCli\Commands\Manage\DependenciesManageCommand;
+use Roots\BedrockCli\Commands\Add\PluginCommand as AddPluginCommand;
+use Roots\BedrockCli\Commands\Add\ThemeCommand as AddThemeCommand;
+use Roots\BedrockCli\Commands\Add\DependencyCommand as AddDependencyCommand;
+use Roots\BedrockCli\Commands\Remove\PluginCommand as RemovePluginCommand;
+use Roots\BedrockCli\Commands\Remove\ThemeCommand as RemoveThemeCommand;
+use Roots\BedrockCli\Commands\Remove\DependencyCommand as RemoveDependencyCommand;
 
 class Application extends BaseApplication
 {
@@ -119,6 +125,12 @@ class Application extends BaseApplication
             new PluginsManageCommand(),
             new ThemesManageCommand(),
             new DependenciesManageCommand(),
+            new AddPluginCommand(),
+            new AddThemeCommand(),
+            new AddDependencyCommand(),
+            new RemovePluginCommand(),
+            new RemoveThemeCommand(),
+            new RemoveDependencyCommand(),
         ]);
     }
 
