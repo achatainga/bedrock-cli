@@ -1,0 +1,30 @@
+{
+  "name": "{{PROJECT_NAME}} - Production",
+  "environment": "production",
+  "database": {
+    "import": "snapshots/production.sql"
+  },
+  "wordpress": {
+    "url": "{{PRODUCTION_URL}}",
+    "title": "{{PROJECT_NAME}}",
+    "admin_user": "{{ADMIN_USER}}",
+    "admin_email": "{{ADMIN_EMAIL}}"
+  },
+  "plugins": {
+    "activate": "all",
+    "licenses": {
+      "acf-pro": "{{ACF_PRO_LICENSE}}",
+      "gravityforms": "{{GRAVITY_FORMS_LICENSE}}"
+    }
+  },
+  "theme": {
+    "activate": true,
+    "license": "{{THEME_LICENSE}}"
+  },
+  "seeders": [],
+  "options": {
+    "permalink_structure": "/%postname%/",
+    "timezone_string": "America/New_York",
+    "blog_public": "1"
+  }
+}

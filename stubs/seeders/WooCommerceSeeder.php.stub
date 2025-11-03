@@ -1,0 +1,52 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class WooCommerceSeeder extends Seeder
+{
+    public function run(): void
+    {
+        if (!class_exists('WooCommerce')) {
+            return;
+        }
+
+        $this->configureStore();
+        $this->configurePayments();
+        $this->configureShipping();
+    }
+
+    private function configureStore(): void
+    {
+        update_option('woocommerce_store_address', '123 Main St');
+        update_option('woocommerce_store_city', 'New York');
+        update_option('woocommerce_default_country', 'US:NY');
+        update_option('woocommerce_store_postcode', '10001');
+        update_option('woocommerce_currency', 'USD');
+        update_option('woocommerce_price_thousand_sep', ',');
+        update_option('woocommerce_price_decimal_sep', '.');
+        update_option('woocommerce_price_num_decimals', '2');
+    }
+
+    private function configurePayments(): void
+    {
+        update_option('woocommerce_cod_settings', [
+            'enabled' => 'yes',
+            'title' => 'Cash on delivery',
+            'description' => 'Pay with cash upon delivery.',
+        ]);
+    }
+
+    private function configureShipping(): void
+    {
+        update_option('woocommerce_ship_to_countries', 'all');
+        update_option('woocommerce_calc_shipping', 'yes');
+    }
+}
+
+// Compatibilidad con wp eval-file
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new WooCommerceSeeder())->run();
+}

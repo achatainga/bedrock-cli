@@ -1,0 +1,23 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->call([
+            CoreSeeder::class,
+            // WooCommerceSeeder::class,
+            // ThemeSeeder::class,
+        ]);
+    }
+}
+
+// Compatibilidad con wp eval-file (sin Acorn)
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new DatabaseSeeder())->run();
+}

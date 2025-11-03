@@ -1,0 +1,31 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class PluginsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // ACF Pro
+        if (function_exists('acf_add_options_page')) {
+            acf_add_options_page([
+                'page_title' => 'Theme Settings',
+                'menu_title' => 'Theme Settings',
+                'menu_slug' => 'theme-settings',
+            ]);
+        }
+
+        // Gravity Forms
+        if (class_exists('GFForms')) {
+            // Configurar notificaciones, confirmaciones, etc.
+        }
+    }
+}
+
+// Compatibilidad con wp eval-file
+if (!class_exists('Illuminate\Database\Seeder')) {
+    class Seeder { public function run(): void {} }
+    (new PluginsSeeder())->run();
+}
