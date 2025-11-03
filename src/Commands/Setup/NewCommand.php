@@ -8,9 +8,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
-use BedrockCli\Services\ProfileService;
-use BedrockCli\Services\ComposerService;
-use BedrockCli\Services\BlueprintService;
+use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\ComposerService;
+use Roots\BedrockCli\Services\BlueprintService;
 
 class NewCommand extends Command
 {
