@@ -25,63 +25,52 @@ class AcornCommand extends Command
         
         $helper = $this->getHelper('question');
 
-        $question = new ChoiceQuestion(
-            '<question>Selecciona una acción:</question>',
-            [
-                '1' => 'Instalar paquete Composer',
-                '2' => 'Inicializar storage',
-                '3' => 'Publicar configs',
-                '4' => 'Instalar completo (1+2+3)',
-                '5' => 'Limpiar cache',
-                '6' => 'Ver estado detallado',
-                '7' => 'Eliminar configs y storage',
-                '8' => 'Desinstalar paquete Composer',
-                '9' => 'Desinstalar completo (7+8)',
-                '10' => '¿Qué es Acorn? (Ayuda)',
-                '11' => 'Ventajas y desventajas',
-                '0' => 'Salir'
-            ],
-            '0'
-        );
-
-        $question->setErrorMessage('Opción %s inválida.');
+        $output->writeln('<fg=cyan>[1]</> 📦 Instalar paquete Composer');
+        $output->writeln('<fg=cyan>[2]</> 📂 Inicializar storage');
+        $output->writeln('<fg=cyan>[3]</> 📝 Publicar configs');
+        $output->writeln('<fg=cyan>[4]</> ✨ Instalar completo (1+2+3)');
+        $output->writeln('<fg=cyan>[5]</> 🧹 Limpiar cache');
+        $output->writeln('<fg=cyan>[6]</> 📊 Ver estado detallado');
+        $output->writeln('<fg=cyan>[7]</> 🗑️  Eliminar configs y storage');
+        $output->writeln('<fg=cyan>[8]</> ❌ Desinstalar paquete Composer');
+        $output->writeln('<fg=cyan>[9]</> 🚨 Desinstalar completo (7+8)');
+        $output->writeln('<fg=cyan>[10]</> ❓ ¿Qué es Acorn? (Ayuda)');
+        $output->writeln('<fg=cyan>[11]</> ⚖️  Ventajas y desventajas');
+        $output->writeln('<fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+        
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Opción [0-11]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
+        
+        if (!is_numeric($choice) || $choice < 0 || $choice > 11) {
+            $output->writeln('<error>Opción inválida</error>');
+            return Command::SUCCESS;
+        }
 
         switch ($choice) {
-            case 'Instalar paquete Composer':
+            case '1':
                 return $this->installPackage($output);
-            
-            case 'Inicializar storage':
+            case '2':
                 return $this->initStorage($output);
-            
-            case 'Publicar configs':
+            case '3':
                 return $this->publishConfigs($output);
-            
-            case 'Instalar completo (1+2+3)':
+            case '4':
                 return $this->fullInstall($output);
-            
-            case 'Limpiar cache':
+            case '5':
                 return $this->cleanStorage($output);
-            
-            case 'Ver estado detallado':
+            case '6':
                 return $this->showDetailedStatus($output);
-            
-            case 'Eliminar configs y storage':
+            case '7':
                 return $this->removeFiles($input, $output);
-            
-            case 'Desinstalar paquete Composer':
+            case '8':
                 return $this->removePackage($input, $output);
-            
-            case 'Desinstalar completo (7+8)':
+            case '9':
                 return $this->fullUninstall($input, $output);
-            
-            case '¿Qué es Acorn? (Ayuda)':
+            case '10':
                 return $this->showHelp($output);
-            
-            case 'Ventajas y desventajas':
+            case '11':
                 return $this->showProsAndCons($output);
-            
-            case 'Salir':
+            case '0':
                 return Command::SUCCESS;
         }
 

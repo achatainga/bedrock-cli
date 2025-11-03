@@ -70,7 +70,7 @@ class PluginsManageCommand extends Command
         $output->writeln('');
 
         if (!empty($plugins)) {
-            $output->writeln("<fg=green>✓ Plugins instalados (" . count($plugins) . "):</>");
+            $output->writeln("<fg=cyan>✓ Plugins instalados (" . count($plugins) . "):</>");
             $output->writeln('');
             
             $table = new Table($output);
@@ -93,11 +93,11 @@ class PluginsManageCommand extends Command
         $output->writeln('<fg=yellow>¿Qué deseas hacer?</>');
         $output->writeln('');
         $output->writeln(' <fg=cyan>[1]</> 🔍 Buscar y agregar a cola');
-        $output->writeln(' <fg=green>[2]</> ⚡ Instalar plugins pendientes');
-        $output->writeln(' <fg=red>[3]</> 🗑️  Desinstalar plugin');
-        $output->writeln(' <fg=blue>[4]</> 📊 Ver detalles de plugin');
-        $output->writeln(' <fg=magenta>[5]</> 🧹 Limpiar cola');
-        $output->writeln(' <fg=red>[0]</> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[2]</> ⚡ Instalar plugins pendientes');
+        $output->writeln(' <fg=cyan>[3]</> 🗑️  Desinstalar plugin');
+        $output->writeln(' <fg=cyan>[4]</> 📊 Ver detalles de plugin');
+        $output->writeln(' <fg=cyan>[5]</> 🧹 Limpiar cola');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
         $question = new Question('<fg=yellow>Opción:</> ', '0');
@@ -306,7 +306,7 @@ class PluginsManageCommand extends Command
         $output->writeln("<info>Instalaciones:</info> " . number_format($info['active_installs']) . "+");
         $output->writeln('');
         $output->writeln("<info>Descripción:</info>");
-        $output->writeln(wordwrap(strip_tags($info['short_description']), 70));
+        $output->writeln(wordwrap(strip_tags($info['short_description'] ?? 'Sin descripción'), 70));
 
         $this->waitForEnter($input, $output);
     }
