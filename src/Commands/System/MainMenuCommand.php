@@ -65,7 +65,8 @@ class MainMenuCommand extends Command
             ];
 
             $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues(null);
+            $question->setAutocompleterValues([]);
+            $question->setMaxAttempts(1);
             $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
 
             $selectedIndex = $helper->ask($input, $output, $question);
