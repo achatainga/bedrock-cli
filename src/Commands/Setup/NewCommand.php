@@ -143,7 +143,7 @@ class NewCommand extends Command
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
         // Copiar acorn-boot.php a mu-plugins
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $stubsDir = $this->getStubsDir();
         $this->copyStub("{$stubsDir}/mu-plugins/acorn-boot.php.stub", "{$name}/web/app/mu-plugins/acorn-boot.php", []);
 
         $output->writeln('<info>✓ Acorn instalado</info>');
@@ -164,7 +164,7 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Configurando Docker...</info>');
 
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $stubsDir = $this->getStubsDir();
         $projectName = $name;
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $dbUser = $input->getOption('db-user');
@@ -214,7 +214,7 @@ class NewCommand extends Command
             file_put_contents("{$dir}/.gitkeep", '');
         }
 
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $stubsDir = $this->getStubsDir();
         $dbName = str_replace('-', '_', $name);
         $vars = [
             '{{PROJECT_NAME}}' => $name,
@@ -232,7 +232,7 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Generando archivo .env...</info>');
 
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
         
@@ -351,7 +351,7 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Configurando application.php con guards de constantes...</info>');
         
-        $stubsDir = dirname(__DIR__, 2) . '/stubs';
+        $stubsDir = $this->getStubsDir();
         $this->copyStub("{$stubsDir}/config/application.php.stub", "{$name}/config/application.php", []);
         $this->copyStub("{$stubsDir}/config/environments/development.php.stub", "{$name}/config/environments/development.php", []);
         $this->copyStub("{$stubsDir}/config/environments/staging.php.stub", "{$name}/config/environments/staging.php", []);
@@ -408,7 +408,7 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Copiando seeders...</info>');
 
-        $stubsDir = dirname(__DIR__, 2) . '/stubs/seeders';
+        $stubsDir = $this->getStubsDir() . '/seeders';
         $seedersDir = "{$name}/database/seeders";
 
         $seeders = [
@@ -445,5 +445,15 @@ class NewCommand extends Command
         if ($process->isSuccessful()) {
             $output->writeln("<info>✓ {$message} completado</info>");
         }
+    }
+
+    private function getStubsDir(): string
+    {
+        // Detectar si estamos en instalación global o local
+        $reflection = new \ReflectionClass(self::class);
+        $classFile = $reflection->getFileName();
+        
+        // Subir desde src/Commands/Setup/NewCommand.php hasta la raíz del paquete
+        return dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'stubs';
     }
 }
