@@ -49,6 +49,10 @@ use Roots\BedrockCli\Commands\Profile\DeleteCommand as ProfileDeleteCommand;
 use Roots\BedrockCli\Commands\Profile\EditCommand as ProfileEditCommand;
 use Roots\BedrockCli\Commands\Profile\ExportCommand as ProfileExportCommand;
 use Roots\BedrockCli\Commands\Profile\ApplyCommand as ProfileApplyCommand;
+use Roots\BedrockCli\Commands\Profile\AddPluginCommand as ProfileAddPluginCommand;
+use Roots\BedrockCli\Commands\Profile\RemovePluginCommand as ProfileRemovePluginCommand;
+use Roots\BedrockCli\Commands\Profile\SetThemeCommand as ProfileSetThemeCommand;
+use Roots\BedrockCli\Commands\Profile\AddRepoCommand as ProfileAddRepoCommand;
 use Roots\BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
 use Roots\BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
 use Roots\BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
@@ -117,6 +121,10 @@ class Application extends BaseApplication
             new ProfileEditCommand(),
             new ProfileExportCommand(),
             new ProfileApplyCommand(),
+            new ProfileAddPluginCommand(),
+            new ProfileRemovePluginCommand(),
+            new ProfileSetThemeCommand(),
+            new ProfileAddRepoCommand(),
             new PluginSearchCommand(),
             new PluginInfoCommand(),
             new ThemeSearchCommand(),
