@@ -25,7 +25,7 @@ class SetThemeCommand extends Command
              ->setDescription('Establecer theme de un profile')
              ->addArgument('profile', InputArgument::REQUIRED, 'Nombre del profile')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del theme')
-             ->addOption('theme-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
+             ->addOption('theme-version', 'tv', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

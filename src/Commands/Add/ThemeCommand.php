@@ -19,7 +19,7 @@ class ThemeCommand extends Command
         $this->setName('add:theme')
              ->setDescription('Agregar theme al proyecto')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del theme')
-             ->addOption('theme-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
+             ->addOption('theme-version', 'tv', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
              ->addOption('activate', null, InputOption::VALUE_NONE, 'Activar después de instalar');
     }
 

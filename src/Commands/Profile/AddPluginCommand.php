@@ -25,7 +25,7 @@ class AddPluginCommand extends Command
              ->setDescription('Agregar plugin a un profile')
              ->addArgument('profile', InputArgument::REQUIRED, 'Nombre del profile')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del plugin')
-             ->addOption('plugin-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
+             ->addOption('plugin-version', 'pv', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

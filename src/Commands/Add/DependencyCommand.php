@@ -18,7 +18,7 @@ class DependencyCommand extends Command
         $this->setName('add:dependency')
              ->setDescription('Agregar dependencia Composer al proyecto')
              ->addArgument('package', InputArgument::REQUIRED, 'Nombre del paquete (vendor/package)')
-             ->addOption('package-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
+             ->addOption('package-version', 'dv', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
              ->addOption('dev', null, InputOption::VALUE_NONE, 'Agregar como dependencia de desarrollo');
     }
 
