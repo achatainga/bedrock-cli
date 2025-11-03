@@ -138,15 +138,24 @@ class ThemesManageCommand extends Command
         $output->writeln('<comment>Resultados:</comment>');
         $output->writeln('');
         
+        $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white', 'gray', 'bright-cyan', 'bright-green'];
+        
         $table = new Table($output);
         $table->setHeaders(['#', 'Nombre', 'Slug', 'Rating']);
+        $table->setColumnMaxWidth(1, 40); // Limitar ancho de nombre
         
         foreach (array_slice($themes, 0, 10) as $index => $theme) {
+            $color = $colors[$index % count($colors)];
+            $num = $index + 1;
+            $name = $theme['name'] ?? 'N/A';
+            $slug = $theme['slug'] ?? 'N/A';
+            $rating = ($theme['rating'] ?? 0) . '/100';
+            
             $table->addRow([
-                $index + 1,
-                $theme['name'] ?? 'N/A',
-                $theme['slug'] ?? 'N/A',
-                ($theme['rating'] ?? 0) . '/100'
+                "<fg={$color}>{$num}</>",
+                wordwrap($name, 40, "\n", true),
+                "<fg={$color}>{$slug}</>",
+                $rating
             ]);
         }
         

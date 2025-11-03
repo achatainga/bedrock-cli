@@ -138,15 +138,24 @@ class PluginsManageCommand extends Command
         $output->writeln('<comment>Resultados:</comment>');
         $output->writeln('');
         
+        $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white', 'gray', 'bright-cyan', 'bright-green'];
+        
         $table = new Table($output);
         $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
+        $table->setColumnMaxWidth(1, 40); // Limitar ancho de nombre
         
         foreach (array_slice($plugins, 0, 10) as $index => $plugin) {
+            $color = $colors[$index % count($colors)];
+            $num = $index + 1;
+            $name = $plugin['name'] ?? 'N/A';
+            $slug = $plugin['slug'] ?? 'N/A';
+            $installs = number_format($plugin['active_installs'] ?? 0);
+            
             $table->addRow([
-                $index + 1,
-                $plugin['name'] ?? 'N/A',
-                $plugin['slug'] ?? 'N/A',
-                number_format($plugin['active_installs'] ?? 0)
+                "<fg={$color}>{$num}</>",
+                wordwrap($name, 40, "\n", true),
+                "<fg={$color}>{$slug}</>",
+                $installs
             ]);
         }
         
