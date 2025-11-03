@@ -3,5 +3,6 @@ composer.lock
 .DS_Store
 .idea/
 *.log
-.io/
+.io/CHECKPOINT_*.md
+.io/04_SCRATCHPAD.md
 profiles/*.json
