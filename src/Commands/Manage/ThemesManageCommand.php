@@ -135,18 +135,30 @@ class ThemesManageCommand extends Command
 
         $choices = [];
         foreach (array_slice($results, 0, 10) as $theme) {
-            $choices[$theme['slug']] = "{$theme['name']} - {$theme['description']}";
+            if (isset($theme['slug'], $theme['name'], $theme['description'])) {
+                $choices[$theme['slug']] = "{$theme['name']} - {$theme['description']}";
+            }
         }
+        
+        if (empty($choices)) {
+            $output->writeln('<comment>No se encontraron themes válidos</comment>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
+        
         $choices['cancel'] = 'Cancelar';
 
         $question = new ChoiceQuestion('Selecciona un theme:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar') {
+        if ($selected === 'Cancelar' || $selected === 'cancel') {
             return;
         }
 
         $slug = array_search($selected, $choices);
+        if ($slug === 'cancel' || !$slug) {
+            return;
+        }
         
         $output->writeln('');
         $output->writeln("<info>Instalando theme: {$slug}</info>");
@@ -192,11 +204,14 @@ class ThemesManageCommand extends Command
         $question = new ChoiceQuestion('Selecciona theme a desinstalar:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar') {
+        if ($selected === 'Cancelar' || $selected === 'cancel') {
             return;
         }
 
         $slug = array_search($selected, $choices);
+        if ($slug === 'cancel' || !$slug) {
+            return;
+        }
         
         $output->writeln('');
         $output->writeln("<info>Desinstalando theme: {$slug}</info>");

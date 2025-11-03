@@ -18,7 +18,7 @@ class DependencyCommand extends Command
         $this->setName('add:dependency')
              ->setDescription('Agregar dependencia Composer al proyecto')
              ->addArgument('package', InputArgument::REQUIRED, 'Nombre del paquete (vendor/package)')
-             ->addOption('version', null, InputOption::VALUE_OPTIONAL, 'Versión específica', null)
+             ->addOption('package-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
              ->addOption('dev', null, InputOption::VALUE_NONE, 'Agregar como dependencia de desarrollo');
     }
 
@@ -35,7 +35,7 @@ class DependencyCommand extends Command
         }
 
         $package = $input->getArgument('package');
-        $version = $input->getOption('version');
+        $version = $input->getOption('package-version');
         $isDev = $input->getOption('dev');
 
         if (!str_contains($package, '/')) {

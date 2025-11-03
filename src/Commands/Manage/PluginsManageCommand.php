@@ -135,18 +135,30 @@ class PluginsManageCommand extends Command
 
         $choices = [];
         foreach (array_slice($results, 0, 10) as $plugin) {
-            $choices[$plugin['slug']] = "{$plugin['name']} - {$plugin['short_description']}";
+            if (isset($plugin['slug'], $plugin['name'], $plugin['short_description'])) {
+                $choices[$plugin['slug']] = "{$plugin['name']} - {$plugin['short_description']}";
+            }
         }
+        
+        if (empty($choices)) {
+            $output->writeln('<comment>No se encontraron plugins válidos</comment>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
+        
         $choices['cancel'] = 'Cancelar';
 
         $question = new ChoiceQuestion('Selecciona un plugin:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar') {
+        if ($selected === 'Cancelar' || $selected === 'cancel') {
             return;
         }
 
         $slug = array_search($selected, $choices);
+        if ($slug === 'cancel' || !$slug) {
+            return;
+        }
         
         $output->writeln('');
         $output->writeln("<info>Instalando plugin: {$slug}</info>");
@@ -192,11 +204,14 @@ class PluginsManageCommand extends Command
         $question = new ChoiceQuestion('Selecciona plugin a desinstalar:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar') {
+        if ($selected === 'Cancelar' || $selected === 'cancel') {
             return;
         }
 
         $slug = array_search($selected, $choices);
+        if ($slug === 'cancel' || !$slug) {
+            return;
+        }
         
         $output->writeln('');
         $output->writeln("<info>Desinstalando plugin: {$slug}</info>");

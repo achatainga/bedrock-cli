@@ -25,14 +25,14 @@ class SetThemeCommand extends Command
              ->setDescription('Establecer theme de un profile')
              ->addArgument('profile', InputArgument::REQUIRED, 'Nombre del profile')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del theme')
-             ->addOption('version', null, InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
+             ->addOption('theme-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $profileName = $input->getArgument('profile');
         $slug = $input->getArgument('slug');
-        $version = $input->getOption('version');
+        $version = $input->getOption('theme-version');
 
         if (!$this->profileService->profileExists($profileName)) {
             $output->writeln("<error>Profile '{$profileName}' no existe</error>");

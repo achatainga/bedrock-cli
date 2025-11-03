@@ -19,7 +19,7 @@ class ThemeCommand extends Command
         $this->setName('add:theme')
              ->setDescription('Agregar theme al proyecto')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del theme')
-             ->addOption('version', null, InputOption::VALUE_OPTIONAL, 'Versión específica', null)
+             ->addOption('theme-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
              ->addOption('activate', null, InputOption::VALUE_NONE, 'Activar después de instalar');
     }
 
@@ -36,7 +36,7 @@ class ThemeCommand extends Command
         }
 
         $slug = $input->getArgument('slug');
-        $version = $input->getOption('version');
+        $version = $input->getOption('theme-version');
         $activate = $input->getOption('activate');
 
         $themeManager = new ThemeManager($management);

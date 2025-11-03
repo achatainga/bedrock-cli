@@ -25,14 +25,14 @@ class AddPluginCommand extends Command
              ->setDescription('Agregar plugin a un profile')
              ->addArgument('profile', InputArgument::REQUIRED, 'Nombre del profile')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del plugin')
-             ->addOption('version', null, InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
+             ->addOption('plugin-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', '*');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $profileName = $input->getArgument('profile');
         $slug = $input->getArgument('slug');
-        $version = $input->getOption('version');
+        $version = $input->getOption('plugin-version');
 
         if (!$this->profileService->profileExists($profileName)) {
             $output->writeln("<error>Profile '{$profileName}' no existe</error>");

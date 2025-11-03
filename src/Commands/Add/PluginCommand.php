@@ -19,7 +19,7 @@ class PluginCommand extends Command
         $this->setName('add:plugin')
              ->setDescription('Agregar plugin al proyecto')
              ->addArgument('slug', InputArgument::REQUIRED, 'Slug del plugin')
-             ->addOption('version', null, InputOption::VALUE_OPTIONAL, 'Versión específica', null)
+             ->addOption('plugin-version', 'v', InputOption::VALUE_OPTIONAL, 'Versión específica', null)
              ->addOption('activate', null, InputOption::VALUE_NONE, 'Activar después de instalar');
     }
 
@@ -36,7 +36,7 @@ class PluginCommand extends Command
         }
 
         $slug = $input->getArgument('slug');
-        $version = $input->getOption('version');
+        $version = $input->getOption('plugin-version');
         $activate = $input->getOption('activate');
 
         $pluginManager = new PluginManager($management);

@@ -193,11 +193,14 @@ class DependenciesManageCommand extends Command
         $question = new ChoiceQuestion('Selecciona dependencia a remover:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar') {
+        if ($selected === 'Cancelar' || $selected === 'cancel') {
             return;
         }
 
         $package = array_search($selected, $choices);
+        if ($package === 'cancel' || !$package) {
+            return;
+        }
         
         $output->writeln('');
         $output->writeln("<info>Removiendo {$package}...</info>");
