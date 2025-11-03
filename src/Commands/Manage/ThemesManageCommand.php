@@ -126,40 +126,48 @@ class ThemesManageCommand extends Command
 
         $output->writeln('<info>Buscando...</info>');
         $response = $this->wpApi->searchThemes($query);
-        $results = $response['themes'] ?? [];
+        $themes = $response['themes'] ?? [];
 
-        if (empty($results)) {
+        if (empty($themes)) {
             $output->writeln('<comment>No se encontraron themes</comment>');
             $this->waitForEnter($input, $output);
             return;
         }
 
-        $choices = [];
-        foreach (array_slice($results, 0, 10) as $theme) {
-            if (isset($theme['slug'], $theme['name'], $theme['description'])) {
-                $choices[$theme['slug']] = "{$theme['name']} - {$theme['description']}";
-            }
+        $output->writeln('');
+        $output->writeln('<comment>Resultados:</comment>');
+        $output->writeln('');
+        
+        $table = new Table($output);
+        $table->setHeaders(['#', 'Nombre', 'Slug', 'Rating']);
+        
+        foreach (array_slice($themes, 0, 10) as $index => $theme) {
+            $table->addRow([
+                $index + 1,
+                $theme['name'] ?? 'N/A',
+                $theme['slug'] ?? 'N/A',
+                ($theme['rating'] ?? 0) . '/100'
+            ]);
         }
         
-        if (empty($choices)) {
-            $output->writeln('<comment>No se encontraron themes válidos</comment>');
+        $table->render();
+        
+        $output->writeln('');
+        $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
+        $selection = $helper->ask($input, $output, $question);
+        
+        if (empty($selection)) {
+            return;
+        }
+        
+        $index = (int)$selection - 1;
+        if (!isset($themes[$index])) {
+            $output->writeln('<error>Selección inválida</error>');
             $this->waitForEnter($input, $output);
             return;
         }
         
-        $choices['cancel'] = 'Cancelar';
-
-        $question = new ChoiceQuestion('Selecciona un theme:', $choices, 'cancel');
-        $selected = $helper->ask($input, $output, $question);
-
-        if ($selected === 'Cancelar' || $selected === 'cancel') {
-            return;
-        }
-
-        $slug = array_search($selected, $choices);
-        if ($slug === 'cancel' || !$slug) {
-            return;
-        }
+        $slug = $themes[$index]['slug'];
         
         $output->writeln('');
         $output->writeln("<info>Instalando theme: {$slug}</info>");

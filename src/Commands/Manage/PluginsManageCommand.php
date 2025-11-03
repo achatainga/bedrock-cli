@@ -126,40 +126,48 @@ class PluginsManageCommand extends Command
 
         $output->writeln('<info>Buscando...</info>');
         $response = $this->wpApi->searchPlugins($query);
-        $results = $response['plugins'] ?? [];
+        $plugins = $response['plugins'] ?? [];
 
-        if (empty($results)) {
+        if (empty($plugins)) {
             $output->writeln('<comment>No se encontraron plugins</comment>');
             $this->waitForEnter($input, $output);
             return;
         }
 
-        $choices = [];
-        foreach (array_slice($results, 0, 10) as $plugin) {
-            if (isset($plugin['slug'], $plugin['name'], $plugin['short_description'])) {
-                $choices[$plugin['slug']] = "{$plugin['name']} - {$plugin['short_description']}";
-            }
+        $output->writeln('');
+        $output->writeln('<comment>Resultados:</comment>');
+        $output->writeln('');
+        
+        $table = new Table($output);
+        $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
+        
+        foreach (array_slice($plugins, 0, 10) as $index => $plugin) {
+            $table->addRow([
+                $index + 1,
+                $plugin['name'] ?? 'N/A',
+                $plugin['slug'] ?? 'N/A',
+                number_format($plugin['active_installs'] ?? 0)
+            ]);
         }
         
-        if (empty($choices)) {
-            $output->writeln('<comment>No se encontraron plugins válidos</comment>');
+        $table->render();
+        
+        $output->writeln('');
+        $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
+        $selection = $helper->ask($input, $output, $question);
+        
+        if (empty($selection)) {
+            return;
+        }
+        
+        $index = (int)$selection - 1;
+        if (!isset($plugins[$index])) {
+            $output->writeln('<error>Selección inválida</error>');
             $this->waitForEnter($input, $output);
             return;
         }
         
-        $choices['cancel'] = 'Cancelar';
-
-        $question = new ChoiceQuestion('Selecciona un plugin:', $choices, 'cancel');
-        $selected = $helper->ask($input, $output, $question);
-
-        if ($selected === 'Cancelar' || $selected === 'cancel') {
-            return;
-        }
-
-        $slug = array_search($selected, $choices);
-        if ($slug === 'cancel' || !$slug) {
-            return;
-        }
+        $slug = $plugins[$index]['slug'];
         
         $output->writeln('');
         $output->writeln("<info>Instalando plugin: {$slug}</info>");
