@@ -48,8 +48,14 @@ class MenuCommand extends Command
 
         // Detectar contexto
         $inProject = $this->isInBedrockProject();
+        $activeProfile = null;
+        
         if ($inProject) {
             $output->writeln('<info>✓ Proyecto detectado:</info> ' . basename(getcwd()));
+            $activeProfile = $this->getActiveProfile();
+            if ($activeProfile) {
+                $output->writeln('<info>📋 Profile activo:</info> ' . $activeProfile);
+            }
         } else {
             $output->writeln('<comment>⚠️  No estás en un proyecto Bedrock</comment>');
         }
@@ -82,7 +88,9 @@ class MenuCommand extends Command
         $index = 1;
         foreach ($profiles as $profile) {
             $desc = $profile['description'] ?? 'Sin descripción';
-            $output->writeln(" <info>[{$index}]</info> {$profile['name']} - {$desc}");
+            $isActive = ($activeProfile && $profile['name'] === $activeProfile);
+            $activeTag = $isActive ? ' <fg=green;options=bold>(ACTIVO)</>' : '';
+            $output->writeln(" <info>[{$index}]</info> {$profile['name']} - {$desc}{$activeTag}");
             $choices[$index] = $profile['name'];
             $index++;
         }
@@ -117,10 +125,15 @@ class MenuCommand extends Command
     private function showProfileMenu(string $profileName, bool $inProject, InputInterface $input, OutputInterface $output): void
     {
         $helper = $this->getHelper('question');
+        $activeProfile = $inProject ? $this->getActiveProfile() : null;
+        $isActive = ($activeProfile === $profileName);
         
         $output->writeln('');
         $output->writeln('<fg=magenta;options=bold>╔════════════════════════════════════════╗</>');
         $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>Profile: ' . str_pad($profileName, 24) . '</><fg=magenta;options=bold>║</>');
+        if ($isActive) {
+            $output->writeln('<fg=magenta;options=bold>║</>   <fg=green;options=bold>📌 ACTIVO en proyecto actual</><fg=magenta;options=bold>       ║</>');
+        }
         $output->writeln('<fg=magenta;options=bold>╚════════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln('<info>¿Qué deseas hacer?</info>');
@@ -174,6 +187,21 @@ class MenuCommand extends Command
     {
         $cwd = getcwd();
         return file_exists("{$cwd}/web/wp-config.php") || file_exists("{$cwd}/config/application.php");
+    }
+
+    private function getActiveProfile(): ?string
+    {
+        $cwd = getcwd();
+        $profileFile = "{$cwd}/.bedrock/profile.json";
+        
+        if (!file_exists($profileFile)) {
+            return null;
+        }
+        
+        $content = file_get_contents($profileFile);
+        $profile = json_decode($content, true);
+        
+        return $profile['name'] ?? null;
     }
 
     private function runCommand(string $commandName, array $arguments, InputInterface $input, OutputInterface $output): void
