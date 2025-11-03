@@ -53,6 +53,10 @@ use Roots\BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
 use Roots\BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
 use Roots\BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
 use Roots\BedrockCli\Commands\Theme\InfoCommand as ThemeInfoCommand;
+use Roots\BedrockCli\Commands\Manage\ManageCommand;
+use Roots\BedrockCli\Commands\Manage\PluginsManageCommand;
+use Roots\BedrockCli\Commands\Manage\ThemesManageCommand;
+use Roots\BedrockCli\Commands\Manage\DependenciesManageCommand;
 
 class Application extends BaseApplication
 {
@@ -111,6 +115,10 @@ class Application extends BaseApplication
             new PluginInfoCommand(),
             new ThemeSearchCommand(),
             new ThemeInfoCommand(),
+            new ManageCommand(),
+            new PluginsManageCommand(),
+            new ThemesManageCommand(),
+            new DependenciesManageCommand(),
         ]);
     }
 
