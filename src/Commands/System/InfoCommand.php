@@ -19,9 +19,11 @@ class InfoCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Información del Proyecto Bedrock  </> <fg=cyan;options=bold>║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+        $output->writeln('<cyan>║</cyan>   ℹ️  INFO - Estado del Proyecto     <cyan>║</cyan>');
+        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('');
+        $output->writeln('<comment>Muestra información completa del proyecto, Docker, WordPress y tareas pendientes.</comment>');
         $output->writeln('');
         
         // Detectar estado

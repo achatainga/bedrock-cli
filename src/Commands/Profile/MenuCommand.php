@@ -41,9 +41,11 @@ class MenuCommand extends Command
         $helper = $this->getHelper('question');
         
         $output->writeln('');
-        $output->writeln('<fg=magenta;options=bold>╔════════════════════════════════════════╗</>');
-        $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>📝 GESTIÓN DE PROFILES</><fg=magenta;options=bold>              ║</>');
-        $output->writeln('<fg=magenta;options=bold>╚════════════════════════════════════════╝</>');
+        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+        $output->writeln('<cyan>║</cyan>   📝 PROFILES - Gestión          <cyan>║</cyan>');
+        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('');
+        $output->writeln('<comment>Crea y gestiona profiles con plugins, themes y dependencias.</comment>');
         $output->writeln('');
 
         // Detectar contexto
@@ -67,11 +69,11 @@ class MenuCommand extends Command
         if (empty($profiles)) {
             $output->writeln('<comment>No hay profiles disponibles</comment>');
             $output->writeln('');
-            $output->writeln('<info>[C]</info> Crear nuevo profile');
-            $output->writeln('<info>[0]</info> Volver al menú principal');
+            $output->writeln(' <fg=cyan>[C]</> ➕ Crear nuevo profile');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('<fg=yellow>Opción (C/0):</> ', '0');
+            $question = new Question('Opción [C/0]: ', '0');
             $choice = strtoupper($helper->ask($input, $output, $question));
             
             if ($choice === 'C') {
@@ -96,11 +98,11 @@ class MenuCommand extends Command
         }
         
         $output->writeln('');
-        $output->writeln('<info>[C]</info> Crear nuevo profile');
-        $output->writeln('<info>[0]</info> Volver al menú principal');
+        $output->writeln(' <fg=cyan>[C]</> ➕ Crear nuevo profile');
+        $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Selecciona un profile (1-' . count($profiles) . ') o acción (C/0):</> ', '0');
+        $question = new Question('Opción [1-' . count($profiles) . ', C, 0]: ', '0');
         $choice = strtoupper($helper->ask($input, $output, $question));
 
         if ($choice === '0') {
@@ -129,30 +131,34 @@ class MenuCommand extends Command
         $isActive = ($activeProfile === $profileName);
         
         $output->writeln('');
-        $output->writeln('<fg=magenta;options=bold>╔════════════════════════════════════════╗</>');
-        $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>Profile: ' . str_pad($profileName, 24) . '</><fg=magenta;options=bold>║</>');
+        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+        $output->writeln('<cyan>║</cyan>   Profile: ' . str_pad($profileName, 24) . '<cyan>║</cyan>');
         if ($isActive) {
-            $output->writeln('<fg=magenta;options=bold>║</>   <fg=green;options=bold>📌 ACTIVO en proyecto actual</><fg=magenta;options=bold>       ║</>');
+            $output->writeln('<cyan>║</cyan>   <fg=green>📌 ACTIVO en proyecto actual</><cyan>       ║</cyan>');
         }
-        $output->writeln('<fg=magenta;options=bold>╚════════════════════════════════════════╝</>');
+        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
         $output->writeln('');
-        $output->writeln('<info>¿Qué deseas hacer?</info>');
-        $output->writeln('');
-        $output->writeln(' <info>[1]</info> 👁️  Ver detalles (JSON completo)');
-        $output->writeln(' <info>[2]</info> ✏️  Editar (abrir en editor)');
+        $output->writeln(' <fg=cyan>[1]</> 👁️  Ver detalles (JSON completo)');
+        $output->writeln(' <fg=cyan>[2]</> ✏️  Editar (abrir en editor)');
         
         if ($inProject) {
-            $output->writeln(' <info>[3]</info> 📥 Aplicar (a proyecto actual)');
+            $output->writeln(' <fg=cyan>[3]</> 📥 Aplicar (a proyecto actual)');
         } else {
             $output->writeln(' <comment>[3]</comment> <fg=gray>📥 Aplicar (requiere proyecto)</>');
         }
         
-        $output->writeln(' <info>[4]</info> 🗑️  Eliminar');
-        $output->writeln(' <info>[0]</info> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[4]</> 🗑️  Eliminar');
+        $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $question = new Question('Opción [0-4]: ', '0');
         $choice = $helper->ask($input, $output, $question);
+        
+        if (!is_numeric($choice) || $choice < 0 || $choice > 4) {
+            $output->writeln('<error>Opción inválida</error>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
 
         switch ($choice) {
             case '1':

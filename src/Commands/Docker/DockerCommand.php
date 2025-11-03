@@ -87,35 +87,26 @@ class DockerCommand extends Command
             $output->writeln('<cyan>║</cyan>   🐳 DOCKER - Contenedores          <cyan>║</cyan>');
             $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
             $output->writeln('');
-            
-            $output->writeln(' <cyan>[1]</cyan> ▶️  Levantar contenedores');
-            $output->writeln(' <cyan>[2]</cyan> ⏹️  Bajar contenedores');
-            $output->writeln(' <cyan>[3]</cyan> 🔄 Reiniciar contenedores');
-            $output->writeln(' <cyan>[4]</cyan> 🛠️  Reconstruir (sin caché)');
-            $output->writeln(' <cyan>[5]</cyan> 🛠️  Reconstruir (con caché)');
-            $output->writeln(' <cyan>[6]</cyan> 📊 Ver estado');
-            $output->writeln(' <cyan>[7]</cyan> 📜 Ver logs');
-            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('<comment>Gestiona contenedores Docker del proyecto.</comment>');
             $output->writeln('');
             
-            $choices = [
-                '1' => 'Levantar',
-                '2' => 'Bajar',
-                '3' => 'Reiniciar',
-                '4' => 'Reconstruir sin cache',
-                '5' => 'Reconstruir con cache',
-                '6' => 'Estado',
-                '7' => 'Logs',
-                '0' => 'Volver',
-            ];
+            $output->writeln(' <fg=cyan>[1]</> ▶️  Levantar contenedores');
+            $output->writeln(' <fg=cyan>[2]</> ⏹️  Bajar contenedores');
+            $output->writeln(' <fg=cyan>[3]</> 🔄 Reiniciar contenedores');
+            $output->writeln(' <fg=cyan>[4]</> 🛠️  Reconstruir (sin caché)');
+            $output->writeln(' <fg=cyan>[5]</> 🛠️  Reconstruir (con caché)');
+            $output->writeln(' <fg=cyan>[6]</> 📊 Ver estado');
+            $output->writeln(' <fg=cyan>[7]</> 📜 Ver logs');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
             
-            $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues(null);
-
+            $question = new Question('Opción [0-7]: ', '0');
             $index = $helper->ask($input, $output, $question);
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+            
+            if (!is_numeric($index) || $index < 0 || $index > 7) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
             
             if ($index === '0') {
                 return Command::SUCCESS;

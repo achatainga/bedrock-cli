@@ -22,31 +22,28 @@ class MenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    Gestión de Opciones WP       </> <fg=cyan;options=bold>        ║</>');
-            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   ⚙️  OPTIONS - wp_options          <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
             $output->writeln('');
             $output->writeln('<comment>Exporta e importa configuraciones de WordPress (wp_options).</comment>');
             $output->writeln('<comment>Útil para sincronizar configuraciones entre entornos.</comment>');
             $output->writeln('');
 
-            $choices = [
-                1 => '<fg=green>Exportar</>	    - Extraer opciones a JSON',
-                2 => '<fg=green>Importar</>	    - Inyectar opciones desde JSON',
-                3 => '<fg=cyan>Listar</>	    - Ver archivos JSON disponibles',
-                4 => '<fg=yellow>Gestionar</>	- Importar/Exportar opción específica',
-                0 => '<fg=red>Volver</>',
-            ];
+            $output->writeln(' <fg=cyan>[1]</> 📤 Exportar - Extraer opciones a JSON');
+            $output->writeln(' <fg=cyan>[2]</> 📥 Importar - Inyectar opciones desde JSON');
+            $output->writeln(' <fg=cyan>[3]</> 📜 Listar - Ver archivos JSON disponibles');
+            $output->writeln(' <fg=cyan>[4]</> ⚙️  Gestionar - Importar/Exportar opción específica');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
 
-            $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
-            $question->setAutocompleterValues(null);
-            $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
-
-            $choice = $helper->ask($input, $output, $question);
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
-            $selectedIndex = array_search($choice, $choices);
+            $question = new Question('Opción [0-4]: ', '0');
+            $selectedIndex = $helper->ask($input, $output, $question);
+            
+            if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
             
             if ($selectedIndex === 0) {
                 return Command::SUCCESS;

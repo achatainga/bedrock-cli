@@ -22,22 +22,27 @@ class InitMenuCommand extends Command
         $helper = $this->getHelper('question');
         
         $output->writeln('');
-        $output->writeln('<fg=magenta;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=magenta;options=bold>║</>  <fg=yellow;options=bold>INIT - Inicializar Ambiente</> <fg=magenta;options=bold>       ║</>');
-        $output->writeln('<fg=magenta;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+        $output->writeln('<cyan>║</cyan>   🚀 INIT - Inicializar Ambiente    <cyan>║</cyan>');
+        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('');
+        $output->writeln('<comment>Inicializa el proyecto para diferentes ambientes (production, staging, development).</comment>');
         $output->writeln('');
 
-        $choices = [
-            1 => 'Production (mínimo, sin fake data)',
-            2 => 'Staging (con fake data)',
-            3 => 'Development (ambiente completo)',
-            4 => 'Custom (opciones avanzadas)',
-            0 => 'Volver al menú principal',
-        ];
+        $output->writeln(' <fg=cyan>[1]</> 🏭 Production (mínimo, sin fake data)');
+        $output->writeln(' <fg=cyan>[2]</> 🎪 Staging (con fake data)');
+        $output->writeln(' <fg=cyan>[3]</> 🛠️  Development (ambiente completo)');
+        $output->writeln(' <fg=cyan>[4]</> ⚙️  Custom (opciones avanzadas)');
+        $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+        $output->writeln('');
 
-        $question = new ChoiceQuestion('<fg=yellow>Selecciona ambiente:</>', $choices, 0);
-        $choice = $helper->ask($input, $output, $question);
-        $selectedIndex = array_search($choice, $choices);
+        $question = new Question('Opción [0-4]: ', '0');
+        $selectedIndex = $helper->ask($input, $output, $question);
+        
+        if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {
+            $output->writeln('<error>Opción inválida</error>');
+            return Command::FAILURE;
+        }
 
         if ($selectedIndex === 0) {
             return Command::SUCCESS;

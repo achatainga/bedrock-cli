@@ -91,9 +91,11 @@ class AcornCommand extends Command
     private function showStatus(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Acorn - Gestión Completa         </> <fg=cyan;options=bold>║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+        $output->writeln('<cyan>║</cyan>   🌱 ACORN - Roots Acorn           <cyan>║</cyan>');
+        $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+        $output->writeln('');
+        $output->writeln('<comment>Gestiona Roots Acorn: instalar, configurar, limpiar cache.</comment>');
         $output->writeln('');
         
         $packageInstalled = $this->isPackageInstalled();

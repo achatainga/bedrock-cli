@@ -75,39 +75,28 @@ class MenuCommand extends Command
             $output->writeln('<cyan>║</cyan>   🗄️  DATABASE - Base de Datos       <cyan>║</cyan>');
             $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
             $output->writeln('');
-            
-            $output->writeln(' <cyan>[1]</cyan> ➕ Crear base de datos');
-            $output->writeln(' <cyan>[2]</cyan> 🗑️  Eliminar base de datos');
-            $output->writeln(' <cyan>[3]</cyan> 🔄 Resetear base de datos');
-            $output->writeln(' <cyan>[4]</cyan> 📥 Importar SQL');
-            $output->writeln(' <cyan>[5]</cyan> 📤 Exportar SQL');
-            $output->writeln(' <cyan>[6]</cyan> 🔍 Buscar/Reemplazar en DB');
-            $output->writeln(' <cyan>[7]</cyan> 🏷️  Cambiar prefijo de tablas');
-            $output->writeln(' <cyan>[8]</cyan> ⚙️  Ejecutar Query SQL');
-            $output->writeln(' <cyan>[9]</cyan> 🌱 Seeders');
-            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('<comment>Operaciones de base de datos: crear, importar, exportar, seeders.</comment>');
             $output->writeln('');
             
-            $choices = [
-                '1' => 'Crear',
-                '2' => 'Eliminar',
-                '3' => 'Resetear',
-                '4' => 'Importar',
-                '5' => 'Exportar',
-                '6' => 'Buscar/Reemplazar',
-                '7' => 'Cambiar Prefijo',
-                '8' => 'Ejecutar Query',
-                '9' => 'Seeders',
-                '0' => 'Volver',
-            ];
+            $output->writeln(' <fg=cyan>[1]</> ➕ Crear base de datos');
+            $output->writeln(' <fg=cyan>[2]</> 🗑️  Eliminar base de datos');
+            $output->writeln(' <fg=cyan>[3]</> 🔄 Resetear base de datos');
+            $output->writeln(' <fg=cyan>[4]</> 📥 Importar SQL');
+            $output->writeln(' <fg=cyan>[5]</> 📤 Exportar SQL');
+            $output->writeln(' <fg=cyan>[6]</> 🔍 Buscar/Reemplazar en DB');
+            $output->writeln(' <fg=cyan>[7]</> 🏷️  Cambiar prefijo de tablas');
+            $output->writeln(' <fg=cyan>[8]</> ⚙️  Ejecutar Query SQL');
+            $output->writeln(' <fg=cyan>[9]</> 🌱 Seeders');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
             
-            $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues(null);
-
+            $question = new Question('Opción [0-9]: ', '0');
             $index = $helper->ask($input, $output, $question);
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+            
+            if (!is_numeric($index) || $index < 0 || $index > 9) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
             
             if ($index === '0') {
                 return Command::SUCCESS;

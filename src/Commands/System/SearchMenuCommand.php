@@ -28,29 +28,23 @@ class SearchMenuCommand extends Command
             $output->writeln('<cyan>║</cyan>   🔍 SEARCH - WordPress.org        <cyan>║</cyan>');
             $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
             $output->writeln('');
-
-            $choices = [
-                '1' => 'Buscar plugins',
-                '2' => 'Info de plugin',
-                '3' => 'Buscar temas',
-                '4' => 'Info de tema',
-                '0' => 'Volver',
-            ];
-
-            $output->writeln(' <cyan>[1]</cyan> 🔌 Buscar plugins');
-            $output->writeln(' <cyan>[2]</cyan> ℹ️  Info de plugin');
-            $output->writeln(' <cyan>[3]</cyan> 🎨 Buscar temas');
-            $output->writeln(' <cyan>[4]</cyan> ℹ️  Info de tema');
-            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('<comment>Busca plugins y temas en el repositorio de WordPress.org.</comment>');
             $output->writeln('');
 
-            $question = new ChoiceQuestion('', $choices, '0');
-            $question->setAutocompleterValues(null);
+            $output->writeln(' <fg=cyan>[1]</> 🔌 Buscar plugins');
+            $output->writeln(' <fg=cyan>[2]</> ℹ️  Info de plugin');
+            $output->writeln(' <fg=cyan>[3]</> 🎨 Buscar temas');
+            $output->writeln(' <fg=cyan>[4]</> ℹ️  Info de tema');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
+
+            $question = new Question('Opción [0-4]: ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+            if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 4) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
 
             if ($selectedIndex === '0') {
                 return Command::SUCCESS;
