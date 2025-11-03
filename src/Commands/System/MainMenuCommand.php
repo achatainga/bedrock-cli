@@ -28,33 +28,33 @@ class MainMenuCommand extends Command
             $output->writeln('');
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
-            $output->writeln(' <cyan>[1]</cyan> 🩺 Doctor   - Verificar dependencias');
-            $output->writeln(' <cyan>[2]</cyan> ⚙️ Setup    - Configuración inicial');
-            $output->writeln(' <cyan>[3]</cyan> 📋 Profiles - Crear/gestionar profiles');
+            $output->writeln(' <fg=cyan>[1]</> 🩺 Doctor   - Verificar dependencias');
+            $output->writeln(' <fg=cyan>[2]</> ⚙️ Setup    - Configuración inicial');
+            $output->writeln(' <fg=cyan>[3]</> 📋 Profiles - Crear/gestionar profiles');
             $output->writeln('');
             
             $output->writeln('<fg=green>⚡ DESARROLLO</>');
-            $output->writeln(' <cyan>[4]</cyan> 🐳 Docker   - Levantar/bajar contenedores');
-            $output->writeln(' <cyan>[5]</cyan> 🎛️ Manage   - Plugins, Themes, Dependencies');
-            $output->writeln(' <cyan>[6]</cyan> 🗄️ Database - Gestión de base de datos');
+            $output->writeln(' <fg=cyan>[4]</> 🐳 Docker   - Levantar/bajar contenedores');
+            $output->writeln(' <fg=cyan>[5]</> 🎛️ Manage   - Plugins, Themes, Dependencies');
+            $output->writeln(' <fg=cyan>[6]</> 🗄️ Database - Gestión de base de datos');
             $output->writeln('');
             
             $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
-            $output->writeln(' <cyan>[7]</cyan> 🔍 Search   - Buscar en WordPress.org');
-            $output->writeln(' <cyan>[8]</cyan> ℹ️ Info     - Estado del proyecto');
+            $output->writeln(' <fg=cyan>[7]</> 🔍 Search   - Buscar en WordPress.org');
+            $output->writeln(' <fg=cyan>[8]</> ℹ️ Info     - Estado del proyecto');
             $output->writeln('');
             
             $output->writeln('<fg=magenta>🔧 AVANZADO</>');
-            $output->writeln(' <cyan>[9]</cyan> 🚀 Init     - Inicializar ambiente');
+            $output->writeln(' <fg=cyan>[9]</> 🚀 Init     - Inicializar ambiente');
             $output->writeln('');
             
-            $output->writeln(' <cyan>[O]</cyan> ⚙️ Options   - Gestión de wp_options');
-            $output->writeln(' <cyan>[A]</cyan> 🌱 Acorn    - Roots Acorn');
-            $output->writeln(' <cyan>[B]</cyan> 💾 Backup   - Crear backup');
-            $output->writeln(' <cyan>[R]</cyan> 🗑️ Reinstall - Reinstalar (DESTRUCTIVO)');
+            $output->writeln(' <fg=cyan>[O]</> ⚙️ Options   - Gestión de wp_options');
+            $output->writeln(' <fg=cyan>[A]</> 🌱 Acorn    - Roots Acorn');
+            $output->writeln(' <fg=cyan>[B]</> 💾 Backup   - Crear backup');
+            $output->writeln(' <fg=cyan>[R]</> 🗑️ Reinstall - Reinstalar (DESTRUCTIVO)');
             $output->writeln('');
             
-            $output->writeln(' <red>[0]</red> ❌ Salir');
+            $output->writeln(' <fg=red>[0]</> ❌ Salir');
             $output->writeln('');
 
             $question = new Question('<fg=yellow>Opción [0-9, O, A, B, R]:</> ', '0');
