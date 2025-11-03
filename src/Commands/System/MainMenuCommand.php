@@ -5,7 +5,7 @@ namespace Roots\BedrockCli\Commands\System;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 
 class MainMenuCommand extends Command
@@ -45,34 +45,18 @@ class MainMenuCommand extends Command
             $output->writeln(' <fg=red>[0]</>   ❌ Salir');
             $output->writeln('');
 
-            $choices = [
-                '1' => 'Info',
-                '2' => 'Setup',
-                '3' => 'Profiles',
-                '4' => 'Manage',
-                '5' => 'Init',
-                '6' => 'Search',
-                '7' => 'Docker',
-                '8' => 'Database',
-                '9' => 'Options',
-                '10' => 'Plugins',
-                '11' => 'Themes',
-                '12' => 'Acorn',
-                '13' => 'Backup',
-                '14' => 'Reinstall',
-                '15' => 'Doctor',
-                '0' => 'Salir',
-            ];
-
-            $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues([]);
-            $question->setMaxAttempts(1);
-            $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
-
+            $question = new Question('<fg=yellow>Selecciona una opción [0-15]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
+            
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
+            
+            if (!is_numeric($selectedIndex) || $selectedIndex < 0 || $selectedIndex > 15) {
+                $output->writeln('<error>Opción inválida. Usa 0-15.</error>');
+                sleep(1);
+                continue;
+            }
             
             if ($selectedIndex === '0') {
                 $output->writeln('');
