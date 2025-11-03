@@ -232,12 +232,12 @@ class PluginsManageCommand extends Command
         $question = new ChoiceQuestion('Selecciona plugin a desinstalar:', $choices, 'cancel');
         $selected = $helper->ask($input, $output, $question);
 
-        if ($selected === 'Cancelar' || $selected === 'cancel') {
+        if ($selected === 'Cancelar') {
             return;
         }
 
-        $slug = array_search($selected, $choices);
-        if ($slug === 'cancel' || !$slug) {
+        $slug = array_search($selected, $choices, true);
+        if ($slug === 'cancel' || $slug === false) {
             return;
         }
         

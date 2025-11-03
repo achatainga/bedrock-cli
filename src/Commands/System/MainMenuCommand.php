@@ -27,22 +27,41 @@ class MainMenuCommand extends Command
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
 
+            $output->writeln(' <fg=cyan>[1]</>  ℹ️  Info         - Estado del proyecto');
+            $output->writeln(' <fg=green>[2]</>  ⚙️  Setup        - Configuración inicial');
+            $output->writeln(' <fg=magenta>[3]</>  📝 Profiles     - Gestión de profiles');
+            $output->writeln(' <fg=blue>[4]</>  🎛️  Manage       - Sistema unificado (v2.0)');
+            $output->writeln(' <fg=magenta>[5]</>  🚀 Init         - Inicializar ambiente');
+            $output->writeln(' <fg=yellow>[6]</>  🔍 Search       - Buscar plugins/temas');
+            $output->writeln(' <fg=green>[7]</>  🐳 Docker       - Gestión de contenedores');
+            $output->writeln(' <fg=green>[8]</>  🗄️  Database     - Gestión de base de datos');
+            $output->writeln(' <fg=green>[9]</>  ⚙️  Options      - Gestión de opciones WP');
+            $output->writeln(' <fg=green>[10]</> 🔌 Plugins      - Gestión de plugins');
+            $output->writeln(' <fg=green>[11]</> 🎨 Themes       - Gestión de temas');
+            $output->writeln(' <fg=green>[12]</> 🌱 Acorn        - Gestión de Roots Acorn');
+            $output->writeln(' <fg=green>[13]</> 💾 Backup       - Crear backup');
+            $output->writeln(' <fg=red>[14]</>  🗑️  Reinstall    - Reinstalar (DESTRUCTIVO)');
+            $output->writeln(' <fg=cyan>[15]</> 🩺 Doctor       - Verificar dependencias');
+            $output->writeln(' <fg=red>[0]</>   ❌ Salir');
+            $output->writeln('');
+
             $choices = [
-                1 => '<fg=cyan>Info</>         - Estado del proyecto y tareas pendientes',
-                2 => '<fg=green>Setup</>        - Configuración inicial',
-                3 => '<fg=magenta>Profiles</>     - Gestión de profiles',
-                4 => '<fg=magenta>Init</>         - Inicializar ambiente',
-                5 => '<fg=yellow>Search</>       - Buscar plugins/temas WordPress.org',
-                6 => '<fg=green>Docker</>       - Gestión de contenedores',
-                7 => '<fg=green>Database</>     - Gestión de base de datos',
-                8 => '<fg=green>Options</>      - Gestión de opciones WP',
-                9 => '<fg=green>Plugins</>      - Gestión de plugins',
-                10 => '<fg=green>Themes</>       - Gestión de temas',
-                11 => '<fg=green>Acorn</>        - Gestión de Roots Acorn',
-                12 => '<fg=green>Backup</>       - Crear backup',
-                13 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
-                14 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
-                0 => '<fg=red>Salir</>',
+                1 => 'Info',
+                2 => 'Setup',
+                3 => 'Profiles',
+                4 => 'Manage',
+                5 => 'Init',
+                6 => 'Search',
+                7 => 'Docker',
+                8 => 'Database',
+                9 => 'Options',
+                10 => 'Plugins',
+                11 => 'Themes',
+                12 => 'Acorn',
+                13 => 'Backup',
+                14 => 'Reinstall',
+                15 => 'Doctor',
+                0 => 'Salir',
             ];
 
             $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
@@ -65,17 +84,18 @@ class MainMenuCommand extends Command
                 1 => 'info',
                 2 => 'setup',
                 3 => 'profile:menu',
-                4 => 'init:menu',
-                5 => 'search:menu',
-                6 => 'docker',
-                7 => 'db',
-                8 => 'options',
-                9 => 'plugins',
-                10 => 'themes',
-                11 => 'acorn',
-                12 => 'backup',
-                13 => 'reinstall',
-                14 => 'doctor',
+                4 => 'manage',
+                5 => 'init:menu',
+                6 => 'search:menu',
+                7 => 'docker',
+                8 => 'db',
+                9 => 'options',
+                10 => 'plugins',
+                11 => 'themes',
+                12 => 'acorn',
+                13 => 'backup',
+                14 => 'reinstall',
+                15 => 'doctor',
             ];
 
             $commandName = $commandMap[$selectedIndex];
