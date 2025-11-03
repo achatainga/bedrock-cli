@@ -70,65 +70,77 @@ class MenuCommand extends Command
         $helper = $this->getHelper('question');
         
         while (true) {
+            $output->writeln('');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🗄️  DATABASE - Base de Datos       <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('');
+            
+            $output->writeln(' <cyan>[1]</cyan> ➕ Crear base de datos');
+            $output->writeln(' <cyan>[2]</cyan> 🗑️  Eliminar base de datos');
+            $output->writeln(' <cyan>[3]</cyan> 🔄 Resetear base de datos');
+            $output->writeln(' <cyan>[4]</cyan> 📥 Importar SQL');
+            $output->writeln(' <cyan>[5]</cyan> 📤 Exportar SQL');
+            $output->writeln(' <cyan>[6]</cyan> 🔍 Buscar/Reemplazar en DB');
+            $output->writeln(' <cyan>[7]</cyan> 🏷️  Cambiar prefijo de tablas');
+            $output->writeln(' <cyan>[8]</cyan> ⚙️  Ejecutar Query SQL');
+            $output->writeln(' <cyan>[9]</cyan> 🌱 Seeders');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('');
+            
             $choices = [
-                1 => '<fg=green>Crear</>                - base de datos',
-                2 => '<fg=green>Eliminar</>             - base de datos',
-                3 => '<fg=green>Resetear</>             - base de datos',
-                4 => '<fg=green>Importar</>             - SQL',
-                5 => '<fg=green>Exportar</>             - SQL',
-                6 => '<fg=green>Buscar/Reemplazar</>    - en DB',
-                7 => '<fg=green>Cambiar Prefijo</>      - de tablas',
-                8 => '<fg=green>Ejecutar Query</>       - SQL',
-                9 => '<fg=green>Seeders</>              - Gestión de seeders',
-                0 => '<fg=yellow>Volver atrás</>         - Retroceder',
+                '1' => 'Crear',
+                '2' => 'Eliminar',
+                '3' => 'Resetear',
+                '4' => 'Importar',
+                '5' => 'Exportar',
+                '6' => 'Buscar/Reemplazar',
+                '7' => 'Cambiar Prefijo',
+                '8' => 'Ejecutar Query',
+                '9' => 'Seeders',
+                '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
+            $question = new ChoiceQuestion('', $choices, '1');
             $question->setAutocompleterValues(null);
 
-            $answer = $helper->ask($input, $output, $question);
+            $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
-            
-            if ($index === 0) {
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->create($wpcli, $output);
                     break;
-                case 2:
+                case '2':
                     $this->drop($wpcli, $output);
                     break;
-                case 3:
+                case '3':
                     $this->reset($wpcli, $output);
                     break;
-                case 4:
+                case '4':
                     $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
                     break;
-                case 5:
+                case '5':
                     $output->writeln('<comment>Función de exportación interactiva pendiente</comment>');
                     break;
-                case 6:
+                case '6':
                     $this->searchReplace($input, $output, $wpcli);
                     break;
-                case 7:
+                case '7':
                     $this->prefixReplace($input, $output, $wpcli);
                     break;
-                case 8:
+                case '8':
                     $this->query($input, $output, $wpcli);
                     break;
-                case 9:
+                case '9':
                     $this->seedersMenu($input, $output, $wpcli);
                     break;
             }

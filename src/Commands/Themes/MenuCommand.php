@@ -29,45 +29,52 @@ class MenuCommand extends Command
         $wpcli = new WpCliService($docker);
         
         while (true) {
+            $output->writeln('');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🎨 THEMES - Gestión               <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('');
+            
+            $output->writeln(' <cyan>[1]</cyan> ⚙️  Gestionar tema específico');
+            $output->writeln(' <cyan>[2]</cyan> 📋 Listar desde WordPress');
+            $output->writeln(' <cyan>[3]</cyan> 🔄 Actualizar todos');
+            $output->writeln(' <cyan>[4]</cyan> 📦 Descomprimir ZIPs');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('');
+            
             $choices = [
-                1 => '<fg=green>Gestionar</>                 - tema específico',
-                2 => '<fg=cyan>Listar desde WordPress</>    - (WP-CLI)',
-                3 => '<fg=green>Actualizar</>                - todos los temas',
-                4 => '<fg=green>Descomprimir</>              - ZIPs',
-                0 => '<fg=yellow>Volver atrás</>',
+                '1' => 'Gestionar',
+                '2' => 'Listar',
+                '3' => 'Actualizar',
+                '4' => 'Descomprimir',
+                '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
+            $question = new ChoiceQuestion('', $choices, '1');
             $question->setAutocompleterValues(null);
 
-            $answer = $helper->ask($input, $output, $question);
+            $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
-            
-            if ($index === 0) {
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->manageTheme($input, $output, $wpcli);
                     break;
-                case 2:
+                case '2':
                     $this->listFromWordPress($wpcli, $output);
                     break;
-                case 3:
+                case '3':
                     $this->update($wpcli, $output);
                     break;
-                case 4:
+                case '4':
                     $this->unzipThemes($input, $output);
                     break;
             }

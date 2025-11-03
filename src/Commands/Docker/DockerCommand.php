@@ -82,57 +82,67 @@ class DockerCommand extends Command
         $helper = $this->getHelper('question');
         
         while (true) {
+            $output->writeln('');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🐳 DOCKER - Contenedores          <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('');
+            
+            $output->writeln(' <cyan>[1]</cyan> ▶️  Levantar contenedores');
+            $output->writeln(' <cyan>[2]</cyan> ⏹️  Bajar contenedores');
+            $output->writeln(' <cyan>[3]</cyan> 🔄 Reiniciar contenedores');
+            $output->writeln(' <cyan>[4]</cyan> 🛠️  Reconstruir (sin caché)');
+            $output->writeln(' <cyan>[5]</cyan> 🛠️  Reconstruir (con caché)');
+            $output->writeln(' <cyan>[6]</cyan> 📊 Ver estado');
+            $output->writeln(' <cyan>[7]</cyan> 📜 Ver logs');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('');
+            
             $choices = [
-                1 => '<fg=green>Levantar</>     - contenedores',
-                2 => '<fg=green>Bajar</>        - contenedores',
-                3 => '<fg=green>Reiniciar</>    - contenedores',
-                4 => '<fg=green>Reconstruir</>  - (sin caché)',
-                5 => '<fg=green>Reconstruir</>  - (con caché)',
-                6 => '<fg=green>Ver</>          - estado',
-                7 => '<fg=green>Ver</>          - logs',
-                0 => '<fg=yellow>Volver</>      - atrás',
+                '1' => 'Levantar',
+                '2' => 'Bajar',
+                '3' => 'Reiniciar',
+                '4' => 'Reconstruir sin cache',
+                '5' => 'Reconstruir con cache',
+                '6' => 'Estado',
+                '7' => 'Logs',
+                '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
+            $question = new ChoiceQuestion('', $choices, '1');
             $question->setAutocompleterValues(null);
 
-            $answer = $helper->ask($input, $output, $question);
+            $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
-            
-            if ($index === 0) {
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->up($docker, $output, false);
                     break;
-                case 2:
+                case '2':
                     $this->down($docker, $output);
                     break;
-                case 3:
+                case '3':
                     $this->restart($docker, $output);
                     break;
-                case 4:
+                case '4':
                     $this->rebuild($docker, $output, false);
                     break;
-                case 5:
+                case '5':
                     $this->rebuild($docker, $output, true);
                     break;
-                case 6:
+                case '6':
                     $this->status($docker, $output);
                     break;
-                case 7:
+                case '7':
                     $this->logs($docker, $output);
                     break;
             }

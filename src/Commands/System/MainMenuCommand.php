@@ -46,56 +46,55 @@ class MainMenuCommand extends Command
             $output->writeln('');
 
             $choices = [
-                1 => 'Info',
-                2 => 'Setup',
-                3 => 'Profiles',
-                4 => 'Manage',
-                5 => 'Init',
-                6 => 'Search',
-                7 => 'Docker',
-                8 => 'Database',
-                9 => 'Options',
-                10 => 'Plugins',
-                11 => 'Themes',
-                12 => 'Acorn',
-                13 => 'Backup',
-                14 => 'Reinstall',
-                15 => 'Doctor',
-                0 => 'Salir',
+                '1' => 'Info',
+                '2' => 'Setup',
+                '3' => 'Profiles',
+                '4' => 'Manage',
+                '5' => 'Init',
+                '6' => 'Search',
+                '7' => 'Docker',
+                '8' => 'Database',
+                '9' => 'Options',
+                '10' => 'Plugins',
+                '11' => 'Themes',
+                '12' => 'Acorn',
+                '13' => 'Backup',
+                '14' => 'Reinstall',
+                '15' => 'Doctor',
+                '0' => 'Salir',
             ];
 
-            $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
+            $question = new ChoiceQuestion('', $choices, '1');
             $question->setAutocompleterValues(null);
             $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
 
-            $choice = $helper->ask($input, $output, $question);
+            $selectedIndex = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
-            $selectedIndex = array_search($choice, $choices);
             
-            if ($selectedIndex === 0) {
+            if ($selectedIndex === '0') {
                 $output->writeln('');
                 $output->writeln('<info>Hasta luego!</info>');
                 return Command::SUCCESS;
             }
 
             $commandMap = [
-                1 => 'info',
-                2 => 'setup',
-                3 => 'profile:menu',
-                4 => 'manage',
-                5 => 'init:menu',
-                6 => 'search:menu',
-                7 => 'docker',
-                8 => 'db',
-                9 => 'options',
-                10 => 'plugins',
-                11 => 'themes',
-                12 => 'acorn',
-                13 => 'backup',
-                14 => 'reinstall',
-                15 => 'doctor',
+                '1' => 'info',
+                '2' => 'setup',
+                '3' => 'profile:menu',
+                '4' => 'manage',
+                '5' => 'init:menu',
+                '6' => 'search:menu',
+                '7' => 'docker',
+                '8' => 'db',
+                '9' => 'options',
+                '10' => 'plugins',
+                '11' => 'themes',
+                '12' => 'acorn',
+                '13' => 'backup',
+                '14' => 'reinstall',
+                '15' => 'doctor',
             ];
 
             $commandName = $commandMap[$selectedIndex];

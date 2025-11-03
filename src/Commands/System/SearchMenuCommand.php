@@ -4,8 +4,11 @@ namespace Roots\BedrockCli\Commands\System;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Console\Cursor;
 
 class SearchMenuCommand extends Command
 {
@@ -19,42 +22,120 @@ class SearchMenuCommand extends Command
     {
         $helper = $this->getHelper('question');
         
-        $output->writeln('');
-        $output->writeln('<fg=yellow;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=yellow;options=bold>║</>  <fg=cyan;options=bold>SEARCH - WordPress.org</> <fg=yellow;options=bold>           ║</>');
-        $output->writeln('<fg=yellow;options=bold>╚═══════════════════════════════════════╝</>');
-        $output->writeln('');
-
-        $choices = [
-            1 => 'Buscar plugins',
-            2 => 'Info de plugin',
-            3 => 'Buscar temas',
-            4 => 'Info de tema',
-            0 => 'Volver al menú principal',
-        ];
-
-        $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 0);
-        $choice = $helper->ask($input, $output, $question);
-        $selectedIndex = array_search($choice, $choices);
-
-        if ($selectedIndex === 0) {
-            return Command::SUCCESS;
-        }
-
-        $commandMap = [
-            1 => 'plugin:search',
-            2 => 'plugin:info',
-            3 => 'theme:search',
-            4 => 'theme:info',
-        ];
-
-        $commandName = $commandMap[$selectedIndex];
-        if ($commandName) {
+        while (true) {
             $output->writeln('');
-            $command = $this->getApplication()->find($commandName);
-            $command->run($input, $output);
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🔍 SEARCH - WordPress.org        <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('');
+
+            $choices = [
+                '1' => 'Buscar plugins',
+                '2' => 'Info de plugin',
+                '3' => 'Buscar temas',
+                '4' => 'Info de tema',
+                '0' => 'Volver',
+            ];
+
+            $output->writeln(' <cyan>[1]</cyan> 🔌 Buscar plugins');
+            $output->writeln(' <cyan>[2]</cyan> ℹ️  Info de plugin');
+            $output->writeln(' <cyan>[3]</cyan> 🎨 Buscar temas');
+            $output->writeln(' <cyan>[4]</cyan> ℹ️  Info de tema');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('');
+
+            $question = new ChoiceQuestion('', $choices, '0');
+            $question->setAutocompleterValues(null);
+            $selectedIndex = $helper->ask($input, $output, $question);
+            
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+
+            if ($selectedIndex === '0') {
+                return Command::SUCCESS;
+            }
+
+            $output->writeln('');
+            
+            switch ($selectedIndex) {
+                case '1':
+                    $this->searchPlugins($input, $output);
+                    break;
+                case '2':
+                    $this->pluginInfo($input, $output);
+                    break;
+                case '3':
+                    $this->searchThemes($input, $output);
+                    break;
+                case '4':
+                    $this->themeInfo($input, $output);
+                    break;
+            }
+            
+            $output->writeln('');
         }
 
         return Command::SUCCESS;
+    }
+
+    private function searchPlugins(InputInterface $input, OutputInterface $output): int
+    {
+        $helper = $this->getHelper('question');
+        $query = $helper->ask($input, $output, new Question('<cyan>Ingresa tu búsqueda de plugin:</cyan> '));
+        
+        if (empty($query)) {
+            $output->writeln('<error>❌ Búsqueda vacía</error>');
+            return Command::FAILURE;
+        }
+        
+        $command = $this->getApplication()->find('plugin:search');
+        $arrayInput = new ArrayInput(['query' => $query]);
+        return $command->run($arrayInput, $output);
+    }
+
+    private function pluginInfo(InputInterface $input, OutputInterface $output): int
+    {
+        $helper = $this->getHelper('question');
+        $slug = $helper->ask($input, $output, new Question('<cyan>Ingresa el slug del plugin:</cyan> '));
+        
+        if (empty($slug)) {
+            $output->writeln('<error>❌ Slug vacío</error>');
+            return Command::FAILURE;
+        }
+        
+        $command = $this->getApplication()->find('plugin:info');
+        $arrayInput = new ArrayInput(['slug' => $slug]);
+        return $command->run($arrayInput, $output);
+    }
+
+    private function searchThemes(InputInterface $input, OutputInterface $output): int
+    {
+        $helper = $this->getHelper('question');
+        $query = $helper->ask($input, $output, new Question('<cyan>Ingresa tu búsqueda de tema:</cyan> '));
+        
+        if (empty($query)) {
+            $output->writeln('<error>❌ Búsqueda vacía</error>');
+            return Command::FAILURE;
+        }
+        
+        $command = $this->getApplication()->find('theme:search');
+        $arrayInput = new ArrayInput(['query' => $query]);
+        return $command->run($arrayInput, $output);
+    }
+
+    private function themeInfo(InputInterface $input, OutputInterface $output): int
+    {
+        $helper = $this->getHelper('question');
+        $slug = $helper->ask($input, $output, new Question('<cyan>Ingresa el slug del tema:</cyan> '));
+        
+        if (empty($slug)) {
+            $output->writeln('<error>❌ Slug vacío</error>');
+            return Command::FAILURE;
+        }
+        
+        $command = $this->getApplication()->find('theme:info');
+        $arrayInput = new ArrayInput(['slug' => $slug]);
+        return $command->run($arrayInput, $output);
     }
 }

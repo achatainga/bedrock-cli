@@ -44,59 +44,69 @@ class MenuCommand extends Command
         }
         
         while (true) {
+            $output->writeln('');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🔌 PLUGINS - Gestión              <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('');
+            
+            $output->writeln(' <cyan>[1]</cyan> ⚙️  Gestionar plugin específico');
+            $output->writeln(' <cyan>[2]</cyan> 📋 Listar desde WordPress');
+            $output->writeln(' <cyan>[3]</cyan> ⬇️  Instalar desde repositorio');
+            $output->writeln(' <cyan>[4]</cyan> 🔄 Actualizar todos');
+            $output->writeln(' <cyan>[5]</cyan> 📦 Descomprimir ZIPs');
+            $output->writeln(' <cyan>[6]</cyan> 🔢 Orden de activación');
+            $output->writeln(' <cyan>[7]</cyan> 🛠️  Constructor de orden');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln('');
+            
             $choices = [
-                1 => '<fg=green>Gestionar</>                 - Plugin específico',
-                2 => '<fg=cyan>Listar desde WordPress</>    - Consultar con WP-CLI',
-                3 => '<fg=green>Instalar</>                  - Desde repositorio',
-                4 => '<fg=green>Actualizar</>                - Todos los plugins',
-                5 => '<fg=green>Descomprimir</>              - Instalar desde ZIPs',
-                6 => '<fg=yellow>Orden de Activación</>       - Gestionar secuencia de carga',
-                7 => '<fg=magenta>Construir Orden</>           - Constructor interactivo',
-                0 => '<fg=yellow>Volver atrás</>',
+                '1' => 'Gestionar',
+                '2' => 'Listar',
+                '3' => 'Instalar',
+                '4' => 'Actualizar',
+                '5' => 'Descomprimir',
+                '6' => 'Orden',
+                '7' => 'Constructor',
+                '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
+            $question = new ChoiceQuestion('', $choices, '1');
             $question->setAutocompleterValues(null);
 
-            $answer = $helper->ask($input, $output, $question);
+            $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
-            
-            if ($index === 0) {
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->managePlugin($input, $output, $wpcli);
                     break;
-                case 2:
+                case '2':
                     $this->listFromWordPress($wpcli, $output);
                     break;
-                case 3:
-                    $plugin = $helper->ask($input, $output, new Question('<fg=yellow>Slug del plugin:</>'));
+                case '3':
+                    $plugin = $helper->ask($input, $output, new Question('<cyan>Slug del plugin:</cyan> '));
                     $this->install($wpcli, $output, $plugin);
                     break;
-                case 4:
+                case '4':
                     $this->update($wpcli, $output);
                     break;
-                case 5:
+                case '5':
                     $this->unzipPlugins($input, $output);
                     break;
-                case 6:
+                case '6':
                     $command = $this->getApplication()->find('plugins:order:menu');
                     $command->run($input, $output);
                     break;
-                case 7:
+                case '7':
                     $command = $this->getApplication()->find('plugins:order:build');
                     $command->run($input, $output);
                     break;
