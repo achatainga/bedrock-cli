@@ -59,17 +59,44 @@ class AddCommand extends Command
             $credentials['password'] = $helper->ask($input, $output, $passwordQuestion);
         } else {
             $output->writeln('');
-            $output->writeln('<comment>Para obtener un token de acceso personal:</comment>');
+            $output->writeln('<fg=cyan>═══════════════════════════════════════════════════════════════</>');
+            $output->writeln('<fg=yellow>  📋 CÓMO GENERAR UN TOKEN DE ACCESO PERSONAL</>');
+            $output->writeln('<fg=cyan>═══════════════════════════════════════════════════════════════</>');
+            $output->writeln('');
+            
             if ($type === 'gitlab') {
-                $output->writeln('  → https://gitlab.com/-/user_settings/personal_access_tokens');
-                $output->writeln('  → Scopes: api, read_repository');
+                $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
+                $output->writeln('<fg=green>     → https://gitlab.com/-/user_settings/personal_access_tokens</>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  2. Haz clic en "Add new token"</>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  3. Configura el token:</>');
+                $output->writeln('     • Token name: <comment>bedrock-cli</comment>');
+                $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
+                $output->writeln('     • Scopes: <comment>✓ api</comment> y <comment>✓ read_repository</comment>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  4. Haz clic en "Create personal access token"</>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  5. Copia el token generado (empieza con glpat-...)</>');
             } else {
-                $output->writeln('  → https://github.com/settings/tokens');
-                $output->writeln('  → Scopes: repo');
+                $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
+                $output->writeln('<fg=green>     → https://github.com/settings/tokens/new</>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  2. Configura el token:</>');
+                $output->writeln('     • Note: <comment>bedrock-cli</comment>');
+                $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
+                $output->writeln('     • Scopes: <comment>✓ repo</comment> (acceso completo a repositorios)');
+                $output->writeln('');
+                $output->writeln('<fg=white>  3. Haz clic en "Generate token" al final de la página</>');
+                $output->writeln('');
+                $output->writeln('<fg=white>  4. Copia el token generado (empieza con ghp_...)</>');
             }
+            
+            $output->writeln('');
+            $output->writeln('<fg=cyan>═══════════════════════════════════════════════════════════════</>');
             $output->writeln('');
 
-            $tokenQuestion = new Question('<fg=yellow>Token de acceso personal:</> ');
+            $tokenQuestion = new Question('<fg=yellow>Pega tu token aquí:</> ');
             $tokenQuestion->setHidden(true);
             $tokenQuestion->setHiddenFallback(false);
             $credentials['token'] = $helper->ask($input, $output, $tokenQuestion);

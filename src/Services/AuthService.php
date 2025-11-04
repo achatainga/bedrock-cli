@@ -11,8 +11,8 @@ class AuthService
 
     public function __construct()
     {
-        $this->homeDir = $this->getHomeDirectory();
-        $this->globalAuthFile = $this->homeDir . '/.composer/auth.json';
+        $this->homeDir = $this->getComposerHome();
+        $this->globalAuthFile = $this->homeDir . '/auth.json';
     }
 
     public function addAuth(string $type, string $domain, array $credentials): void
@@ -115,12 +115,20 @@ class AuthService
         chmod($this->globalAuthFile, 0600); // Solo lectura/escritura para el propietario
     }
 
-    private function getHomeDirectory(): string
+    private function getComposerHome(): string
     {
-        if (PHP_OS_FAMILY === 'Windows') {
-            return getenv('USERPROFILE') ?: getenv('HOMEDRIVE') . getenv('HOMEPATH');
+        $output = [];
+        exec('composer config --global home 2>&1', $output, $returnCode);
+        
+        if ($returnCode === 0 && !empty($output[0])) {
+            return trim($output[0]);
         }
-        return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
+        
+        // Fallback a detección manual
+        if (PHP_OS_FAMILY === 'Windows') {
+            return getenv('APPDATA') . '/Composer';
+        }
+        return (getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir']) . '/.composer';
     }
 
     public function getAuthFile(): string
