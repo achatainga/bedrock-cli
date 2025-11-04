@@ -110,7 +110,12 @@ class MenuCommand extends Command
         }
 
         if ($choice === 'C') {
-            $this->runCommand('profile:create', [], $input, $output);
+            $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+            $newProfileName = $helper->ask($input, $output, $nameQuestion);
+            
+            if (!empty($newProfileName)) {
+                $this->runCommand('profile:create', ['name' => $newProfileName], $input, $output);
+            }
             return 'continue';
         }
 
