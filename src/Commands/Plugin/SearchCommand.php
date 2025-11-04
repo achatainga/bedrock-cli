@@ -5,6 +5,7 @@ namespace Roots\BedrockCli\Commands\Plugin;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Question\Question;
 class SearchCommand extends Command
 {
     use InteractiveSearchTrait;
+    use PremiumAssetsTrait;
 
     protected function configure(): void
     {
@@ -102,6 +104,7 @@ class SearchCommand extends Command
         $output->writeln('<fg=yellow>¿Qué deseas hacer con los plugins seleccionados?</>');
         $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
         $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto Bedrock');
+        $output->writeln(' <fg=cyan>[3]</> Buscar plugins premium');
         $output->writeln(' <fg=cyan>[0]</> Cancelar');
         $output->writeln('');
         
@@ -196,6 +199,20 @@ class SearchCommand extends Command
             }
             $profileService->saveProfile($profileName, $profile);
             $output->writeln("\n<info>✓ Plugins agregados al profile '{$profileName}'</info>");
+            
+        } elseif ($action === '3') {
+            // Buscar plugins premium
+            $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
+            
+            if (!empty($premiumPlugins)) {
+                $output->writeln('');
+                $output->writeln('<info>✓ Plugins premium seleccionados:</info>');
+                foreach ($premiumPlugins as $plugin) {
+                    $output->writeln("  • {$plugin['name']} v{$plugin['version']} ({$plugin['source']})");
+                }
+            }
+            
+            return Command::SUCCESS;
             
         } elseif ($action === '2') {
             // Instalar en proyecto actual

@@ -5,6 +5,7 @@ namespace Roots\BedrockCli\Commands\Theme;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Question\Question;
 class SearchCommand extends Command
 {
     use InteractiveSearchTrait;
+    use PremiumAssetsTrait;
 
     protected function configure(): void
     {
@@ -93,6 +95,7 @@ class SearchCommand extends Command
         $output->writeln('<fg=yellow>¿Qué deseas hacer con el tema seleccionado?</>');
         $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
         $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto Bedrock');
+        $output->writeln(' <fg=cyan>[3]</> Buscar tema premium');
         $output->writeln(' <fg=cyan>[0]</> Cancelar');
         $output->writeln('');
         
@@ -179,6 +182,18 @@ class SearchCommand extends Command
             $profile['theme']['type'] = 'public';
             $profileService->saveProfile($profileName, $profile);
             $output->writeln("\n<info>✓ Tema agregado al profile '{$profileName}'</info>");
+            
+        } elseif ($action === '3') {
+            // Buscar tema premium
+            $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
+            
+            if ($premiumTheme) {
+                $output->writeln('');
+                $output->writeln('<info>✓ Tema premium seleccionado:</info>');
+                $output->writeln("  • {$premiumTheme['name']} v{$premiumTheme['version']} ({$premiumTheme['source']})");
+            }
+            
+            return Command::SUCCESS;
             
         } elseif ($action === '2') {
             // Instalar en proyecto

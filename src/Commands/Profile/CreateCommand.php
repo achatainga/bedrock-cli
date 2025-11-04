@@ -5,6 +5,7 @@ namespace Roots\BedrockCli\Commands\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 class CreateCommand extends Command
 {
     use InteractiveSearchTrait;
+    use PremiumAssetsTrait;
     
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
@@ -75,16 +77,8 @@ class CreateCommand extends Command
         $output->writeln('<comment>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</comment>');
         $output->writeln('');
 
-        // Repositorio premium
-        $output->writeln('<info>💎 PLUGINS PREMIUM</info>');
-        $question = new ConfirmationQuestion('¿Tienes un repositorio Git de plugins premium? (Y/n): ', false);
-        $hasPremiumRepo = $helper->ask($input, $output, $question);
-
-        $premiumRepoUrl = null;
-        if ($hasPremiumRepo) {
-            $question = new Question('Git URL del repositorio premium: ');
-            $premiumRepoUrl = $helper->ask($input, $output, $question);
-        }
+        // Plugins premium usando trait
+        $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
 
         $output->writeln('');
         $output->writeln('<comment>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</comment>');
@@ -175,7 +169,7 @@ class CreateCommand extends Command
             'require' => [],
             'plugins' => [
                 'public' => $publicPlugins,
-                'premium' => [],
+                'premium' => $premiumPlugins,
                 'custom' => $customPluginsList
             ],
             'theme' => [
@@ -202,12 +196,29 @@ class CreateCommand extends Command
             ]
         ];
 
-        // Agregar repositorio premium si existe
-        if ($premiumRepoUrl) {
-            $profile['repositories'][] = [
-                'type' => 'vcs',
-                'url' => $premiumRepoUrl
-            ];
+        // Agregar repositorios premium desde plugins
+        foreach ($premiumPlugins as $plugin) {
+            if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
+                $exists = false;
+                foreach ($profile['repositories'] as $repo) {
+                    if ($repo['url'] === $plugin['url']) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $profile['repositories'][] = [
+                        'type' => 'vcs',
+                        'url' => $plugin['url']
+                    ];
+                }
+            } elseif ($plugin['source'] === 'path') {
+                $profile['repositories'][] = [
+                    'type' => 'path',
+                    'url' => dirname($plugin['path']),
+                    'options' => ['symlink' => true]
+                ];
+            }
         }
 
         // Agregar path de plugins custom si existe
@@ -226,6 +237,12 @@ class CreateCommand extends Command
             } else {
                 $profile['require']["wpackagist-plugin/{$plugin}"] = '*';
             }
+        }
+        
+        // Agregar plugins premium a require
+        foreach ($premiumPlugins as $plugin) {
+            $vendor = $plugin['source'] === 'vcs' ? 'detodo24' : 'local';
+            $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
         }
 
         // Guardar profile
