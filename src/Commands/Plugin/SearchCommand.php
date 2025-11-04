@@ -93,11 +93,35 @@ class SearchCommand extends Command
         if ($action === '1') {
             // Agregar a profile
             if (!$profileName) {
-                $profileQuestion = new Question('<fg=yellow>Nombre del profile:</> ');
-                $profileName = $helper->ask($input, $output, $profileQuestion);
+                $profileService = new ProfileService();
+                $profiles = $profileService->listProfiles();
+                
+                if (empty($profiles)) {
+                    $output->writeln('<error>No hay profiles creados. Usa: bedrock profile:create</error>');
+                    return Command::FAILURE;
+                }
+                
+                $output->writeln('');
+                $output->writeln('<fg=cyan>Profiles disponibles:</>');
+                foreach ($profiles as $idx => $profile) {
+                    $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profile['name']}");
+                }
+                $output->writeln('');
+                
+                $profileQuestion = new Question('<fg=yellow>Seleccionar profile [1]:</> ', '1');
+                $profileChoice = $helper->ask($input, $output, $profileQuestion);
+                
+                $profileIndex = (int)$profileChoice - 1;
+                if (!isset($profiles[$profileIndex])) {
+                    $output->writeln('<error>Selección inválida</error>');
+                    return Command::FAILURE;
+                }
+                
+                $profileName = $profiles[$profileIndex]['name'];
+            } else {
+                $profileService = new ProfileService();
             }
 
-            $profileService = new ProfileService();
             if (!$profileService->profileExists($profileName)) {
                 $output->writeln("<error>Profile '{$profileName}' no existe.</error>");
                 return Command::FAILURE;
