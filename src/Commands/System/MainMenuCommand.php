@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
+use Roots\BedrockCli\Services\PremiumRepoService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -19,6 +20,10 @@ class MainMenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        
+        // Verificar acceso a repo premium
+        $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
+        $needsAuth = $this->checkPremiumRepoAccess($repoUrl);
         
         while (true) {
             $output->writeln('');
@@ -51,7 +56,12 @@ class MainMenuCommand extends Command
             
             $output->writeln(' <fg=cyan>[O]</> ⚙️  Options   - Gestión de wp_options');
             $output->writeln(' <fg=cyan>[A]</> 🌱 Acorn    - Roots Acorn');
-            $output->writeln(' <fg=cyan>[T]</> 🔐 Auth     - Credenciales repos privados');
+            
+            if ($needsAuth) {
+                $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
+            } else {
+                $output->writeln(' <fg=cyan>[T]</> 🔐 Auth     - Credenciales repos privados');
+            }
             $output->writeln(' <fg=cyan>[B]</> 💾 Backup   - Crear backup');
             $output->writeln(' <fg=cyan>[R]</> 🗑️  Reinstall - Reinstalar (DESTRUCTIVO)');
             $output->writeln('');
@@ -108,5 +118,16 @@ class MainMenuCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    private function checkPremiumRepoAccess(string $repoUrl): bool
+    {
+        try {
+            $service = new PremiumRepoService();
+            $result = $service->checkAccess($repoUrl);
+            return $result['needs_auth'] ?? false;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

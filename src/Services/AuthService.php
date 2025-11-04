@@ -138,4 +138,21 @@ class AuthService
     {
         return $this->globalAuthFile;
     }
+
+    public function loadAuthForDomain(string $domain): ?array
+    {
+        $auth = $this->loadAuth();
+        
+        foreach (['gitlab-oauth', 'github-oauth', 'bitbucket-oauth'] as $type) {
+            if (isset($auth[$type][$domain])) {
+                return ['type' => $type, 'token' => $auth[$type][$domain]];
+            }
+        }
+        
+        if (isset($auth['http-basic'][$domain])) {
+            return ['type' => 'http-basic', 'credentials' => $auth['http-basic'][$domain]];
+        }
+        
+        return null;
+    }
 }
