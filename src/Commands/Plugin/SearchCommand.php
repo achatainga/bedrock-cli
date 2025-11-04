@@ -51,8 +51,26 @@ class SearchCommand extends Command
         $this->displayPluginsTable($plugins, $output);
 
         $helper = $this->getHelper('question');
-        $question = new Question("\n<fg=yellow>Seleccionar números (ej: 1,3,5) o Enter para salir:</> ");
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[N]</> Siguiente página');
+        $output->writeln('  <fg=cyan>[P]</> Página anterior');
+        $output->writeln('  <fg=cyan>[0]</> Salir');
+        $question = new Question("\n<fg=yellow>Seleccionar números (ej: 1,3,5), N/P para navegar, o 0 para salir:</> ");
         $selection = $helper->ask($input, $output, $question);
+        
+        if (strtoupper($selection) === 'N') {
+            $input->setOption('page', $page + 1);
+            return $this->execute($input, $output);
+        }
+        
+        if (strtoupper($selection) === 'P' && $page > 1) {
+            $input->setOption('page', $page - 1);
+            return $this->execute($input, $output);
+        }
+        
+        if ($selection === '0') {
+            return Command::SUCCESS;
+        }
 
         if (empty($selection)) {
             return Command::SUCCESS;
