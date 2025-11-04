@@ -19,7 +19,7 @@ use Symfony\Component\Console\Helper\Table;
 class PluginsManageCommand extends Command
 {
     use InteractiveSearchTrait;
-{
+
     private ContextDetector $contextDetector;
     private ManagementService $management;
     private PluginManager $pluginManager;
@@ -338,3 +338,4 @@ class PluginsManageCommand extends Command
         }
     }
 }
+
