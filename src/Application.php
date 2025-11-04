@@ -72,6 +72,8 @@ use Roots\BedrockCli\Commands\Auth\MenuCommand as AuthMenuCommand;
 use Roots\BedrockCli\Commands\Auth\AddCommand as AuthAddCommand;
 use Roots\BedrockCli\Commands\Auth\ListCommand as AuthListCommand;
 use Roots\BedrockCli\Commands\Auth\RemoveCommand as AuthRemoveCommand;
+use Roots\BedrockCli\Commands\AI\ConfigCommand as AIConfigCommand;
+use Roots\BedrockCli\Commands\AI\AskCommand as AIAskCommand;
 
 class Application extends BaseApplication
 {
@@ -149,6 +151,8 @@ class Application extends BaseApplication
             new AuthAddCommand(),
             new AuthListCommand(),
             new AuthRemoveCommand(),
+            new AIConfigCommand(),
+            new AIAskCommand(),
         ]);
     }
 
