@@ -81,11 +81,24 @@ class PremiumRepoService
         $domain = $this->extractDomain($repoUrl);
         
         if (str_contains($domain, 'gitlab')) {
-            // Extraer project path de la URL
             preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
             $projectPath = $matches[1] ?? '';
             $encodedPath = urlencode($projectPath);
             return "https://gitlab.com/api/v4/projects/{$encodedPath}";
+        }
+        
+        if (str_contains($domain, 'github')) {
+            preg_match('#github\.com[:/](.+?)/(.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $owner = $matches[1] ?? '';
+            $repo = $matches[2] ?? '';
+            return "https://api.github.com/repos/{$owner}/{$repo}";
+        }
+        
+        if (str_contains($domain, 'bitbucket')) {
+            preg_match('#bitbucket\.org[:/](.+?)/(.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $workspace = $matches[1] ?? '';
+            $repo = $matches[2] ?? '';
+            return "https://api.bitbucket.org/2.0/repositories/{$workspace}/{$repo}";
         }
 
         return '';
@@ -105,10 +118,24 @@ class PremiumRepoService
 
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer {$auth['token']}"
-        ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
+        
+        // Headers según el tipo de servicio
+        if (str_contains($domain, 'github')) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: token {$auth['token']}",
+                "Accept: application/vnd.github.v3+json"
+            ]);
+        } elseif (str_contains($domain, 'bitbucket')) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer {$auth['token']}"
+            ]);
+        } else {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer {$auth['token']}"
+            ]);
+        }
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -127,22 +154,66 @@ class PremiumRepoService
     {
         $auth = $this->authService->loadAuthForDomain($domain);
         
-        preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
-        $projectPath = urlencode($matches[1] ?? '');
-        $encodedPath = urlencode($path);
-        
-        $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/tree?path={$encodedPath}&ref={$this->branch}";
+        if (str_contains($domain, 'gitlab')) {
+            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $projectPath = urlencode($matches[1] ?? '');
+            $encodedPath = urlencode($path);
+            $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/tree?path={$encodedPath}&ref={$this->branch}";
+            $headers = ["Authorization: Bearer {$auth['token']}"];
+        } elseif (str_contains($domain, 'github')) {
+            preg_match('#github\.com[:/](.+?)/(.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $owner = $matches[1] ?? '';
+            $repo = $matches[2] ?? '';
+            $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/contents/{$path}?ref={$this->branch}";
+            $headers = [
+                "Authorization: token {$auth['token']}",
+                "Accept: application/vnd.github.v3+json"
+            ];
+        } elseif (str_contains($domain, 'bitbucket')) {
+            preg_match('#bitbucket\.org[:/](.+?)/(.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $workspace = $matches[1] ?? '';
+            $repo = $matches[2] ?? '';
+            $apiUrl = "https://api.bitbucket.org/2.0/repositories/{$workspace}/{$repo}/src/{$this->branch}/{$path}";
+            $headers = ["Authorization: Bearer {$auth['token']}"];
+        } else {
+            return [];
+        }
 
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer {$auth['token']}"
-        ]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
 
         $response = curl_exec($ch);
         curl_close($ch);
 
-        return json_decode($response, true) ?? [];
+        $data = json_decode($response, true) ?? [];
+        
+        // Normalizar respuestas de diferentes APIs
+        return $this->normalizeDirectoryResponse($data, $domain);
+    }
+
+    private function normalizeDirectoryResponse(array $data, string $domain): array
+    {
+        if (str_contains($domain, 'gitlab')) {
+            return $data;
+        }
+        
+        if (str_contains($domain, 'github')) {
+            return array_map(fn($item) => [
+                'name' => $item['name'],
+                'type' => $item['type'] === 'dir' ? 'tree' : 'blob'
+            ], $data);
+        }
+        
+        if (str_contains($domain, 'bitbucket')) {
+            return array_map(fn($item) => [
+                'name' => basename($item['path']),
+                'type' => $item['type'] === 'commit_directory' ? 'tree' : 'blob'
+            ], $data['values'] ?? []);
+        }
+        
+        return [];
     }
 
     private function getPluginVersions(string $repoUrl, string $path, string $domain): array
