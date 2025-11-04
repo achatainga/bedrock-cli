@@ -241,12 +241,18 @@ class CreateCommand extends Command
             
             $table = new Table($output);
             $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
+            $table->setColumnMaxWidth(1, 50);
+            
+            $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white'];
             
             foreach ($plugins as $index => $plugin) {
+                $colorIndex = $index % count($colors);
+                $color = $colors[$colorIndex];
+                
                 $table->addRow([
-                    $index + 1,
+                    "<fg={$color}>" . ($index + 1) . "</>",
                     $plugin['name'],
-                    $plugin['slug'],
+                    "<fg={$color}>" . $plugin['slug'] . "</>",
                     number_format($plugin['active_installs'] ?? 0)
                 ]);
             }
