@@ -189,7 +189,6 @@ class SearchCommand extends Command
 
         return Command::SUCCESS;
     }
-}
 
     private function findBedrockProject(OutputInterface $output, InputInterface $input = null): ?string
     {
@@ -251,3 +250,4 @@ class SearchCommand extends Command
                (isset($composer['extra']['installer-paths']) && 
                 isset($composer['extra']['installer-paths']['web/app/mu-plugins/{$name}/']));
     }
+}
