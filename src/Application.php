@@ -78,6 +78,7 @@ use Roots\BedrockCli\Commands\AI\AskCommand as AIAskCommand;
 use Roots\BedrockCli\Commands\AI\ChatCommand as AIChatCommand;
 use Roots\BedrockCli\Commands\AI\DiagnoseCommand as AIDiagnoseCommand;
 use Roots\BedrockCli\Commands\AI\SuggestCommand as AISuggestCommand;
+use Roots\BedrockCli\Commands\AI\ModelSelectorCommand as AIModelSelectorCommand;
 
 class Application extends BaseApplication
 {
@@ -161,6 +162,7 @@ class Application extends BaseApplication
             new AIChatCommand(),
             new AIDiagnoseCommand(),
             new AISuggestCommand(),
+            new AIModelSelectorCommand(),
         ]);
     }
 

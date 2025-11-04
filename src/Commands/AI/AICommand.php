@@ -40,6 +40,7 @@ class AICommand extends Command
                 '3' => '🔍 Diagnose - Diagnosticar proyecto',
                 '4' => '💡 Suggest - Sugerencias contextuales',
                 '5' => '⚙️  Config - Configurar API keys',
+                '6' => '🎯 Model - Seleccionar modelo',
                 '0' => '❌ Salir'
             ];
 
@@ -75,6 +76,9 @@ class AICommand extends Command
                     break;
                 case '5':
                     $this->getApplication()->find('ai:config')->run($input, $output);
+                    break;
+                case '6':
+                    $this->getApplication()->find('ai:model')->run($input, $output);
                     break;
                 case '0':
                     return Command::SUCCESS;

@@ -7,7 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\AIService;
 use Roots\BedrockCli\Services\AIContextBuilder;
-use Roots\BedrockCli\Services\StateDetectorService;
+use Roots\BedrockCli\Services\ProjectDiagnosticService;
 
 class DiagnoseCommand extends Command
 {
@@ -36,29 +36,23 @@ class DiagnoseCommand extends Command
         $output->writeln('<comment>🔍 Analizando proyecto...</comment>');
         $output->writeln('');
 
-        $stateDetector = new StateDetectorService();
-        $state = $stateDetector->detectProjectState();
+        $diagnostic = new ProjectDiagnosticService();
+        $report = $diagnostic->generateDiagnosticReport();
         $contextBuilder = new AIContextBuilder();
         $context = $contextBuilder->buildContext();
 
-        $output->writeln('<fg=cyan>Estado Actual:</>');;
-        $output->writeln($this->formatStatus($state['docker_running'], 'Docker corriendo'));
-        $output->writeln($this->formatStatus($state['containers_running'], 'Contenedores activos'));
-        $output->writeln($this->formatStatus($state['wp_installed'], 'WordPress instalado'));
+        $output->writeln('<fg=cyan>Estado Actual:</>');
+        $output->writeln($this->formatStatus($report['docker']['running'], 'Docker corriendo'));
+        $output->writeln($this->formatStatus(!empty($report['docker']['containers']), 'Contenedores activos'));
+        $output->writeln($this->formatStatus($report['wordpress']['installed'], 'WordPress instalado'));
         
-        if ($state['acorn_installed']) {
-            $output->writeln($this->formatStatus($state['acorn_configured'], 'Acorn configurado'));
+        if ($report['wordpress']['installed']) {
+            $output->writeln("  <fg=green>→</> WP {$report['wordpress']['version']}");
+            $output->writeln("  <fg=green>→</> " . count($report['plugins']['active']) . " plugins activos");
+            $output->writeln("  <fg=green>→</> Tema: " . ($report['themes']['active']['name'] ?? 'N/A'));
         }
         
         $output->writeln('');
-
-        if (!empty($state['pending_tasks'])) {
-            $output->writeln('<fg=yellow>⚠️  Tareas pendientes detectadas:</>');
-            foreach ($state['pending_tasks'] as $task) {
-                $output->writeln("  • {$task['name']}");
-            }
-            $output->writeln('');
-        }
 
         $output->writeln('<comment>🤖 Consultando IA para análisis detallado...</comment>');
         $output->writeln('');
@@ -69,7 +63,7 @@ class DiagnoseCommand extends Command
             $prompt .= "2. Problemas detectados\n";
             $prompt .= "3. Sugerencias de mejora\n";
             $prompt .= "4. Comandos recomendados\n\n";
-            $prompt .= "Estado: " . json_encode($state, JSON_PRETTY_PRINT);
+            $prompt .= "Reporte completo: " . json_encode($report, JSON_PRETTY_PRINT);
 
             $response = $aiService->ask($prompt, $context);
 
