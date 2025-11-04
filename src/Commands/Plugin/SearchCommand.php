@@ -128,6 +128,14 @@ class SearchCommand extends Command
             }
 
             $profile = $profileService->loadProfile($profileName);
+            
+            if (!isset($profile['plugins'])) {
+                $profile['plugins'] = [];
+            }
+            if (!isset($profile['plugins']['public'])) {
+                $profile['plugins']['public'] = [];
+            }
+            
             foreach ($selectedPlugins as $slug => $version) {
                 $profile['plugins']['public'][$slug] = $version;
             }
