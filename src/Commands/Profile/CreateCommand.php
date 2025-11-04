@@ -15,7 +15,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 class CreateCommand extends Command
 {
     use InteractiveSearchTrait;
-{
+    
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
 
