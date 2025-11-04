@@ -7,6 +7,7 @@ use Roots\BedrockCli\Services\Management\ManagementService;
 use Roots\BedrockCli\Services\Management\PluginManager;
 use Roots\BedrockCli\Services\Management\DependencyManager;
 use Roots\BedrockCli\Services\WordPressApiService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,6 +17,8 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Helper\Table;
 
 class PluginsManageCommand extends Command
+{
+    use InteractiveSearchTrait;
 {
     private ContextDetector $contextDetector;
     private ManagementService $management;
@@ -156,28 +159,7 @@ class PluginsManageCommand extends Command
         $output->writeln('<comment>Resultados:</comment>');
         $output->writeln('');
         
-        $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white', 'gray', 'bright-cyan', 'bright-green'];
-        
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
-        $table->setColumnMaxWidth(1, 40); // Limitar ancho de nombre
-        
-        foreach (array_slice($plugins, 0, 10) as $index => $plugin) {
-            $color = $colors[$index % count($colors)];
-            $num = $index + 1;
-            $name = $plugin['name'] ?? 'N/A';
-            $slug = $plugin['slug'] ?? 'N/A';
-            $installs = number_format($plugin['active_installs'] ?? 0);
-            
-            $table->addRow([
-                "<fg={$color}>{$num}</>",
-                wordwrap($name, 40, "\n", true),
-                "<fg={$color}>{$slug}</>",
-                $installs
-            ]);
-        }
-        
-        $table->render();
+        $this->displayPluginsTable(array_slice($plugins, 0, 10), $output);
         
         $output->writeln('');
         $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
@@ -195,10 +177,7 @@ class PluginsManageCommand extends Command
         }
         
         $slug = $plugins[$index]['slug'];
-        
-        $output->writeln('');
-        $question = new Question("<fg=yellow>Versión (Enter para última):</> ", '*');
-        $version = $helper->ask($input, $output, $question);
+        $version = $this->selectPluginVersion($slug, $helper, $input, $output);
         
         $this->pendingPlugins[$slug] = $version;
         
