@@ -286,25 +286,64 @@ class CreateCommand extends Command
                         $versions = array_filter($versions, function($v) {
                             return $v !== 'trunk' && preg_match('/^\d+\.\d+/', $v);
                         });
-                        $versions = array_slice($versions, 0, 10);
+                        usort($versions, function($a, $b) {
+                            return version_compare($b, $a);
+                        });
                         
+                        $latestVersion = $versions[0] ?? '*';
                         $output->writeln("\n<comment>Plugin: {$slug}</comment>");
-                        $output->writeln("<comment>Últimas versiones disponibles:</comment>");
+                        $output->writeln("<comment>Última versión: {$latestVersion}</comment>");
+                        $output->writeln("<comment>Versiones disponibles (mostrando de 10 en 10):</comment>\n");
                         
-                        foreach ($versions as $idx => $ver) {
-                            $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$ver}");
-                        }
-                        $output->writeln("  <fg=cyan>[0]</> * (siempre la última)");
+                        $page = 0;
+                        $perPage = 10;
+                        $totalVersions = count($versions);
                         
-                        $versionQuestion = new Question("\nSeleccionar versión [1]: ", '1');
-                        $versionChoice = $helper->ask($input, $output, $versionQuestion);
-                        
-                        if ($versionChoice === '0') {
-                            $version = '*';
-                        } elseif (is_numeric($versionChoice) && isset($versions[$versionChoice - 1])) {
-                            $version = $versions[$versionChoice - 1];
-                        } else {
-                            $version = $versions[0] ?? '*';
+                        while (true) {
+                            $start = $page * $perPage;
+                            $pageVersions = array_slice($versions, $start, $perPage);
+                            
+                            if (empty($pageVersions)) {
+                                break;
+                            }
+                            
+                            // Mostrar en 4 columnas
+                            $cols = 4;
+                            $rows = ceil(count($pageVersions) / $cols);
+                            
+                            for ($row = 0; $row < $rows; $row++) {
+                                $line = '';
+                                for ($col = 0; $col < $cols; $col++) {
+                                    $idx = $row + ($col * $rows);
+                                    if (isset($pageVersions[$idx])) {
+                                        $num = $start + $idx + 1;
+                                        $ver = $pageVersions[$idx];
+                                        $line .= sprintf("<fg=cyan>[%2d]</> %-15s ", $num, $ver);
+                                    }
+                                }
+                                $output->writeln($line);
+                            }
+                            
+                            $output->writeln("\n  <fg=cyan>[0]</> * (siempre la última)");
+                            $output->writeln("  <fg=yellow>[N]</> Ver más versiones");
+                            
+                            $versionQuestion = new Question("\nSeleccionar versión [1]: ", '1');
+                            $versionChoice = strtoupper($helper->ask($input, $output, $versionQuestion));
+                            
+                            if ($versionChoice === 'N' && ($start + $perPage) < $totalVersions) {
+                                $page++;
+                                $output->writeln("");
+                                continue;
+                            }
+                            
+                            if ($versionChoice === '0') {
+                                $version = '*';
+                            } elseif (is_numeric($versionChoice) && isset($versions[$versionChoice - 1])) {
+                                $version = $versions[$versionChoice - 1];
+                            } else {
+                                $version = $versions[0] ?? '*';
+                            }
+                            break;
                         }
                     }
                     
