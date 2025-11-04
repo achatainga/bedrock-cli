@@ -241,7 +241,7 @@ class CreateCommand extends Command
             
             $table = new Table($output);
             $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
-            $table->setColumnMaxWidth(1, 50);
+            $table->setColumnMaxWidth(1, 35);
             
             $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white'];
             
