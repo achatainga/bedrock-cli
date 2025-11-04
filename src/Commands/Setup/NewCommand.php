@@ -17,7 +17,7 @@ use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 class NewCommand extends Command
 {
     use PremiumAssetsTrait;
-{
+
     protected function configure(): void
     {
         $this
