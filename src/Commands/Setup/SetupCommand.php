@@ -411,7 +411,7 @@ class SetupCommand extends Command
         
         // Marcar paso 2 del wizard como completado
         $stateService = new StateService();
-        $stateService->markStepCompleted(getcwd(), 2);
+        $stateService->markStepCompleted(2);
         
         return Command::SUCCESS;
     }
@@ -594,6 +594,8 @@ class SetupCommand extends Command
                 return;
             }
             
+            $themes = array_values($themes);
+            
             $output->writeln('<fg=cyan>Temas disponibles:</>');
             foreach ($themes as $idx => $t) {
                 $output->writeln("  " . ($idx + 1) . ". {$t}");
@@ -604,7 +606,6 @@ class SetupCommand extends Command
             $answer = $helper->ask($input, $output, $question);
             
             if (is_numeric($answer)) {
-                $themes = array_values($themes);
                 $theme = $themes[(int)$answer - 1] ?? null;
             } else {
                 $theme = $answer;
@@ -645,6 +646,8 @@ class SetupCommand extends Command
                 $output->writeln('<comment>No hay plugins disponibles</comment>');
                 return;
             }
+            
+            $plugins = array_values($plugins);
             
             $output->writeln('<fg=cyan>Plugins disponibles:</>');
             foreach ($plugins as $idx => $p) {

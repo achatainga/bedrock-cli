@@ -100,6 +100,12 @@ class StateService
         );
     }
 
+    public function markStepCompleted(int $stepId): void
+    {
+        $projectPath = getcwd();
+        $this->markCompleted($projectPath, $stepId);
+    }
+
     public function getCurrentStep(array $state): ?array
     {
         foreach ($state['steps'] as $step) {
