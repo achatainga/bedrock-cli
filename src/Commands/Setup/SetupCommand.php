@@ -12,6 +12,7 @@ use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\StateDetectorService;
+use Roots\BedrockCli\Services\StateService;
 
 class SetupCommand extends Command
 {
@@ -407,6 +408,10 @@ class SetupCommand extends Command
         $output->writeln("  • Usuario: <fg=white;options=bold>{$config['adminUser']}</>");
         $output->writeln("  • Contraseña: <fg=white;options=bold>{$config['adminPassword']}</>");
         $output->writeln('');
+        
+        // Marcar paso 2 del wizard como completado
+        $stateService = new StateService();
+        $stateService->markStepCompleted(getcwd(), 2);
         
         return Command::SUCCESS;
     }
