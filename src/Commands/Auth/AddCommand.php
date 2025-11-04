@@ -51,11 +51,25 @@ class AddCommand extends Command
 
         if ($type === 'http-basic') {
             $usernameQuestion = new Question('<fg=yellow>Usuario:</> ');
+            $usernameQuestion->setValidator(function ($value) {
+                if (empty(trim($value))) {
+                    throw new \RuntimeException('El usuario no puede estar vacío');
+                }
+                return trim($value);
+            });
+            $usernameQuestion->setMaxAttempts(3);
             $credentials['username'] = $helper->ask($input, $output, $usernameQuestion);
 
             $passwordQuestion = new Question('<fg=yellow>Contraseña:</> ');
             $passwordQuestion->setHidden(true);
             $passwordQuestion->setHiddenFallback(false);
+            $passwordQuestion->setValidator(function ($value) {
+                if (empty(trim($value))) {
+                    throw new \RuntimeException('La contraseña no puede estar vacía');
+                }
+                return trim($value);
+            });
+            $passwordQuestion->setMaxAttempts(3);
             $credentials['password'] = $helper->ask($input, $output, $passwordQuestion);
         } else {
             $output->writeln('');
@@ -99,6 +113,13 @@ class AddCommand extends Command
             $tokenQuestion = new Question('<fg=yellow>Pega tu token aquí:</> ');
             $tokenQuestion->setHidden(true);
             $tokenQuestion->setHiddenFallback(false);
+            $tokenQuestion->setValidator(function ($value) {
+                if (empty(trim($value))) {
+                    throw new \RuntimeException('El token no puede estar vacío');
+                }
+                return trim($value);
+            });
+            $tokenQuestion->setMaxAttempts(3);
             $credentials['token'] = $helper->ask($input, $output, $tokenQuestion);
         }
 
