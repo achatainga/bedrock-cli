@@ -136,12 +136,41 @@ class SearchCommand extends Command
             
         } elseif ($action === '2') {
             // Instalar en proyecto actual
+            $projectPath = $this->findBedrockProject($output);
+            
+            if (!$projectPath) {
+                $output->writeln('<error>No se encontró ningún proyecto Bedrock</error>');
+                return Command::FAILURE;
+            }
+            
+            $output->writeln("<info>Proyecto: {$projectPath}</info>");
             $output->writeln('');
-            $output->writeln('<info>Instalando plugins...</info>');
+            
+            // Verificar plugins existentes
+            $composerFile = $projectPath . '/composer.json';
+            $composer = json_decode(file_get_contents($composerFile), true);
+            $existing = $composer['require'] ?? [];
             
             foreach ($selectedPlugins as $slug => $version) {
+                $package = "wpackagist-plugin/{$slug}";
+                
+                if (isset($existing[$package])) {
+                    $currentVersion = $existing[$package];
+                    $output->writeln("<comment>⚠️  {$slug} ya existe (versión: {$currentVersion})</comment>");
+                    
+                    $confirmQuestion = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+                        "<fg=yellow>¿Actualizar a {$version}? (Y/n):</> ",
+                        false
+                    );
+                    
+                    if (!$helper->ask($input, $output, $confirmQuestion)) {
+                        $output->writeln("<comment>Omitido: {$slug}</comment>");
+                        continue;
+                    }
+                }
+                
                 $constraint = $version === '*' ? '' : ":{$version}";
-                $command = "composer require wpackagist-plugin/{$slug}{$constraint}";
+                $command = "composer require {$package}{$constraint} --working-dir={$projectPath}";
                 $output->writeln("<comment>$ {$command}</comment>");
                 passthru($command, $exitCode);
                 
@@ -150,9 +179,70 @@ class SearchCommand extends Command
                 } else {
                     $output->writeln("<error>✗ Error instalando {$slug}</error>");
                 }
+                $output->writeln('');
             }
         }
 
         return Command::SUCCESS;
+    }
+
+    private function findBedrockProject(OutputInterface $output): ?string
+    {
+        // Verificar directorio actual
+        if ($this->isBedrockProject(getcwd())) {
+            return getcwd();
+        }
+        
+        // Buscar en subdirectorios inmediatos
+        $output->writeln('<comment>Buscando proyectos Bedrock en subdirectorios...</comment>');
+        $subdirs = glob(getcwd() . '/*', GLOB_ONLYDIR);
+        $bedrockProjects = [];
+        
+        foreach ($subdirs as $dir) {
+            if ($this->isBedrockProject($dir)) {
+                $bedrockProjects[] = $dir;
+            }
+        }
+        
+        if (empty($bedrockProjects)) {
+            return null;
+        }
+        
+        if (count($bedrockProjects) === 1) {
+            return $bedrockProjects[0];
+        }
+        
+        // Múltiples proyectos encontrados
+        $output->writeln('');
+        $output->writeln('<fg=cyan>Proyectos Bedrock encontrados:</>');
+        foreach ($bedrockProjects as $idx => $project) {
+            $name = basename($project);
+            $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$name}");
+        }
+        $output->writeln('');
+        
+        $helper = $this->getHelper('question');
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Seleccionar proyecto [1]:</> ', '1');
+        $choice = $helper->ask($this->getApplication()->find('plugin:search')->getDefinition()->getArguments()['query'], $output, $question);
+        
+        $index = (int)$choice - 1;
+        return $bedrockProjects[$index] ?? null;
+    }
+    
+    private function isBedrockProject(string $path): bool
+    {
+        $composerFile = $path . '/composer.json';
+        
+        if (!file_exists($composerFile)) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents($composerFile), true);
+        
+        // Verificar si tiene roots/bedrock como dependencia o es un proyecto bedrock
+        return isset($composer['require']['roots/bedrock']) ||
+               isset($composer['require']['roots/wordpress']) ||
+               (isset($composer['extra']['installer-paths']) && 
+                isset($composer['extra']['installer-paths']['web/app/mu-plugins/{$name}/']));
     }
 }
