@@ -30,6 +30,7 @@ use Roots\BedrockCli\Commands\Themes\CompressCommand as ThemesCompressCommand;
 use Roots\BedrockCli\Commands\Themes\StatusCommand as ThemesStatusCommand;
 use Roots\BedrockCli\Commands\Setup\SetupCommand;
 use Roots\BedrockCli\Commands\Setup\NewCommand;
+use Roots\BedrockCli\Commands\Setup\NewWizardCommand;
 use Roots\BedrockCli\Commands\Setup\InitCommand;
 use Roots\BedrockCli\Commands\System\MainMenuCommand;
 use Roots\BedrockCli\Commands\System\InitMenuCommand;
@@ -102,6 +103,7 @@ class Application extends BaseApplication
             new ThemesStatusCommand(),
             new SetupCommand(),
             new NewCommand(),
+            new NewWizardCommand(),
             new InitCommand(),
             new MainMenuCommand(),
             new InitMenuCommand(),
