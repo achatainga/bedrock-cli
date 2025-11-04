@@ -94,7 +94,7 @@ class SearchCommand extends Command
             // Agregar a profile
             if (!$profileName) {
                 $profileService = new ProfileService();
-                $profiles = $profileService->listProfiles();
+                $profiles = array_values($profileService->listProfiles());
                 
                 if (empty($profiles)) {
                     $output->writeln('<error>No hay profiles creados. Usa: bedrock profile:create</error>');
