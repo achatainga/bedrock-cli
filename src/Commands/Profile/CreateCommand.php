@@ -281,13 +281,31 @@ class CreateCommand extends Command
                     $pluginInfo = $apiService->getPluginInfo($slug);
                     $version = '*';
                     
-                    if ($pluginInfo && isset($pluginInfo['version'])) {
-                        $latestVersion = $pluginInfo['version'];
-                        $output->writeln("\n<comment>Plugin: {$slug}</comment>");
-                        $output->writeln("<comment>Última versión: {$latestVersion}</comment>");
+                    if ($pluginInfo && isset($pluginInfo['versions'])) {
+                        $versions = array_keys($pluginInfo['versions']);
+                        $versions = array_filter($versions, function($v) {
+                            return $v !== 'trunk' && preg_match('/^\d+\.\d+/', $v);
+                        });
+                        $versions = array_slice($versions, 0, 10);
                         
-                        $versionQuestion = new Question("Versión a instalar [{$latestVersion}] (o * para última): ", $latestVersion);
-                        $version = $helper->ask($input, $output, $versionQuestion);
+                        $output->writeln("\n<comment>Plugin: {$slug}</comment>");
+                        $output->writeln("<comment>Últimas versiones disponibles:</comment>");
+                        
+                        foreach ($versions as $idx => $ver) {
+                            $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$ver}");
+                        }
+                        $output->writeln("  <fg=cyan>[0]</> * (siempre la última)");
+                        
+                        $versionQuestion = new Question("\nSeleccionar versión [1]: ", '1');
+                        $versionChoice = $helper->ask($input, $output, $versionQuestion);
+                        
+                        if ($versionChoice === '0') {
+                            $version = '*';
+                        } elseif (is_numeric($versionChoice) && isset($versions[$versionChoice - 1])) {
+                            $version = $versions[$versionChoice - 1];
+                        } else {
+                            $version = $versions[0] ?? '*';
+                        }
                     }
                     
                     $selectedPlugins[] = [
