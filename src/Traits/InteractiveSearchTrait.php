@@ -85,24 +85,37 @@ trait InteractiveSearchTrait
         $apiService = new WordPressApiService();
         $themeInfo = $apiService->getThemeInfo($slug);
         
-        if (!$themeInfo || !isset($themeInfo['versions'])) {
+        if (!$themeInfo) {
             return '*';
         }
         
-        $versions = array_keys($themeInfo['versions']);
-        $versions = array_filter($versions, function($v) {
-            return preg_match('/^\d+\.\d+/', $v);
-        });
-        usort($versions, function($a, $b) {
-            return version_compare($b, $a);
-        });
-        
-        $latestVersion = $versions[0] ?? '*';
-        $output->writeln("\n<comment>Theme: {$slug}</comment>");
+        $latestVersion = $themeInfo['version'] ?? '*';
+        $output->writeln("\n<comment>Tema: {$slug}</comment>");
         $output->writeln("<comment>Última versión: {$latestVersion}</comment>");
-        $output->writeln("<comment>Versiones disponibles (mostrando de 10 en 10):</comment>\n");
         
-        return $this->selectVersionFromList($versions, $helper, $input, $output);
+        if (isset($themeInfo['versions']) && is_array($themeInfo['versions'])) {
+            $versions = array_keys($themeInfo['versions']);
+            $versions = array_filter($versions, function($v) {
+                return preg_match('/^\d+\.\d+/', $v);
+            });
+            usort($versions, function($a, $b) {
+                return version_compare($b, $a);
+            });
+            
+            if (!empty($versions)) {
+                $output->writeln("<comment>Versiones disponibles (mostrando de 10 en 10):</comment>\n");
+                return $this->selectVersionFromList($versions, $helper, $input, $output);
+            }
+        }
+        
+        $output->writeln("<comment>Solo versión actual disponible</comment>");
+        $output->writeln("\n  <fg=cyan>[1]</> {$latestVersion}");
+        $output->writeln("  <fg=cyan>[0]</> * (siempre la última)\n");
+        
+        $versionQuestion = new Question("Seleccionar versión [0]: ", '0');
+        $choice = $helper->ask($input, $output, $versionQuestion);
+        
+        return $choice === '1' ? $latestVersion : '*';
     }
 
     private function selectVersionFromList(array $versions, $helper, $input, OutputInterface $output): string
