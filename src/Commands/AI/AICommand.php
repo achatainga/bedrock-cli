@@ -5,7 +5,7 @@ namespace Roots\BedrockCli\Commands\AI;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Roots\BedrockCli\Services\AIService;
 
 class AICommand extends Command
