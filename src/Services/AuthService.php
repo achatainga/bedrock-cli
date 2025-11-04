@@ -12,7 +12,7 @@ class AuthService
     public function __construct()
     {
         $this->homeDir = $this->getComposerHome();
-        $this->globalAuthFile = $this->homeDir . '/auth.json';
+        $this->globalAuthFile = $this->homeDir . DIRECTORY_SEPARATOR . 'auth.json';
     }
 
     public function addAuth(string $type, string $domain, array $credentials): void
@@ -121,14 +121,16 @@ class AuthService
         exec('composer config --global home 2>&1', $output, $returnCode);
         
         if ($returnCode === 0 && !empty($output[0])) {
-            return trim($output[0]);
+            $path = trim($output[0]);
+            // Normalizar separadores de directorio
+            return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         }
         
         // Fallback a detección manual
         if (PHP_OS_FAMILY === 'Windows') {
-            return getenv('APPDATA') . '/Composer';
+            return getenv('APPDATA') . DIRECTORY_SEPARATOR . 'Composer';
         }
-        return (getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir']) . '/.composer';
+        return (getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir']) . DIRECTORY_SEPARATOR . '.composer';
     }
 
     public function getAuthFile(): string
