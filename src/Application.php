@@ -68,6 +68,7 @@ use Roots\BedrockCli\Commands\Add\DependencyCommand as AddDependencyCommand;
 use Roots\BedrockCli\Commands\Remove\PluginCommand as RemovePluginCommand;
 use Roots\BedrockCli\Commands\Remove\ThemeCommand as RemoveThemeCommand;
 use Roots\BedrockCli\Commands\Remove\DependencyCommand as RemoveDependencyCommand;
+use Roots\BedrockCli\Commands\Auth\MenuCommand as AuthMenuCommand;
 use Roots\BedrockCli\Commands\Auth\AddCommand as AuthAddCommand;
 use Roots\BedrockCli\Commands\Auth\ListCommand as AuthListCommand;
 use Roots\BedrockCli\Commands\Auth\RemoveCommand as AuthRemoveCommand;
@@ -144,6 +145,7 @@ class Application extends BaseApplication
             new RemovePluginCommand(),
             new RemoveThemeCommand(),
             new RemoveDependencyCommand(),
+            new AuthMenuCommand(),
             new AuthAddCommand(),
             new AuthListCommand(),
             new AuthRemoveCommand(),

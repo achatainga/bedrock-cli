@@ -51,6 +51,7 @@ class MainMenuCommand extends Command
             
             $output->writeln(' <fg=cyan>[O]</> ⚙️  Options   - Gestión de wp_options');
             $output->writeln(' <fg=cyan>[A]</> 🌱 Acorn    - Roots Acorn');
+            $output->writeln(' <fg=cyan>[T]</> 🔐 Auth     - Credenciales repos privados');
             $output->writeln(' <fg=cyan>[B]</> 💾 Backup   - Crear backup');
             $output->writeln(' <fg=cyan>[R]</> 🗑️  Reinstall - Reinstalar (DESTRUCTIVO)');
             $output->writeln('');
@@ -58,7 +59,7 @@ class MainMenuCommand extends Command
             $output->writeln(' <fg=red>[0]</> ❌ Salir');
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [0-9, N, O, A, B, R]:</> ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9, N, O, A, T, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -67,9 +68,9 @@ class MainMenuCommand extends Command
             
             $selectedIndex = strtoupper($selectedIndex);
             
-            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'O', 'A', 'B', 'R'];
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'O', 'A', 'T', 'B', 'R'];
             if (!in_array($selectedIndex, $validOptions)) {
-                $output->writeln('<error>Opción inválida. Usa 0-9, N, O, A, B, R.</error>');
+                $output->writeln('<error>Opción inválida. Usa 0-9, N, O, A, T, B, R.</error>');
                 sleep(1);
                 continue;
             }
@@ -93,6 +94,7 @@ class MainMenuCommand extends Command
                 '9' => 'init:menu',
                 'O' => 'options',
                 'A' => 'acorn',
+                'T' => 'auth:menu',
                 'B' => 'backup',
                 'R' => 'reinstall',
             ];
