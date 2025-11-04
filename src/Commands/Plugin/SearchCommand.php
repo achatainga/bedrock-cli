@@ -103,8 +103,8 @@ class SearchCommand extends Command
                 
                 $output->writeln('');
                 $output->writeln('<fg=cyan>Profiles disponibles:</>');
-                foreach ($profiles as $idx => $profile) {
-                    $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profile['name']}");
+                foreach ($profiles as $idx => $profileData) {
+                    $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profileData['name']}");
                 }
                 $output->writeln('');
                 
