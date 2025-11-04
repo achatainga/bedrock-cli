@@ -147,7 +147,10 @@ class MainMenuCommand extends Command
     private function printMenuItem(OutputInterface $output, string $key, string $menuItem, string $label, ?array $currentStep): void
     {
         $isActive = $currentStep && $currentStep['menu_item'] === $menuItem;
-        $color = $isActive ? 'green' : 'cyan';
-        $output->writeln(" <fg={$color}>[{$key}] {$label}</>");
+        if ($isActive) {
+            $output->writeln(" <fg=green>[{$key}] {$label}</>");
+        } else {
+            $output->writeln(" <fg=cyan>[{$key}]</> {$label}");
+        }
     }
 }
