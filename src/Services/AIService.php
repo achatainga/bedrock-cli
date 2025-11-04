@@ -19,6 +19,11 @@ class AIService
 
     public function ask(string $question, array $context = []): string
     {
+        if (empty($context)) {
+            $contextBuilder = new AIContextBuilder();
+            $context = $contextBuilder->buildContext();
+        }
+        
         $systemPrompt = $this->buildSystemPrompt($context);
         
         $messages = [
@@ -31,7 +36,9 @@ class AIService
 
     public function chat(string $message, array $history = []): array
     {
-        $systemPrompt = $this->buildSystemPrompt();
+        $contextBuilder = new AIContextBuilder();
+        $context = $contextBuilder->buildContext();
+        $systemPrompt = $this->buildSystemPrompt($context);
         
         $messages = [['role' => 'system', 'content' => $systemPrompt]];
         
