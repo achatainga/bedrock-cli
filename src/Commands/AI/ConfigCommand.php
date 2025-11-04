@@ -63,9 +63,6 @@ class ConfigCommand extends Command
 
         $model = $this->selectModel($input, $output, $helper, $provider);
 
-        $output->writeln('');
-        $output->writeln('<comment>Validando API key...</comment>');
-
         $config = [
             'provider' => $provider,
             'api_key' => $apiKey,
@@ -75,30 +72,25 @@ class ConfigCommand extends Command
         ];
 
         $aiService = new AIService($config);
-
-        try {
-            $response = $aiService->ask('Responde solo: OK');
-            
-            if (stripos($response, 'ok') !== false) {
-                $output->writeln('<info>✓ API key válida</info>');
-            } else {
-                $output->writeln('<comment>⚠ API key funciona pero respuesta inesperada</comment>');
-            }
-        } catch (\Exception $e) {
-            $output->writeln('<error>✗ Error al validar API key: ' . $e->getMessage() . '</error>');
-            return Command::FAILURE;
-        }
-
         $aiService->saveConfig($config);
 
         $output->writeln('');
-        $output->writeln('<fg=green;options=bold>✓ Configuración guardada exitosamente</>');
+        $output->writeln('<info>✓ Configuración guardada</info>');
+        $output->writeln('<comment>Nota: La validación se hará en el primer uso</comment>');
+
         $output->writeln('');
         $output->writeln('<fg=cyan>Próximos pasos:</>');
         $output->writeln('  • Usa: <fg=white>bedrock ai:ask "tu pregunta"</>');
         $output->writeln('  • Usa: <fg=white>bedrock ai:chat</> para conversación');
         $output->writeln('  • Usa: <fg=white>bedrock ai:diagnose</> para diagnóstico');
         $output->writeln('');
+        
+        if ($provider === 'openrouter') {
+            $output->writeln('<fg=yellow>⚠️  Nota OpenRouter:</>');
+            $output->writeln('Si usas modelos FREE, configura tu política de privacidad en:');
+            $output->writeln('https://openrouter.ai/settings/privacy');
+            $output->writeln('');
+        }
 
         return Command::SUCCESS;
     }

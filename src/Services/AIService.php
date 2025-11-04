@@ -79,6 +79,8 @@ class AIService
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->apiKey,
                 'Content-Type: application/json',
@@ -95,10 +97,17 @@ class AIService
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
+        if ($httpCode === 0) {
+            throw new \Exception("Conexión fallida: {$curlError}");
+        }
+
         if ($httpCode !== 200) {
-            throw new \Exception("OpenRouter error: HTTP {$httpCode}");
+            $data = json_decode($response, true);
+            $errorMsg = $data['error']['message'] ?? "HTTP {$httpCode}";
+            throw new \Exception("OpenRouter: {$errorMsg}");
         }
 
         $data = json_decode($response, true);
@@ -122,16 +131,25 @@ class AIService
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_POSTFIELDS => json_encode(['contents' => $contents])
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
+        if ($httpCode === 0) {
+            throw new \Exception("Conexión fallida: {$curlError}");
+        }
+
         if ($httpCode !== 200) {
-            throw new \Exception("Gemini error: HTTP {$httpCode}");
+            $data = json_decode($response, true);
+            $errorMsg = $data['error']['message'] ?? "HTTP {$httpCode}";
+            throw new \Exception("Gemini: {$errorMsg}");
         }
 
         $data = json_decode($response, true);
