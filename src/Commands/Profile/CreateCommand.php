@@ -195,7 +195,11 @@ class CreateCommand extends Command
 
         // Agregar plugins públicos a require
         foreach ($publicPlugins as $plugin) {
-            $profile['require']["wpackagist-plugin/{$plugin}"] = '*';
+            if (is_array($plugin)) {
+                $profile['require']["wpackagist-plugin/{$plugin['slug']}"] = $plugin['version'];
+            } else {
+                $profile['require']["wpackagist-plugin/{$plugin}"] = '*';
+            }
         }
 
         // Guardar profile
@@ -271,8 +275,26 @@ class CreateCommand extends Command
             foreach ($selected as $num) {
                 $index = (int) $num - 1;
                 if (isset($plugins[$index])) {
-                    $selectedPlugins[] = $plugins[$index]['slug'];
-                    $output->writeln("<info>✓ {$plugins[$index]['slug']}</info>");
+                    $slug = $plugins[$index]['slug'];
+                    
+                    // Obtener info del plugin para mostrar versiones
+                    $pluginInfo = $apiService->getPluginInfo($slug);
+                    $version = '*';
+                    
+                    if ($pluginInfo && isset($pluginInfo['version'])) {
+                        $latestVersion = $pluginInfo['version'];
+                        $output->writeln("\n<comment>Plugin: {$slug}</comment>");
+                        $output->writeln("<comment>Última versión: {$latestVersion}</comment>");
+                        
+                        $versionQuestion = new Question("Versión a instalar [{$latestVersion}] (o * para última): ", $latestVersion);
+                        $version = $helper->ask($input, $output, $versionQuestion);
+                    }
+                    
+                    $selectedPlugins[] = [
+                        'slug' => $slug,
+                        'version' => $version
+                    ];
+                    $output->writeln("<info>✓ {$slug}:{$version}</info>");
                 }
             }
         }
