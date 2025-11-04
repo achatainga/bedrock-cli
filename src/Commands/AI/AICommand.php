@@ -44,7 +44,7 @@ class AICommand extends Command
             ];
 
             foreach ($options as $key => $label) {
-                $output->writeln("  [{$key}] {$label}");
+                $output->writeln("  <fg=cyan>[{$key}]</> {$label}");
             }
 
             $output->writeln('');

@@ -420,7 +420,7 @@ class StateDetectorService
     
     private function areContainersRunning(): bool
     {
-        $process = Process::fromShellCommandline('docker-compose ps --services --filter "status=running"');
+        $process = new Process(['docker-compose', 'ps', '-q']);
         $process->run();
         
         if (!$process->isSuccessful()) {
@@ -428,6 +428,24 @@ class StateDetectorService
         }
         
         $output = trim($process->getOutput());
-        return !empty($output);
+        if (empty($output)) {
+            return false;
+        }
+        
+        // Verificar que al menos un contenedor esté corriendo
+        $lines = explode("\n", $output);
+        foreach ($lines as $containerId) {
+            $containerId = trim($containerId);
+            if (empty($containerId)) continue;
+            
+            $inspectProcess = new Process(['docker', 'inspect', '-f', '{{.State.Running}}', $containerId]);
+            $inspectProcess->run();
+            
+            if ($inspectProcess->isSuccessful() && trim($inspectProcess->getOutput()) === 'true') {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

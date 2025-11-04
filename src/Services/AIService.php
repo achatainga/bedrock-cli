@@ -116,7 +116,7 @@ class AIService
 
     private function sendGeminiRequest(array $messages): string
     {
-        $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={$this->apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$this->apiKey}";
         
         $contents = [];
         foreach ($messages as $msg) {
