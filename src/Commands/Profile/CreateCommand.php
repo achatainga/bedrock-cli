@@ -107,13 +107,37 @@ class CreateCommand extends Command
                     
                     if (!empty($detectedPlugins)) {
                         $output->writeln("\n<info>Plugins detectados:</info>");
+                        $pluginsList = [];
+                        $index = 1;
                         foreach ($detectedPlugins as $slug => $plugin) {
-                            $output->writeln("  • {$plugin['name']} ({$slug}) - v{$plugin['version']}");
+                            $output->writeln("  <fg=cyan>[{$index}]</> {$plugin['name']} ({$slug}) - v{$plugin['version']}");
+                            $pluginsList[$index] = $slug;
+                            $index++;
                         }
                         
                         $question = new ConfirmationQuestion("\n¿Agregar todos estos plugins? (Y/n): ", true);
                         if ($helper->ask($input, $output, $question)) {
                             $customPluginsList = array_keys($detectedPlugins);
+                        } else {
+                            $selectQuestion = new Question("\nSeleccionar números (ej: 1,3,5) o Enter para omitir: ");
+                            $selection = $helper->ask($input, $output, $selectQuestion);
+                            
+                            if (!empty($selection)) {
+                                $selected = array_map('trim', explode(',', $selection));
+                                foreach ($selected as $num) {
+                                    $num = (int)$num;
+                                    if (isset($pluginsList[$num])) {
+                                        $customPluginsList[] = $pluginsList[$num];
+                                    }
+                                }
+                                
+                                if (!empty($customPluginsList)) {
+                                    $output->writeln("\n<info>Plugins seleccionados:</info>");
+                                    foreach ($customPluginsList as $slug) {
+                                        $output->writeln("  ✓ {$slug}");
+                                    }
+                                }
+                            }
                         }
                     } else {
                         $output->writeln('<comment>No se detectaron plugins válidos en ese directorio.</comment>');
