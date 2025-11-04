@@ -105,9 +105,14 @@ class SearchCommand extends Command
                     );
                     
                     if ($helper->ask($input, $output, $createQuestion)) {
-                        $createCmd = $this->getApplication()->find('profile:create');
-                        $createInput = new \Symfony\Component\Console\Input\ArrayInput([]);
-                        $createCmd->run($createInput, $output);
+                        $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                        $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                        
+                        if (!empty($newProfileName)) {
+                            $createCmd = $this->getApplication()->find('profile:create');
+                            $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
+                            $createCmd->run($createInput, $output);
+                        }
                     }
                     return Command::SUCCESS;
                 }
@@ -125,8 +130,16 @@ class SearchCommand extends Command
                 $profileChoice = $helper->ask($input, $output, $profileQuestion);
                 
                 if (strtoupper($profileChoice) === 'N') {
+                    $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                    $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                    
+                    if (empty($newProfileName)) {
+                        $output->writeln('<error>Nombre requerido</error>');
+                        return Command::FAILURE;
+                    }
+                    
                     $createCmd = $this->getApplication()->find('profile:create');
-                    $createInput = new \Symfony\Component\Console\Input\ArrayInput([]);
+                    $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
                     $createCmd->run($createInput, $output);
                     return Command::SUCCESS;
                 }
