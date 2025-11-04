@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\System;
 
 use Roots\BedrockCli\Services\PremiumRepoService;
+use Roots\BedrockCli\Services\StateService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,6 +22,11 @@ class MainMenuCommand extends Command
     {
         $helper = $this->getHelper('question');
         
+        // Cargar wizard state si existe
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
+        $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+        
         // Verificar acceso a repo premium
         $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
         $needsAuth = $this->checkPremiumRepoAccess($repoUrl);
@@ -32,6 +38,13 @@ class MainMenuCommand extends Command
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             
+            // Mostrar wizard si está activo
+            if ($currentStep) {
+                $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
+                $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+                $output->writeln('');
+            }
+            
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
             $output->writeln(' <fg=cyan>[N]</> 🆕 New      - Crear proyecto desde cero');
             $output->writeln(' <fg=cyan>[1]</> 🩺 Doctor   - Verificar dependencias');
@@ -40,9 +53,9 @@ class MainMenuCommand extends Command
             $output->writeln('');
             
             $output->writeln('<fg=green>⚡ DESARROLLO</>');
-            $output->writeln(' <fg=cyan>[4]</> 🐳 Docker   - Levantar/bajar contenedores');
-            $output->writeln(' <fg=cyan>[5]</> 🎛️  Manage   - Plugins, Themes, Dependencies');
-            $output->writeln(' <fg=cyan>[6]</> 🗄️  Database - Gestión de base de datos');
+            $this->printMenuItem($output, '4', 'D', '🐳 Docker   - Levantar/bajar contenedores', $currentStep);
+            $this->printMenuItem($output, '5', 'M', '🎛️  Manage   - Plugins, Themes, Dependencies', $currentStep);
+            $this->printMenuItem($output, '6', 'B', '🗄️  Database - Gestión de base de datos', $currentStep);
             $output->writeln('');
             
             $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
@@ -54,8 +67,8 @@ class MainMenuCommand extends Command
             $output->writeln(' <fg=cyan>[9]</> 🚀 Init     - Inicializar ambiente');
             $output->writeln('');
             
-            $output->writeln(' <fg=cyan>[O]</> ⚙️  Options   - Gestión de wp_options');
-            $output->writeln(' <fg=cyan>[A]</> 🌱 Acorn    - Roots Acorn');
+            $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
+            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
             
             if ($needsAuth) {
                 $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
@@ -129,5 +142,12 @@ class MainMenuCommand extends Command
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    private function printMenuItem(OutputInterface $output, string $key, string $menuItem, string $label, ?array $currentStep): void
+    {
+        $isActive = $currentStep && $currentStep['menu_item'] === $menuItem;
+        $color = $isActive ? 'green' : 'cyan';
+        $output->writeln(" <fg={$color}>[{$key}]</> {$label}");
     }
 }

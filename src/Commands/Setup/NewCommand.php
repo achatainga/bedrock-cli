@@ -12,6 +12,7 @@ use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
 use Roots\BedrockCli\Services\AuthService;
+use Roots\BedrockCli\Services\StateService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 
 class NewCommand extends Command
@@ -74,6 +75,7 @@ class NewCommand extends Command
         $this->generateBlueprints($name, $input, $output);
         $this->copySeeders($name, $output);
         $this->initGit($name, $output);
+        $this->generateWizardState($name, $input, $profile, $output);
 
         $output->writeln('');
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
@@ -543,5 +545,23 @@ class NewCommand extends Command
                 $output->writeln("<error>✗ Error instalando {$plugin['name']}</error>");
             }
         }
+    }
+
+    private function generateWizardState(string $name, InputInterface $input, ?array $profile, OutputInterface $output): void
+    {
+        $output->writeln('<info>Generando wizard de configuración...</info>');
+
+        $stateService = new StateService();
+        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+
+        $config = [
+            'http_port' => $httpPort,
+            'has_acorn' => !$input->getOption('no-acorn'),
+            'has_plugins' => $profile && !empty($profile['plugins']['wordpress_org']),
+            'has_theme' => $profile && !empty($profile['theme'])
+        ];
+
+        $stateService->generateInitialState($name, $config);
+        $output->writeln('<info>✓ bedrock_state.json creado</info>');
     }
 }
