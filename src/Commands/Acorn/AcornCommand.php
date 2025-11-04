@@ -8,6 +8,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
+use Roots\BedrockCli\Services\StateService;
 
 class AcornCommand extends Command
 {
@@ -302,6 +303,8 @@ class AcornCommand extends Command
         $output->writeln('');
         $output->writeln('<info>✅ Acorn instalado completamente</info>');
         
+        $this->markStepCompleted(5);
+        
         return Command::SUCCESS;
     }
 
@@ -496,5 +499,11 @@ class AcornCommand extends Command
             return number_format($bytes / 1024, 2) . ' KB';
         }
         return $bytes . ' bytes';
+    }
+
+    private function markStepCompleted(int $stepId): void
+    {
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }

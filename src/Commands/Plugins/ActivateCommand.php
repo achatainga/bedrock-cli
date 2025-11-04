@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
+use Roots\BedrockCli\Services\StateService;
 
 class ActivateCommand extends Command
 {
@@ -29,10 +30,17 @@ class ActivateCommand extends Command
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin activado</info>');
+            $this->markStepCompleted(3);
             return Command::SUCCESS;
         }
 
         return Command::FAILURE;
+    }
+
+    private function markStepCompleted(int $stepId): void
+    {
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 
     protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void

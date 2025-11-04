@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Roots\BedrockCli\Services\StateService;
 
 class InitCommand extends Command
 {
@@ -86,6 +87,9 @@ class InitCommand extends Command
         $this->flushRewriteRules($io, $projectRoot);
 
         $io->success("✅ {$env} environment initialized successfully!");
+        
+        // Marcar paso 2 como completado (Instalar WordPress)
+        $this->markStepCompleted(2);
         
         return Command::SUCCESS;
     }
@@ -306,5 +310,11 @@ class InitCommand extends Command
         if ($returnCode === 0) {
             $io->success('Rewrite rules flushed');
         }
+    }
+
+    private function markStepCompleted(int $stepId): void
+    {
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }

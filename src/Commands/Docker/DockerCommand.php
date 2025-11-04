@@ -10,6 +10,7 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
+use Roots\BedrockCli\Services\StateService;
 
 class DockerCommand extends Command
 {
@@ -152,6 +153,7 @@ class DockerCommand extends Command
         
         if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
+            $this->markStepCompleted(1);
             return Command::SUCCESS;
         }
         
@@ -311,5 +313,11 @@ class DockerCommand extends Command
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
+
+    private function markStepCompleted(int $stepId): void
+    {
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }
