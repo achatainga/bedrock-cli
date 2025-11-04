@@ -264,11 +264,16 @@ class SearchCommand extends Command
             $name = basename($project);
             $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$name}");
         }
+        $output->writeln('  <fg=cyan>[0]</> Cancelar');
         $output->writeln('');
         
         $helper = $this->getHelper('question');
         $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Seleccionar proyecto [1]:</> ', '1');
         $choice = $helper->ask($input, $output, $question);
+        
+        if ($choice === '0') {
+            return null;
+        }
         
         $index = (int)$choice - 1;
         return $bedrockProjects[$index] ?? null;
