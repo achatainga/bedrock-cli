@@ -15,7 +15,7 @@ use Symfony\Component\Console\Question\Question;
 class SearchCommand extends Command
 {
     use InteractiveSearchTrait;
-{
+
     protected function configure(): void
     {
         $this->setName('theme:search')
