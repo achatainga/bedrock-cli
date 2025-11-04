@@ -97,8 +97,18 @@ class SearchCommand extends Command
                 $profiles = array_values($profileService->listProfiles());
                 
                 if (empty($profiles)) {
-                    $output->writeln('<error>No hay profiles creados. Usa: bedrock profile:create</error>');
-                    return Command::FAILURE;
+                    $output->writeln('<comment>No hay profiles creados.</comment>');
+                    $output->writeln('');
+                    $createQuestion = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+                        '<fg=yellow>¿Crear un nuevo profile? (Y/n):</> ',
+                        true
+                    );
+                    
+                    if ($helper->ask($input, $output, $createQuestion)) {
+                        $createCmd = $this->getApplication()->find('profile:create');
+                        $createCmd->run($input, $output);
+                    }
+                    return Command::SUCCESS;
                 }
                 
                 $output->writeln('');
@@ -106,10 +116,22 @@ class SearchCommand extends Command
                 foreach ($profiles as $idx => $profileData) {
                     $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profileData['name']}");
                 }
+                $output->writeln('  <fg=cyan>[N]</> Crear nuevo profile');
+                $output->writeln('  <fg=cyan>[0]</> Cancelar');
                 $output->writeln('');
                 
                 $profileQuestion = new Question('<fg=yellow>Seleccionar profile [1]:</> ', '1');
                 $profileChoice = $helper->ask($input, $output, $profileQuestion);
+                
+                if (strtoupper($profileChoice) === 'N') {
+                    $createCmd = $this->getApplication()->find('profile:create');
+                    $createCmd->run($input, $output);
+                    return Command::SUCCESS;
+                }
+                
+                if ($profileChoice === '0') {
+                    return Command::SUCCESS;
+                }
                 
                 $profileIndex = (int)$profileChoice - 1;
                 if (!isset($profiles[$profileIndex])) {
