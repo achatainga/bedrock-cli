@@ -50,12 +50,8 @@ class SearchCommand extends Command
 
         $this->displayPluginsTable($plugins, $output);
 
-        if (!$profileName) {
-            return Command::SUCCESS;
-        }
-
         $helper = $this->getHelper('question');
-        $question = new Question("\n<question>Select plugins to add (comma-separated numbers, e.g., 1,3,5) or press Enter to skip:</question> ");
+        $question = new Question("\n<fg=yellow>Seleccionar números (ej: 1,3,5) o Enter para salir:</> ");
         $selection = $helper->ask($input, $output, $question);
 
         if (empty($selection)) {
@@ -63,14 +59,7 @@ class SearchCommand extends Command
         }
 
         $selected = array_map('trim', explode(',', $selection));
-        $profileService = new ProfileService();
-
-        if (!$profileService->profileExists($profileName)) {
-            $output->writeln("<error>Profile '{$profileName}' does not exist.</error>");
-            return Command::FAILURE;
-        }
-
-        $profile = $profileService->loadProfile($profileName);
+        $selectedPlugins = [];
 
         foreach ($selected as $num) {
             $index = (int) $num - 1;
@@ -80,15 +69,65 @@ class SearchCommand extends Command
 
             $plugin = $plugins[$index];
             $slug = $plugin['slug'];
-
             $version = $this->selectPluginVersion($slug, $helper, $input, $output);
-
-            $profile['plugins']['public'][$slug] = $version;
-            $output->writeln("<info>✓ Added {$slug} ({$version})</info>");
+            
+            $selectedPlugins[$slug] = $version;
+            $output->writeln("<info>✓ {$slug}:{$version}</info>");
         }
 
-        $profileService->saveProfile($profileName, $profile);
-        $output->writeln("\n<info>Profile '{$profileName}' updated successfully!</info>");
+        if (empty($selectedPlugins)) {
+            return Command::SUCCESS;
+        }
+
+        // Preguntar qué hacer con los plugins seleccionados
+        $output->writeln('');
+        $output->writeln('<fg=yellow>¿Qué deseas hacer con los plugins seleccionados?</>');
+        $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
+        $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto actual');
+        $output->writeln(' <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
+        
+        $actionQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
+        $action = $helper->ask($input, $output, $actionQuestion);
+
+        if ($action === '1') {
+            // Agregar a profile
+            if (!$profileName) {
+                $profileQuestion = new Question('<fg=yellow>Nombre del profile:</> ');
+                $profileName = $helper->ask($input, $output, $profileQuestion);
+            }
+
+            $profileService = new ProfileService();
+            if (!$profileService->profileExists($profileName)) {
+                $output->writeln("<error>Profile '{$profileName}' no existe.</error>");
+                return Command::FAILURE;
+            }
+
+            $profile = $profileService->loadProfile($profileName);
+            foreach ($selectedPlugins as $slug => $version) {
+                $profile['plugins']['public'][$slug] = $version;
+            }
+            $profileService->saveProfile($profileName, $profile);
+            $output->writeln("\n<info>✓ Plugins agregados al profile '{$profileName}'</info>");
+            
+        } elseif ($action === '2') {
+            // Instalar en proyecto actual
+            $output->writeln('');
+            $output->writeln('<info>Instalando plugins...</info>');
+            
+            foreach ($selectedPlugins as $slug => $version) {
+                $constraint = $version === '*' ? '' : ":{$version}";
+                $command = "composer require wpackagist-plugin/{$slug}{$constraint}";
+                $output->writeln("<comment>$ {$command}</comment>");
+                passthru($command, $exitCode);
+                
+                if ($exitCode === 0) {
+                    $output->writeln("<info>✓ {$slug} instalado</info>");
+                } else {
+                    $output->writeln("<error>✗ Error instalando {$slug}</error>");
+                }
+            }
+        }
 
         return Command::SUCCESS;
     }
