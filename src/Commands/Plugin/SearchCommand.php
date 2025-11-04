@@ -106,7 +106,8 @@ class SearchCommand extends Command
                     
                     if ($helper->ask($input, $output, $createQuestion)) {
                         $createCmd = $this->getApplication()->find('profile:create');
-                        $createCmd->run($input, $output);
+                        $createInput = new \Symfony\Component\Console\Input\ArrayInput([]);
+                        $createCmd->run($createInput, $output);
                     }
                     return Command::SUCCESS;
                 }
@@ -125,7 +126,8 @@ class SearchCommand extends Command
                 
                 if (strtoupper($profileChoice) === 'N') {
                     $createCmd = $this->getApplication()->find('profile:create');
-                    $createCmd->run($input, $output);
+                    $createInput = new \Symfony\Component\Console\Input\ArrayInput([]);
+                    $createCmd->run($createInput, $output);
                     return Command::SUCCESS;
                 }
                 
@@ -166,7 +168,7 @@ class SearchCommand extends Command
             
         } elseif ($action === '2') {
             // Instalar en proyecto actual
-            $projectPath = $this->findBedrockProject($output);
+            $projectPath = $this->findBedrockProject($output, $input);
             
             if (!$projectPath) {
                 $output->writeln('<error>No se encontró ningún proyecto Bedrock</error>');
@@ -216,7 +218,7 @@ class SearchCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function findBedrockProject(OutputInterface $output): ?string
+    private function findBedrockProject(OutputInterface $output, InputInterface $input = null): ?string
     {
         // Verificar directorio actual
         if ($this->isBedrockProject(getcwd())) {
