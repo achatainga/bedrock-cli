@@ -8,9 +8,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\AIService;
 use Roots\BedrockCli\Services\AIContextBuilder;
 use Roots\BedrockCli\Services\ProjectDiagnosticService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class DiagnoseCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this
@@ -33,14 +35,7 @@ class DiagnoseCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
-        // Verificar si estamos en un proyecto Bedrock
-        if (!file_exists(getcwd() . '/composer.json')) {
-            $output->writeln('<error>⚠️  No estás en un proyecto Bedrock</error>');
-            $output->writeln('<comment>Directorio actual: ' . getcwd() . '</comment>');
-            $output->writeln('');
-            $output->writeln('<info>Navega a tu proyecto primero:</info>');
-            $output->writeln('  cd C:\\code\\detodo24-bedrock');
-            $output->writeln('  bedrock ai:diagnose');
+        if (!$this->ensureBedrockProject($input, $output)) {
             return Command::FAILURE;
         }
 
