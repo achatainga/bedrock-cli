@@ -4,15 +4,17 @@ namespace Roots\BedrockCli\Commands\Plugin;
 
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Question\Question;
 
 class SearchCommand extends Command
+{
+    use InteractiveSearchTrait;
 {
     protected function configure(): void
     {
@@ -46,21 +48,7 @@ class SearchCommand extends Command
 
         $output->writeln("<comment>Found {$total} plugins (showing page {$page}):</comment>\n");
 
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Name', 'Slug', 'Installs', 'Rating', 'Version']);
-
-        foreach ($plugins as $index => $plugin) {
-            $table->addRow([
-                $index + 1,
-                $plugin['name'],
-                $plugin['slug'],
-                number_format($plugin['active_installs'] ?? 0),
-                ($plugin['rating'] ?? 0) . '%',
-                $plugin['version'] ?? 'N/A'
-            ]);
-        }
-
-        $table->render();
+        $this->displayPluginsTable($plugins, $output);
 
         if (!$profileName) {
             return Command::SUCCESS;
@@ -93,8 +81,7 @@ class SearchCommand extends Command
             $plugin = $plugins[$index];
             $slug = $plugin['slug'];
 
-            $versionQuestion = new Question("<question>Version constraint for {$slug} (default: *): </question>", '*');
-            $version = $helper->ask($input, $output, $versionQuestion);
+            $version = $this->selectPluginVersion($slug, $helper, $input, $output);
 
             $profile['plugins']['public'][$slug] = $version;
             $output->writeln("<info>✓ Added {$slug} ({$version})</info>");

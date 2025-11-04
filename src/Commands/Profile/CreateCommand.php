@@ -4,8 +4,8 @@ namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\WordPressApiService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -13,6 +13,8 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 class CreateCommand extends Command
+{
+    use InteractiveSearchTrait;
 {
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
@@ -243,25 +245,7 @@ class CreateCommand extends Command
             $plugins = $result['plugins'];
             $output->writeln("\n<comment>Resultados:</comment>\n");
             
-            $table = new Table($output);
-            $table->setHeaders(['#', 'Nombre', 'Slug', 'Instalaciones']);
-            $table->setColumnMaxWidth(1, 35);
-            
-            $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white'];
-            
-            foreach ($plugins as $index => $plugin) {
-                $colorIndex = $index % count($colors);
-                $color = $colors[$colorIndex];
-                
-                $table->addRow([
-                    "<fg={$color}>" . ($index + 1) . "</>",
-                    $plugin['name'],
-                    "<fg={$color}>" . $plugin['slug'] . "</>",
-                    number_format($plugin['active_installs'] ?? 0)
-                ]);
-            }
-            
-            $table->render();
+            $this->displayPluginsTable($plugins, $output);
             
             $question = new Question("\nSeleccionar números (ej: 1,3,5) o Enter para nueva búsqueda: ");
             $selection = $helper->ask($input, $output, $question);
@@ -276,76 +260,7 @@ class CreateCommand extends Command
                 $index = (int) $num - 1;
                 if (isset($plugins[$index])) {
                     $slug = $plugins[$index]['slug'];
-                    
-                    // Obtener info del plugin para mostrar versiones
-                    $pluginInfo = $apiService->getPluginInfo($slug);
-                    $version = '*';
-                    
-                    if ($pluginInfo && isset($pluginInfo['versions'])) {
-                        $versions = array_keys($pluginInfo['versions']);
-                        $versions = array_filter($versions, function($v) {
-                            return $v !== 'trunk' && preg_match('/^\d+\.\d+/', $v);
-                        });
-                        usort($versions, function($a, $b) {
-                            return version_compare($b, $a);
-                        });
-                        
-                        $latestVersion = $versions[0] ?? '*';
-                        $output->writeln("\n<comment>Plugin: {$slug}</comment>");
-                        $output->writeln("<comment>Última versión: {$latestVersion}</comment>");
-                        $output->writeln("<comment>Versiones disponibles (mostrando de 10 en 10):</comment>\n");
-                        
-                        $page = 0;
-                        $perPage = 10;
-                        $totalVersions = count($versions);
-                        
-                        while (true) {
-                            $start = $page * $perPage;
-                            $pageVersions = array_slice($versions, $start, $perPage);
-                            
-                            if (empty($pageVersions)) {
-                                break;
-                            }
-                            
-                            // Mostrar en 4 columnas
-                            $cols = 4;
-                            $rows = ceil(count($pageVersions) / $cols);
-                            
-                            for ($row = 0; $row < $rows; $row++) {
-                                $line = '';
-                                for ($col = 0; $col < $cols; $col++) {
-                                    $idx = $row + ($col * $rows);
-                                    if (isset($pageVersions[$idx])) {
-                                        $num = $start + $idx + 1;
-                                        $ver = $pageVersions[$idx];
-                                        $line .= sprintf("<fg=cyan>[%2d]</> %-15s ", $num, $ver);
-                                    }
-                                }
-                                $output->writeln($line);
-                            }
-                            
-                            $output->writeln("\n  <fg=cyan>[0]</> * (siempre la última)");
-                            $output->writeln("  <fg=yellow>[N]</> Ver más versiones");
-                            
-                            $versionQuestion = new Question("\nSeleccionar versión [1]: ", '1');
-                            $versionChoice = strtoupper($helper->ask($input, $output, $versionQuestion));
-                            
-                            if ($versionChoice === 'N' && ($start + $perPage) < $totalVersions) {
-                                $page++;
-                                $output->writeln("");
-                                continue;
-                            }
-                            
-                            if ($versionChoice === '0') {
-                                $version = '*';
-                            } elseif (is_numeric($versionChoice) && isset($versions[$versionChoice - 1])) {
-                                $version = $versions[$versionChoice - 1];
-                            } else {
-                                $version = $versions[0] ?? '*';
-                            }
-                            break;
-                        }
-                    }
+                    $version = $this->selectPluginVersion($slug, $helper, $input, $output);
                     
                     $selectedPlugins[] = [
                         'slug' => $slug,

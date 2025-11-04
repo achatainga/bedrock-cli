@@ -4,15 +4,17 @@ namespace Roots\BedrockCli\Commands\Theme;
 
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Question\Question;
 
 class SearchCommand extends Command
+{
+    use InteractiveSearchTrait;
 {
     protected function configure(): void
     {
@@ -46,20 +48,7 @@ class SearchCommand extends Command
 
         $output->writeln("<comment>Found {$total} themes (showing page {$page}):</comment>\n");
 
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Name', 'Slug', 'Rating', 'Version']);
-
-        foreach ($themes as $index => $theme) {
-            $table->addRow([
-                $index + 1,
-                $theme['name'],
-                $theme['slug'],
-                ($theme['rating'] ?? 0) . '%',
-                $theme['version'] ?? 'N/A'
-            ]);
-        }
-
-        $table->render();
+        $this->displayThemesTable($themes, $output);
 
         if (!$profileName) {
             return Command::SUCCESS;
