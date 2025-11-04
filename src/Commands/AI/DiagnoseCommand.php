@@ -33,6 +33,17 @@ class DiagnoseCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
+        // Verificar si estamos en un proyecto Bedrock
+        if (!file_exists(getcwd() . '/composer.json')) {
+            $output->writeln('<error>⚠️  No estás en un proyecto Bedrock</error>');
+            $output->writeln('<comment>Directorio actual: ' . getcwd() . '</comment>');
+            $output->writeln('');
+            $output->writeln('<info>Navega a tu proyecto primero:</info>');
+            $output->writeln('  cd C:\\code\\detodo24-bedrock');
+            $output->writeln('  bedrock ai:diagnose');
+            return Command::FAILURE;
+        }
+
         $output->writeln('<comment>🔍 Analizando proyecto...</comment>');
         $output->writeln('');
 
@@ -60,9 +71,10 @@ class DiagnoseCommand extends Command
         try {
             $prompt = "Analiza este proyecto Bedrock y proporciona:\n";
             $prompt .= "1. Diagnóstico del estado actual\n";
-            $prompt .= "2. Problemas detectados\n";
+            $prompt .= "2. Problemas detectados (si los hay)\n";
             $prompt .= "3. Sugerencias de mejora\n";
-            $prompt .= "4. Comandos recomendados\n\n";
+            $prompt .= "4. Comandos específicos para ESTE proyecto\n\n";
+            $prompt .= "IMPORTANTE: Este es el proyecto en " . getcwd() . "\n\n";
             $prompt .= "Reporte completo: " . json_encode($report, JSON_PRETTY_PRINT);
 
             $response = $aiService->ask($prompt, $context);
