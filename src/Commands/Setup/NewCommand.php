@@ -558,7 +558,8 @@ class NewCommand extends Command
             'http_port' => $httpPort,
             'has_acorn' => !$input->getOption('no-acorn'),
             'has_plugins' => $profile && !empty($profile['plugins']['wordpress_org']),
-            'has_theme' => $profile && !empty($profile['theme'])
+            'has_theme' => $profile && !empty($profile['theme']),
+            'theme_name' => $profile['theme'] ?? 'twentytwentyfive'
         ];
 
         $stateService->generateInitialState($name, $config);
