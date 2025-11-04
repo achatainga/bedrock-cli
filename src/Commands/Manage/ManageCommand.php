@@ -8,9 +8,12 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class ManageCommand extends Command
 {
+    use ProjectSelectorTrait;
+
     private ContextDetector $contextDetector;
 
     public function __construct()
@@ -27,9 +30,7 @@ class ManageCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->contextDetector->isBedrockProject()) {
-            $output->writeln('<error>Este comando debe ejecutarse dentro de un proyecto Bedrock</error>');
-            $output->writeln('<info>Usa "bedrock new <nombre>" para crear un nuevo proyecto</info>');
+        if (!$this->ensureBedrockProject($input, $output)) {
             return Command::FAILURE;
         }
 

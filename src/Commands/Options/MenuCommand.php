@@ -7,9 +7,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class MenuCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this->setName('options')
@@ -18,6 +20,10 @@ class MenuCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $helper = $this->getHelper('question');
         
         while (true) {

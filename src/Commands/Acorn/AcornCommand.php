@@ -9,9 +9,11 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class AcornCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure()
     {
         $this
@@ -21,6 +23,10 @@ class AcornCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         // Mostrar estado actual
         $this->showStatus($output);
         

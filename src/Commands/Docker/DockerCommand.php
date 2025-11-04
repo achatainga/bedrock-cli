@@ -11,9 +11,11 @@ use Symfony\Component\Console\Cursor;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class DockerCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this
@@ -29,6 +31,10 @@ class DockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $docker = new DockerService();
         
         // Verificar si Docker está corriendo

@@ -13,9 +13,11 @@ use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\StateDetectorService;
 use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class SetupCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this
@@ -38,6 +40,10 @@ class SetupCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $helper = $this->getHelper('question');
         $tutorialMode = $input->getOption('tutorial');
         

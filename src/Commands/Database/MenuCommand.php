@@ -12,9 +12,11 @@ use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\SecurityService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class MenuCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this
@@ -30,6 +32,10 @@ class MenuCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
