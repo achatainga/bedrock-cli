@@ -11,8 +11,12 @@ use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
+use Roots\BedrockCli\Services\AuthService;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 
 class NewCommand extends Command
+{
+    use PremiumAssetsTrait;
 {
     protected function configure(): void
     {
@@ -65,7 +69,8 @@ class NewCommand extends Command
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
-        $this->applyProfile($name, $input, $output);
+        $profile = $this->applyProfile($name, $input, $output);
+        $this->installPremiumAssets($name, $profile, $input, $output);
         $this->generateBlueprints($name, $input, $output);
         $this->copySeeders($name, $output);
         $this->initGit($name, $output);
@@ -455,5 +460,88 @@ class NewCommand extends Command
         
         // Subir desde src/Commands/Setup/NewCommand.php hasta la raíz del paquete
         return dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'stubs';
+    }
+
+    private function installPremiumAssets(string $name, ?array $profile, InputInterface $input, OutputInterface $output): void
+    {
+        if (!$profile || empty($profile['plugins']['premium'])) {
+            return;
+        }
+
+        $output->writeln('<info>Instalando assets premium...</info>');
+
+        $hasVcsPlugins = false;
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                $hasVcsPlugins = true;
+                break;
+            }
+        }
+
+        if ($hasVcsPlugins) {
+            $this->copyAuthJson($name, $output);
+        }
+
+        $this->configureComposerRepositories($name, $profile, $output);
+        $this->requirePremiumPlugins($name, $profile, $output);
+    }
+
+    private function copyAuthJson(string $name, OutputInterface $output): void
+    {
+        $authService = new AuthService();
+        $globalAuth = $authService->getAuthFile();
+
+        if (!file_exists($globalAuth)) {
+            $output->writeln('<comment>⚠️  auth.json no encontrado, omitiendo...</comment>');
+            return;
+        }
+
+        copy($globalAuth, "{$name}/auth.json");
+        file_put_contents("{$name}/.gitignore", "\nauth.json\n", FILE_APPEND);
+        $output->writeln('<info>✓ auth.json copiado al proyecto</info>');
+    }
+
+    private function configureComposerRepositories(string $name, array $profile, OutputInterface $output): void
+    {
+        $composerFile = "{$name}/composer.json";
+        $composer = json_decode(file_get_contents($composerFile), true);
+
+        $repositories = [];
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs' && !in_array($plugin['url'], array_column($repositories, 'url'))) {
+                $repositories[] = ['type' => 'vcs', 'url' => $plugin['url']];
+            } elseif ($plugin['source'] === 'path') {
+                $repositories[] = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+            }
+        }
+
+        if (!empty($repositories)) {
+            $composer['repositories'] = array_merge($composer['repositories'] ?? [], $repositories);
+            file_put_contents($composerFile, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $output->writeln('<info>✓ Repositories configurados</info>');
+        }
+    }
+
+    private function requirePremiumPlugins(string $name, array $profile, OutputInterface $output): void
+    {
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            $package = $plugin['source'] === 'vcs' 
+                ? "detodo24/{$plugin['name']}" 
+                : "local/{$plugin['name']}";
+            
+            $version = $plugin['version'];
+            
+            $output->writeln("<comment>Instalando {$package}:{$version}...</comment>");
+            
+            $process = new Process(['composer', 'require', "{$package}:{$version}", '--no-interaction'], $name);
+            $process->setTimeout(300);
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $output->writeln("<info>✓ {$plugin['name']} instalado</info>");
+            } else {
+                $output->writeln("<error>✗ Error instalando {$plugin['name']}</error>");
+            }
+        }
     }
 }
