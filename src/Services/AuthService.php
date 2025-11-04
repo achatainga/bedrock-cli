@@ -22,6 +22,7 @@ class AuthService
         switch ($type) {
             case 'gitlab':
             case 'github':
+            case 'bitbucket':
                 $auth[$type . '-oauth'][$domain] = $credentials['token'];
                 break;
             case 'http-basic':
@@ -58,7 +59,7 @@ class AuthService
         $auth = $this->loadAuth();
         $list = [];
 
-        foreach (['gitlab-oauth', 'github-oauth', 'http-basic'] as $type) {
+        foreach (['gitlab-oauth', 'github-oauth', 'bitbucket-oauth', 'http-basic'] as $type) {
             if (isset($auth[$type])) {
                 foreach ($auth[$type] as $domain => $credentials) {
                     $list[] = [
@@ -77,7 +78,7 @@ class AuthService
     {
         $auth = $this->loadAuth();
         
-        foreach (['gitlab-oauth', 'github-oauth', 'http-basic'] as $type) {
+        foreach (['gitlab-oauth', 'github-oauth', 'bitbucket-oauth', 'http-basic'] as $type) {
             if (isset($auth[$type][$domain])) {
                 return true;
             }

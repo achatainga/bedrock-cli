@@ -34,13 +34,18 @@ class AddCommand extends Command
         if (!$type) {
             $typeQuestion = new ChoiceQuestion(
                 '<fg=yellow>Tipo de autenticación:</> ',
-                ['gitlab', 'github', 'http-basic'],
+                ['gitlab', 'github', 'bitbucket', 'http-basic'],
                 0
             );
             $type = $helper->ask($input, $output, $typeQuestion);
         }
 
-        $defaultDomain = $type === 'gitlab' ? 'gitlab.com' : ($type === 'github' ? 'github.com' : '');
+        $defaultDomain = match($type) {
+            'gitlab' => 'gitlab.com',
+            'github' => 'github.com',
+            'bitbucket' => 'bitbucket.org',
+            default => ''
+        };
         $domainQuestion = new Question(
             "<fg=yellow>Dominio [{$defaultDomain}]:</> ",
             $defaultDomain
@@ -78,33 +83,11 @@ class AddCommand extends Command
             $output->writeln('<fg=cyan>═══════════════════════════════════════════════════════════════</>');
             $output->writeln('');
             
-            if ($type === 'gitlab') {
-                $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
-                $output->writeln('<fg=green>     → https://gitlab.com/-/user_settings/personal_access_tokens</>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  2. Haz clic en "Add new token"</>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  3. Configura el token:</>');
-                $output->writeln('     • Token name: <comment>bedrock-cli</comment>');
-                $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
-                $output->writeln('     • Scopes: <comment>✓ api</comment> y <comment>✓ read_repository</comment>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  4. Haz clic en "Create personal access token"</>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  5. Copia el token generado (empieza con glpat-...)</>');
-            } else {
-                $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
-                $output->writeln('<fg=green>     → https://github.com/settings/tokens/new</>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  2. Configura el token:</>');
-                $output->writeln('     • Note: <comment>bedrock-cli</comment>');
-                $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
-                $output->writeln('     • Scopes: <comment>✓ repo</comment> (acceso completo a repositorios)');
-                $output->writeln('');
-                $output->writeln('<fg=white>  3. Haz clic en "Generate token" al final de la página</>');
-                $output->writeln('');
-                $output->writeln('<fg=white>  4. Copia el token generado (empieza con ghp_...)</>');
-            }
+            match($type) {
+                'gitlab' => $this->showGitLabInstructions($output),
+                'github' => $this->showGitHubInstructions($output),
+                'bitbucket' => $this->showBitbucketInstructions($output),
+            };
             
             $output->writeln('');
             $output->writeln('<fg=cyan>═══════════════════════════════════════════════════════════════</>');
@@ -138,5 +121,53 @@ class AddCommand extends Command
             $output->writeln("<error>Error: {$e->getMessage()}</error>");
             return Command::FAILURE;
         }
+    }
+
+    private function showGitLabInstructions(OutputInterface $output): void
+    {
+        $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
+        $output->writeln('<fg=green>     → https://gitlab.com/-/user_settings/personal_access_tokens</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  2. Haz clic en "Add new token"</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  3. Configura el token:</>');
+        $output->writeln('     • Token name: <comment>bedrock-cli</comment>');
+        $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
+        $output->writeln('     • Scopes: <comment>✓ api</comment> y <comment>✓ read_repository</comment>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  4. Haz clic en "Create personal access token"</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  5. Copia el token generado (empieza con glpat-...)</>');
+    }
+
+    private function showGitHubInstructions(OutputInterface $output): void
+    {
+        $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
+        $output->writeln('<fg=green>     → https://github.com/settings/tokens/new</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  2. Configura el token:</>');
+        $output->writeln('     • Note: <comment>bedrock-cli</comment>');
+        $output->writeln('     • Expiration: <comment>No expiration</comment> (o fecha futura)');
+        $output->writeln('     • Scopes: <comment>✓ repo</comment> (acceso completo a repositorios)');
+        $output->writeln('');
+        $output->writeln('<fg=white>  3. Haz clic en "Generate token" al final de la página</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  4. Copia el token generado (empieza con ghp_...)</>');
+    }
+
+    private function showBitbucketInstructions(OutputInterface $output): void
+    {
+        $output->writeln('<fg=white>  1. Abre este enlace en tu navegador:</>');
+        $output->writeln('<fg=green>     → https://bitbucket.org/account/settings/app-passwords/</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  2. Haz clic en "Create app password"</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  3. Configura el password:</>');
+        $output->writeln('     • Label: <comment>bedrock-cli</comment>');
+        $output->writeln('     • Permissions: <comment>✓ Repositories (Read)</comment>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  4. Haz clic en "Create"</>');
+        $output->writeln('');
+        $output->writeln('<fg=white>  5. Copia el password generado</>');
     }
 }
