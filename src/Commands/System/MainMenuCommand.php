@@ -46,10 +46,10 @@ class MainMenuCommand extends Command
             }
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
-            $output->writeln(' <fg=cyan>[N]</> 🆕 New      - Crear proyecto desde cero');
-            $output->writeln(' <fg=cyan>[1]</> 🩺 Doctor   - Verificar dependencias');
-            $output->writeln(' <fg=cyan>[2]</> ⚙️  Setup    - Configuración inicial');
-            $output->writeln(' <fg=cyan>[3]</> 📋 Profiles - Crear/gestionar profiles');
+            $this->printMenuItem($output, 'N', 'N', '🆕 New      - Crear proyecto desde cero', $currentStep);
+            $this->printMenuItem($output, '1', '1', '🩺 Doctor   - Verificar dependencias', $currentStep);
+            $this->printMenuItem($output, '2', '2', '⚙️  Setup    - Configuración inicial', $currentStep);
+            $this->printMenuItem($output, '3', '3', '📋 Profiles - Crear/gestionar profiles', $currentStep);
             $output->writeln('');
             
             $output->writeln('<fg=green>⚡ DESARROLLO</>');
@@ -59,12 +59,12 @@ class MainMenuCommand extends Command
             $output->writeln('');
             
             $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
-            $output->writeln(' <fg=cyan>[7]</> 🔍 Search   - Buscar en WordPress.org');
-            $output->writeln(' <fg=cyan>[8]</> ℹ️  Info     - Estado del proyecto');
+            $this->printMenuItem($output, '7', '7', '🔍 Search   - Buscar en WordPress.org', $currentStep);
+            $this->printMenuItem($output, '8', '8', 'ℹ️  Info     - Estado del proyecto', $currentStep);
             $output->writeln('');
             
             $output->writeln('<fg=magenta>🔧 AVANZADO</>');
-            $output->writeln(' <fg=cyan>[9]</> 🚀 Init     - Inicializar ambiente');
+            $this->printMenuItem($output, '9', '9', '🚀 Init     - Inicializar ambiente', $currentStep);
             $output->writeln('');
             
             $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
@@ -73,13 +73,13 @@ class MainMenuCommand extends Command
             if ($needsAuth) {
                 $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
             } else {
-                $output->writeln(' <fg=cyan>[T]</> 🔐 Auth     - Credenciales repos privados');
+                $this->printMenuItem($output, 'T', 'T', '🔐 Auth     - Credenciales repos privados', $currentStep);
             }
-            $output->writeln(' <fg=cyan>[B]</> 💾 Backup   - Crear backup');
-            $output->writeln(' <fg=cyan>[R]</> 🗑️  Reinstall - Reinstalar (DESTRUCTIVO)');
+            $this->printMenuItem($output, 'B', 'B', '💾 Backup   - Crear backup', $currentStep);
+            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall - Reinstalar (DESTRUCTIVO)', $currentStep);
             $output->writeln('');
             
-            $output->writeln(' <fg=red>[0]</> ❌ Salir');
+            $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
             $output->writeln('');
 
             $question = new Question('<fg=yellow>Opción [0-9, N, O, A, T, B, R]:</> ', '0');
@@ -148,6 +148,6 @@ class MainMenuCommand extends Command
     {
         $isActive = $currentStep && $currentStep['menu_item'] === $menuItem;
         $color = $isActive ? 'green' : 'cyan';
-        $output->writeln(" <fg={$color}>[{$key}]</> {$label}");
+        $output->writeln(" <fg={$color}>[{$key}] {$label}</>");
     }
 }

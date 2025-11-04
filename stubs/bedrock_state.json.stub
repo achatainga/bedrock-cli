@@ -17,9 +17,9 @@
     {
       "id": 2,
       "title": "Instalar WordPress",
-      "description": "Instala WordPress Core en la base de datos ejecutando:\n\ndocker-compose exec web wp core install \\\n  --url=http://localhost:{{HTTP_PORT}} \\\n  --title=\"Mi Sitio\" \\\n  --admin_user=admin \\\n  --admin_password=admin \\\n  --admin_email=admin@example.com\n\nEsto creará las tablas de WordPress y el usuario administrador.",
+      "description": "Instala WordPress Core en la base de datos.\n\nUsa el menú [2] Setup\n\nO ejecuta manualmente:\ndocker-compose exec web wp core install \\\n  --url=http://localhost:{{HTTP_PORT}} \\\n  --title=\"Mi Sitio\" \\\n  --admin_user=admin \\\n  --admin_password=admin \\\n  --admin_email=admin@example.com\n\nEsto creará las tablas de WordPress y el usuario administrador.",
       "command": "docker-compose exec web wp core install --url=http://localhost:{{HTTP_PORT}} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com",
-      "menu_item": "I",
+      "menu_item": "2",
       "completed": false,
       "skippable": false
     },
