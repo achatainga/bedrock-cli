@@ -164,19 +164,28 @@ class AIService
             $prompt .= "CONTEXTO DEL PROYECTO:\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n\n";
         }
 
-        $prompt .= "COMANDOS DISPONIBLES:\n";
-        $prompt .= "- bedrock menu\n";
-        $prompt .= "- bedrock setup\n";
-        $prompt .= "- bedrock docker\n";
-        $prompt .= "- bedrock acorn\n";
-        $prompt .= "- bedrock plugins:activate\n";
-        $prompt .= "- bedrock themes:activate\n\n";
+        $prompt .= "COMANDOS DISPONIBLES EN BEDROCK-CLI:\n";
+        $prompt .= "- bedrock menu (menú principal)\n";
+        $prompt .= "- bedrock new:wizard (crear proyecto nuevo)\n";
+        $prompt .= "- bedrock doctor (verificar dependencias)\n";
+        $prompt .= "- bedrock setup (instalación WordPress + Acorn)\n";
+        $prompt .= "- bedrock docker (levantar/bajar contenedores)\n";
+        $prompt .= "- bedrock acorn (configurar Acorn)\n";
+        $prompt .= "- bedrock plugins:activate (activar plugins)\n";
+        $prompt .= "- bedrock themes:activate (activar tema)\n";
+        $prompt .= "- bedrock db (gestión base de datos)\n";
+        $prompt .= "- bedrock manage (gestionar plugins/themes/deps)\n";
+        $prompt .= "- bedrock profile:menu (perfiles de configuración)\n";
+        $prompt .= "- bedrock backup (crear backup)\n";
+        $prompt .= "- bedrock info (estado del proyecto)\n\n";
 
-        $prompt .= "REGLAS:\n";
+        $prompt .= "REGLAS CRÍTICAS:\n";
         $prompt .= "1. Responde en español\n";
-        $prompt .= "2. Sé conciso y práctico\n";
-        $prompt .= "3. Si sugieres un comando, usa formato: `bedrock comando`\n";
-        $prompt .= "4. Si detectas un problema, explica la causa y solución\n";
+        $prompt .= "2. SOLO sugiere comandos de la lista anterior\n";
+        $prompt .= "3. NO inventes comandos que no existen\n";
+        $prompt .= "4. Usa formato: `bedrock comando` para comandos\n";
+        $prompt .= "5. Si no hay comando específico, sugiere usar el menú: `bedrock menu`\n";
+        $prompt .= "6. Sé conciso y práctico\n\n";
 
         return $prompt;
     }
