@@ -83,7 +83,7 @@ class SearchCommand extends Command
         $output->writeln('');
         $output->writeln('<fg=yellow>¿Qué deseas hacer con los plugins seleccionados?</>');
         $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
-        $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto actual');
+        $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto Bedrock');
         $output->writeln(' <fg=cyan>[0]</> Cancelar');
         $output->writeln('');
         
@@ -231,7 +231,7 @@ class SearchCommand extends Command
         
         $helper = $this->getHelper('question');
         $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Seleccionar proyecto [1]:</> ', '1');
-        $choice = $helper->ask($this->getApplication()->find('plugin:search')->getDefinition()->getArguments()['query'], $output, $question);
+        $choice = $helper->ask($input, $output, $question);
         
         $index = (int)$choice - 1;
         return $bedrockProjects[$index] ?? null;
