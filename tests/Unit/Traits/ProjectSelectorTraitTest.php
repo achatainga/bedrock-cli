@@ -174,4 +174,33 @@ class ProjectSelectorTraitTest extends TestCase
         chdir($originalDir);
         rmdir($tempDir);
     }
+
+    public function test_it_auto_selects_single_project_found(): void
+    {
+        $tempDir = sys_get_temp_dir() . '/bedrock_test_' . uniqid();
+        mkdir($tempDir);
+        
+        $projectDir = $tempDir . '/project1';
+        mkdir($projectDir);
+        $composerJson = ['require' => ['roots/bedrock' => '^1.0']];
+        file_put_contents($projectDir . '/composer.json', json_encode($composerJson));
+
+        $originalDir = getcwd();
+        chdir($tempDir);
+
+        $input = $this->createMock(InputInterface::class);
+        $output = $this->createMock(OutputInterface::class);
+        $output->expects($this->atLeastOnce())->method('writeln');
+
+        $result = $this->ensureBedrockProject($input, $output);
+
+        $this->assertEquals(realpath($projectDir), realpath($result));
+        $this->assertEquals(realpath($projectDir), realpath(getcwd()));
+
+        // Cleanup
+        chdir($originalDir);
+        unlink($projectDir . '/composer.json');
+        rmdir($projectDir);
+        rmdir($tempDir);
+    }
 }
