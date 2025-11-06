@@ -118,8 +118,10 @@ class PremiumRepoService
 
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         
         // Headers según el tipo de servicio
         if (str_contains($domain, 'github')) {
@@ -139,7 +141,12 @@ class PremiumRepoService
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        if ($response === false) {
+            return ['success' => false, 'message' => "Error de conexión: {$curlError}", 'needs_auth' => false];
+        }
 
         if ($httpCode === 200) {
             return ['success' => true, 'message' => 'Acceso verificado', 'needs_auth' => false];
@@ -183,6 +190,9 @@ class PremiumRepoService
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
         curl_close($ch);
