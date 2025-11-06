@@ -6,6 +6,7 @@ use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\PluginManagementTrait;
+use Roots\BedrockCli\Traits\ThemeManagementTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,6 +20,7 @@ class EditWizardCommand extends Command
     use InteractiveSearchTrait;
     use PremiumAssetsTrait;
     use PluginManagementTrait;
+    use ThemeManagementTrait;
     
     protected static $defaultName = 'profile:edit-wizard';
     private ProfileService $profileService;
@@ -49,98 +51,92 @@ class EditWizardCommand extends Command
 
         $profile = $this->profileService->loadProfile($name);
 
-        $output->writeln('');
-        $output->writeln('<info>╔════════════════════════════════════════════════════════════════╗</info>');
-        $output->writeln('<info>║           ✏️  EDITAR PROFILE WIZARD                            ║</info>');
-        $output->writeln('<info>╚════════════════════════════════════════════════════════════════╝</info>');
-        $output->writeln('');
-        $output->writeln("<comment>Profile: {$name}</comment>");
-        $output->writeln('');
-
-        // Menú de secciones
         while (true) {
-            $sectionQuestion = new ChoiceQuestion(
-                '<fg=yellow>¿Qué deseas editar?</> ',
-                [
-                    '1' => 'Descripción',
-                    '2' => 'Plugins públicos',
-                    '3' => 'Plugins premium',
-                    '4' => 'Plugins custom',
-                    '5' => 'Tema',
-                    '0' => 'Guardar y salir'
-                ],
-                '0'
-            );
+            $this->displayMainMenu($profile, $output);
             
-            $section = $helper->ask($input, $output, $sectionQuestion);
+            $question = new Question('> ');
+            $action = strtoupper(trim($helper->ask($input, $output, $question)));
             
-            if ($section === '0' || $section === 'Guardar y salir') {
+            if ($action === '0') {
                 break;
             }
             
-            $output->writeln('');
-            
-            match($section) {
-                '1', 'Descripción' => $this->editDescription($profile, $input, $output, $helper),
-                '2', 'Plugins públicos', '3', 'Plugins premium', '4', 'Plugins custom' => $this->managePluginsInteractive($profile, $input, $output, $helper),
-                '5', 'Tema' => $this->editTheme($profile, $input, $output, $helper),
-                default => null
-            };
+            if ($action === '1') {
+                $this->editDescription($profile, $input, $output, $helper);
+            } elseif ($action === '2') {
+                $this->managePluginsInteractive($profile, $input, $output, $helper);
+            } elseif ($action === '3') {
+                $this->manageThemesInteractive($profile, $input, $output, $helper);
+            }
             
             $output->writeln('');
         }
 
-        // Guardar cambios
         $this->profileService->saveProfile($name, $profile);
-
         $output->writeln('');
-        $output->writeln("<info>✅ Profile '{$name}' actualizado exitosamente</info>");
+        $output->writeln("<info>✅ Profile '{$name}' actualizado</info>");
         $output->writeln('');
 
         return Command::SUCCESS;
     }
 
+    private function displayMainMenu(array $profile, OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   ✏️  EDITAR PROFILE               <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        $output->writeln("<comment>Profile: {$profile['name']}</comment>");
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[1]</> 📝 Descripción');
+        $output->writeln('  <fg=cyan>[2]</> 📦 Plugins');
+        $output->writeln('  <fg=cyan>[3]</> 🎨 Themes');
+        $output->writeln('  <fg=cyan>[0]</> ⬅️  Guardar y salir');
+        $output->writeln('');
+    }
+
     private function editDescription(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
+        $output->writeln('');
         $current = $profile['description'] ?? 'Sin descripción';
         $output->writeln("<comment>Actual: {$current}</comment>");
+        $output->writeln('');
         
         $question = new Question('Nueva descripción [Enter para mantener]: ', $current);
         $profile['description'] = $helper->ask($input, $output, $question);
+        $output->writeln('<info>✓ Descripción actualizada</info>');
     }
 
     protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
-        $typeQuestion = new ChoiceQuestion(
-            '<fg=yellow>Tipo de plugin:</> ',
-            [
-                '1' => '🌐 Público (WordPress.org)',
-                '2' => '💎 Premium (Repositorio privado)',
-                '3' => '🔧 Custom (Carpeta local)',
-                '0' => 'Cancelar'
-            ],
-            '0'
-        );
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
+        $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
+        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta local)');
+        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
         
-        $type = $helper->ask($input, $output, $typeQuestion);
+        $question = new Question('> ');
+        $type = trim($helper->ask($input, $output, $question));
         
-        if ($type === '0' || $type === 'Cancelar') {
+        if ($type === '0') {
             return;
         }
         
-        if ($type === '1' || strpos($type, 'Público') !== false) {
+        if ($type === '1') {
             $plugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
             foreach ($plugins as $plugin) {
                 $profile['plugins']['public'][] = $plugin;
             }
             $output->writeln('<info>✓ Plugins públicos agregados</info>');
-        } elseif ($type === '2' || strpos($type, 'Premium') !== false) {
+        } elseif ($type === '2') {
             $plugins = $this->selectPremiumPlugins($input, $output, $helper);
             foreach ($plugins as $plugin) {
                 $profile['plugins']['premium'][] = $plugin;
             }
             $output->writeln('<info>✓ Plugins premium agregados</info>');
-        } else {
+        } elseif ($type === '3') {
             $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
             $path = $helper->ask($input, $output, $pathQuestion);
             
@@ -154,38 +150,33 @@ class EditWizardCommand extends Command
         }
     }
 
-    private function editTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
-        $current = $profile['theme'] ?? [];
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
+        $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
+        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
         
-        if (!empty($current)) {
-            $output->writeln('<comment>Tema actual:</comment>');
-            $output->writeln("  • {$current['name']} ({$current['type']})");
-            $output->writeln('');
-        }
+        $question = new Question('> ');
+        $type = trim($helper->ask($input, $output, $question));
         
-        $question = new ConfirmationQuestion('¿Cambiar tema? (Y/n): ', false);
-        if (!$helper->ask($input, $output, $question)) {
+        if ($type === '0') {
             return;
         }
         
-        $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
-        
-        if ($premiumTheme) {
-            $profile['theme'] = [
-                'name' => $premiumTheme['name'],
-                'type' => 'premium',
-                'source' => $premiumTheme['source'],
-                'url' => $premiumTheme['url'] ?? null
-            ];
-        } else {
-            $question = new Question('Nombre del tema público: ', 'twentytwentyfour');
-            $themeName = $helper->ask($input, $output, $question);
-            $profile['theme'] = [
-                'name' => $themeName,
-                'type' => 'public',
-                'source' => 'public'
-            ];
+        if ($type === '1') {
+            $themes = $this->searchWithCancelOption($input, $output, $helper, 'theme');
+            foreach ($themes as $theme) {
+                $profile['themes']['public'][] = $theme;
+            }
+            $output->writeln('<info>✓ Themes públicos agregados</info>');
+        } elseif ($type === '2') {
+            $themes = $this->selectPremiumThemes($input, $output, $helper);
+            foreach ($themes as $theme) {
+                $profile['themes']['premium'][] = $theme;
+            }
+            $output->writeln('<info>✓ Themes premium agregados</info>');
         }
     }
 }
