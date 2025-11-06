@@ -23,5 +23,8 @@
   "bin": [
     "bin/bedrock"
   ],
-  "minimum-stability": "stable"
+  "minimum-stability": "stable",
+  "require-dev": {
+    "phpunit/phpunit": "11.5"
+  }
 }
