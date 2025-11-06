@@ -23,9 +23,10 @@ trait PremiumAssetsTrait
         $sourceQuestion = new ChoiceQuestion(
             '<fg=yellow>Fuente de plugins premium:</> ',
             [
-                '1' => 'Repositorio privado (GitLab/GitHub/Bitbucket)',
-                '2' => 'Carpeta local',
-                '3' => 'Archivo ZIP',
+                '1' => 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)',
+                '2' => 'Repositorio individual (1 repo = 1 plugin)',
+                '3' => 'Carpeta local',
+                '4' => 'Archivo ZIP',
                 '0' => 'Omitir'
             ],
             '0'
@@ -38,9 +39,10 @@ trait PremiumAssetsTrait
         }
         
         return match($source) {
-            '1', 'Repositorio privado (GitLab/GitHub/Bitbucket)' => $this->selectFromRepository($input, $output, $helper),
-            '2', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
-            '3', 'Archivo ZIP' => $this->selectFromZip($input, $output, $helper),
+            '1', 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)' => $this->selectFromRepository($input, $output, $helper),
+            '2', 'Repositorio individual (1 repo = 1 plugin)' => $this->selectFromIndividualRepo($input, $output, $helper, 'plugin'),
+            '3', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
+            '4', 'Archivo ZIP' => $this->selectFromZip($input, $output, $helper),
             default => []
         };
     }
@@ -235,6 +237,69 @@ trait PremiumAssetsTrait
         ]];
     }
 
+    private function selectFromIndividualRepo(InputInterface $input, OutputInterface $output, $helper, string $type = 'plugin'): array
+    {
+        $output->writeln('');
+        $output->writeln("<info>📦 Repositorio Individual ({$type})</info>");
+        $output->writeln('');
+        
+        $urlQuestion = new Question('<fg=yellow>URL del repositorio Git:</> ');
+        $repoUrl = $helper->ask($input, $output, $urlQuestion);
+        
+        if (empty($repoUrl)) {
+            return [];
+        }
+        
+        // Verificar acceso
+        $service = new PremiumRepoService();
+        $access = $service->checkAccess($repoUrl);
+        
+        if (!$access['success']) {
+            $output->writeln("<error>❌ {$access['message']}</error>");
+            
+            if ($access['needs_auth']) {
+                $output->writeln('');
+                $output->writeln('<comment>Configura las credenciales con:</comment>');
+                $output->writeln('  bedrock menu → [T] Auth → [1] Agregar');
+                $output->writeln('');
+            }
+            
+            return [];
+        }
+        
+        $output->writeln('<info>✓ Acceso verificado</info>');
+        $output->writeln('');
+        
+        // Extraer nombre del repo
+        $slug = $this->extractSlugFromUrl($repoUrl);
+        
+        $nameQuestion = new Question("<fg=yellow>Nombre del {$type} [{$slug}]:</> ", $slug);
+        $name = $helper->ask($input, $output, $nameQuestion);
+        
+        $versionQuestion = new Question('<fg=yellow>Versión [*]:</> ', '*');
+        $version = $helper->ask($input, $output, $versionQuestion);
+        
+        $output->writeln("<info>✓ {$name}:{$version}</info>");
+        
+        return [[
+            'name' => $name,
+            'version' => $version,
+            'source' => 'vcs',
+            'type' => 'git',
+            'url' => $repoUrl
+        ]];
+    }
+
+    private function extractSlugFromUrl(string $url): string
+    {
+        // https://gitlab.com/user/my-plugin.git → my-plugin
+        // git@gitlab.com:user/my-plugin.git → my-plugin
+        if (preg_match('#[:/]([^/]+?)(?:\.git)?$#', $url, $matches)) {
+            return $matches[1];
+        }
+        return 'plugin';
+    }
+
     private function selectVersion(array $plugin, $helper, InputInterface $input, OutputInterface $output): string
     {
         if (empty($plugin['versions']) || count($plugin['versions']) === 1) {
@@ -261,9 +326,10 @@ trait PremiumAssetsTrait
         $sourceQuestion = new ChoiceQuestion(
             '<fg=yellow>Fuente del tema:</> ',
             [
-                '1' => 'Repositorio privado',
-                '2' => 'Carpeta local',
-                '3' => 'Archivo ZIP',
+                '1' => 'Repositorio de paquetes (packages/theme1/, packages/theme2/)',
+                '2' => 'Repositorio individual (1 repo = 1 tema)',
+                '3' => 'Carpeta local',
+                '4' => 'Archivo ZIP',
                 '0' => 'Omitir'
             ],
             '0'
@@ -275,7 +341,14 @@ trait PremiumAssetsTrait
             return null;
         }
         
-        // Reutilizar misma lógica que plugins
-        return null;
+        $result = match($source) {
+            '1', 'Repositorio de paquetes (packages/theme1/, packages/theme2/)' => $this->selectFromRepository($input, $output, $helper),
+            '2', 'Repositorio individual (1 repo = 1 tema)' => $this->selectFromIndividualRepo($input, $output, $helper, 'theme'),
+            '3', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
+            '4', 'Archivo ZIP' => $this->selectFromZip($input, $output, $helper),
+            default => []
+        };
+        
+        return !empty($result) ? $result[0] : null;
     }
 }

@@ -118,6 +118,85 @@ trait InteractiveSearchTrait
         return $choice === '1' ? $latestVersion : '*';
     }
 
+    protected function searchWithCancelOption(InputInterface $input, OutputInterface $output, $helper, string $type = 'plugin'): array
+    {
+        $apiService = new WordPressApiService();
+        $selectedItems = [];
+        
+        while (true) {
+            $output->writeln('');
+            if (!empty($selectedItems)) {
+                $output->writeln('<info>Seleccionados (' . count($selectedItems) . '):</info>');
+                foreach ($selectedItems as $idx => $item) {
+                    $output->writeln("  <fg=green>[" . ($idx + 1) . "]</> {$item['slug']}:{$item['version']}");
+                }
+                $output->writeln('');
+            }
+            
+            $question = new Question("🔍 Buscar {$type} (Enter=terminar, U=deshacer): ");
+            $query = $helper->ask($input, $output, $question);
+            
+            if (empty($query)) {
+                break;
+            }
+            
+            if (strtoupper($query) === 'U') {
+                if (!empty($selectedItems)) {
+                    $removed = array_pop($selectedItems);
+                    $output->writeln("<comment>✗ Eliminado: {$removed['slug']}</comment>");
+                }
+                continue;
+            }
+            
+            $result = $type === 'plugin' 
+                ? $apiService->searchPlugins($query, 1, 10)
+                : $apiService->searchThemes($query, 1, 10);
+            
+            if (empty($result[$type . 's'])) {
+                $output->writeln('<error>No se encontraron resultados.</error>');
+                continue;
+            }
+            
+            $items = $result[$type . 's'];
+            $output->writeln("\n<comment>Resultados:</comment>\n");
+            
+            if ($type === 'plugin') {
+                $this->displayPluginsTable($items, $output);
+            } else {
+                $this->displayThemesTable($items, $output);
+            }
+            
+            $output->writeln('');
+            $output->writeln('  <fg=yellow>[C]</> Cancelar selección');
+            $question = new Question("\nSeleccionar números (ej: 1,3,5) o C para cancelar: ");
+            $selection = $helper->ask($input, $output, $question);
+            
+            if (empty($selection) || strtoupper($selection) === 'C') {
+                continue;
+            }
+            
+            $selected = array_map('trim', explode(',', $selection));
+            
+            foreach ($selected as $num) {
+                $index = (int) $num - 1;
+                if (isset($items[$index])) {
+                    $slug = $items[$index]['slug'];
+                    $version = $type === 'plugin'
+                        ? $this->selectPluginVersion($slug, $helper, $input, $output)
+                        : $this->selectThemeVersion($slug, $helper, $input, $output);
+                    
+                    $selectedItems[] = [
+                        'slug' => $slug,
+                        'version' => $version
+                    ];
+                    $output->writeln("<info>✓ {$slug}:{$version}</info>");
+                }
+            }
+        }
+        
+        return $selectedItems;
+    }
+
     private function selectVersionFromList(array $versions, $helper, $input, OutputInterface $output): string
     {
         $page = 0;

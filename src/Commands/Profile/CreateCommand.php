@@ -149,16 +149,29 @@ class CreateCommand extends Command
 
         // Tema
         $output->writeln('<info>🎨 TEMA</info>');
-        $question = new Question('Nombre del tema: ', 'twentytwentyfour');
-        $themeName = $helper->ask($input, $output, $question);
+        $question = new ConfirmationQuestion('¿Usar tema premium/custom? (Y/n): ', false);
+        $usePremiumTheme = $helper->ask($input, $output, $question);
 
-        $question = new ConfirmationQuestion('¿Es un tema premium? (Y/n): ', false);
-        $isPremiumTheme = $helper->ask($input, $output, $question);
-
+        $themeData = null;
         $themeLicenseEnv = null;
-        if ($isPremiumTheme) {
-            $question = new Question('Variable de licencia en .env (ej: MOTTA_LICENSE): ');
-            $themeLicenseEnv = $helper->ask($input, $output, $question);
+        
+        if ($usePremiumTheme) {
+            $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
+            if ($premiumTheme) {
+                $themeData = $premiumTheme;
+                $question = new Question('Variable de licencia en .env (opcional, ej: MOTTA_LICENSE): ');
+                $themeLicenseEnv = $helper->ask($input, $output, $question);
+            }
+        }
+        
+        if (!$themeData) {
+            $question = new Question('Nombre del tema público: ', 'twentytwentyfour');
+            $themeName = $helper->ask($input, $output, $question);
+            $themeData = [
+                'name' => $themeName,
+                'type' => 'public',
+                'source' => 'public'
+            ];
         }
 
         // Construir profile
@@ -265,53 +278,6 @@ class CreateCommand extends Command
 
     private function searchPluginsInteractive(InputInterface $input, OutputInterface $output, $helper): array
     {
-        $apiService = new WordPressApiService();
-        $selectedPlugins = [];
-        
-        while (true) {
-            $question = new Question("\n🔍 Buscar plugin (o Enter para terminar): ");
-            $query = $helper->ask($input, $output, $question);
-            
-            if (empty($query)) {
-                break;
-            }
-            
-            $result = $apiService->searchPlugins($query, 1, 10);
-            
-            if (empty($result['plugins'])) {
-                $output->writeln('<error>No se encontraron plugins.</error>');
-                continue;
-            }
-            
-            $plugins = $result['plugins'];
-            $output->writeln("\n<comment>Resultados:</comment>\n");
-            
-            $this->displayPluginsTable($plugins, $output);
-            
-            $question = new Question("\nSeleccionar números (ej: 1,3,5) o Enter para nueva búsqueda: ");
-            $selection = $helper->ask($input, $output, $question);
-            
-            if (empty($selection)) {
-                continue;
-            }
-            
-            $selected = array_map('trim', explode(',', $selection));
-            
-            foreach ($selected as $num) {
-                $index = (int) $num - 1;
-                if (isset($plugins[$index])) {
-                    $slug = $plugins[$index]['slug'];
-                    $version = $this->selectPluginVersion($slug, $helper, $input, $output);
-                    
-                    $selectedPlugins[] = [
-                        'slug' => $slug,
-                        'version' => $version
-                    ];
-                    $output->writeln("<info>✓ {$slug}:{$version}</info>");
-                }
-            }
-        }
-        
-        return $selectedPlugins;
+        return $this->searchWithCancelOption($input, $output, $helper, 'plugin');
     }
 }
