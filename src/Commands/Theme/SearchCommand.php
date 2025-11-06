@@ -223,7 +223,7 @@ class SearchCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function findBedrockProject(OutputInterface $output, InputInterface $input = null): ?string
+    private function findBedrockProject(OutputInterface $output, ?InputInterface $input = null): ?string
     {
         if ($this->isBedrockProject(getcwd())) {
             return getcwd();

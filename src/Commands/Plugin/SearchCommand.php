@@ -266,7 +266,7 @@ class SearchCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function findBedrockProject(OutputInterface $output, InputInterface $input = null): ?string
+    private function findBedrockProject(OutputInterface $output, ?InputInterface $input = null): ?string
     {
         // Verificar directorio actual
         if ($this->isBedrockProject(getcwd())) {
