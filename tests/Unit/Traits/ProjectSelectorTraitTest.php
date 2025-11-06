@@ -6,6 +6,10 @@ namespace Tests\Unit\Traits;
 
 use PHPUnit\Framework\TestCase;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Helper\HelperSet;
 
 class ProjectSelectorTraitTest extends TestCase
 {
@@ -123,6 +127,51 @@ class ProjectSelectorTraitTest extends TestCase
 
         // Cleanup
         unlink($tempDir . '/composer.json');
+        rmdir($tempDir);
+    }
+
+    public function test_it_returns_current_directory_when_is_bedrock_project(): void
+    {
+        $tempDir = sys_get_temp_dir() . '/bedrock_test_' . uniqid();
+        mkdir($tempDir);
+
+        $composerJson = ['require' => ['roots/bedrock' => '^1.0']];
+        file_put_contents($tempDir . '/composer.json', json_encode($composerJson));
+
+        $originalDir = getcwd();
+        chdir($tempDir);
+
+        $input = $this->createMock(InputInterface::class);
+        $output = $this->createMock(OutputInterface::class);
+
+        $result = $this->ensureBedrockProject($input, $output);
+
+        $this->assertEquals(realpath($tempDir), realpath($result));
+
+        // Cleanup
+        chdir($originalDir);
+        unlink($tempDir . '/composer.json');
+        rmdir($tempDir);
+    }
+
+    public function test_it_returns_null_when_no_projects_found(): void
+    {
+        $tempDir = sys_get_temp_dir() . '/bedrock_test_' . uniqid();
+        mkdir($tempDir);
+
+        $originalDir = getcwd();
+        chdir($tempDir);
+
+        $input = $this->createMock(InputInterface::class);
+        $output = $this->createMock(OutputInterface::class);
+        $output->expects($this->atLeastOnce())->method('writeln');
+
+        $result = $this->ensureBedrockProject($input, $output);
+
+        $this->assertNull($result);
+
+        // Cleanup
+        chdir($originalDir);
         rmdir($tempDir);
     }
 }
