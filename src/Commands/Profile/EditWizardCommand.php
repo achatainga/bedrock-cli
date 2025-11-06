@@ -5,6 +5,7 @@ namespace Roots\BedrockCli\Commands\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
+use Roots\BedrockCli\Traits\PluginManagementTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,6 +18,7 @@ class EditWizardCommand extends Command
 {
     use InteractiveSearchTrait;
     use PremiumAssetsTrait;
+    use PluginManagementTrait;
     
     protected static $defaultName = 'profile:edit-wizard';
     private ProfileService $profileService;
@@ -80,9 +82,7 @@ class EditWizardCommand extends Command
             
             match($section) {
                 '1', 'Descripción' => $this->editDescription($profile, $input, $output, $helper),
-                '2', 'Plugins públicos' => $this->editPublicPlugins($profile, $input, $output, $helper),
-                '3', 'Plugins premium' => $this->editPremiumPlugins($profile, $input, $output, $helper),
-                '4', 'Plugins custom' => $this->editCustomPlugins($profile, $input, $output, $helper),
+                '2', 'Plugins públicos', '3', 'Plugins premium', '4', 'Plugins custom' => $this->managePluginsInteractive($profile, $input, $output, $helper),
                 '5', 'Tema' => $this->editTheme($profile, $input, $output, $helper),
                 default => null
             };
@@ -109,217 +109,48 @@ class EditWizardCommand extends Command
         $profile['description'] = $helper->ask($input, $output, $question);
     }
 
-    private function editPublicPlugins(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
-        while (true) {
-            $current = $profile['plugins']['public'] ?? [];
-            
-            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║   🌐 PLUGINS PÚBLICOS                ║</>');
-            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
-            $output->writeln('');
-            
-            if (!empty($current)) {
-                $output->writeln('<comment>Plugins actuales (' . count($current) . '):</comment>');
-                foreach ($current as $index => $plugin) {
-                    $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
-                    $version = is_array($plugin) ? $plugin['version'] : '*';
-                    $num = $index + 1;
-                    $output->writeln("  <fg=cyan>[{$num}]</> {$slug}:{$version}");
-                }
-                $output->writeln('');
-            } else {
-                $output->writeln('<comment>(ninguno)</comment>');
-                $output->writeln('');
-            }
-            
-            $output->writeln('<comment>Acciones:</comment>');
-            $output->writeln('  <fg=cyan>[A]</> ➕ Agregar nuevo plugin');
-            if (!empty($current)) {
-                $output->writeln('  <fg=cyan>[E]</> ✏️  Editar plugin (número)');
-                $output->writeln('  <fg=cyan>[D]</> 🗑️  Eliminar plugin (número)');
-            }
-            $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver');
-            $output->writeln('');
-            
-            $question = new Question('> ');
-            $action = strtoupper(trim($helper->ask($input, $output, $question)));
-            
-            if ($action === '0') {
-                break;
-            }
-            
-            if ($action === 'A') {
-                $newPlugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
-                $profile['plugins']['public'] = array_merge($current, $newPlugins);
-                $output->writeln('<info>✓ Plugins agregados</info>');
-            } elseif ($action === 'E' && !empty($current)) {
-                $question = new Question('Número de plugin a editar: ');
-                $num = (int)$helper->ask($input, $output, $question);
-                if ($num > 0 && $num <= count($current)) {
-                    $this->editSinglePlugin($profile['plugins']['public'][$num - 1], $input, $output, $helper);
-                }
-            } elseif ($action === 'D' && !empty($current)) {
-                $question = new Question('Número de plugin a eliminar: ');
-                $num = (int)$helper->ask($input, $output, $question);
-                if ($num > 0 && $num <= count($current)) {
-                    $removed = array_splice($profile['plugins']['public'], $num - 1, 1);
-                    $slug = is_array($removed[0]) ? $removed[0]['slug'] : $removed[0];
-                    $output->writeln("<info>✓ Plugin '{$slug}' eliminado</info>");
-                }
-            }
-            
-            $output->writeln('');
-        }
-    }
-    
-    private function editSinglePlugin(array &$plugin, InputInterface $input, OutputInterface $output, $helper): void
-    {
-        $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
-        $version = is_array($plugin) ? $plugin['version'] : '*';
+        $typeQuestion = new ChoiceQuestion(
+            '<fg=yellow>Tipo de plugin:</> ',
+            [
+                '1' => '🌐 Público (WordPress.org)',
+                '2' => '💎 Premium (Repositorio privado)',
+                '3' => '🔧 Custom (Carpeta local)',
+                '0' => 'Cancelar'
+            ],
+            '0'
+        );
         
-        $output->writeln('');
-        $output->writeln("<comment>Editando: {$slug}:{$version}</comment>");
-        $output->writeln('');
-        $output->writeln('  <fg=cyan>[1]</> Cambiar versión');
-        $output->writeln('  <fg=cyan>[2]</> Cambiar slug');
-        $output->writeln('  <fg=cyan>[0]</> Volver');
-        $output->writeln('');
+        $type = $helper->ask($input, $output, $typeQuestion);
         
-        $question = new Question('> ');
-        $choice = trim($helper->ask($input, $output, $question));
+        if ($type === '0' || $type === 'Cancelar') {
+            return;
+        }
         
-        if ($choice === '1') {
-            $question = new Question("Nueva versión [{$version}]: ", $version);
-            $newVersion = $helper->ask($input, $output, $question);
-            if (is_array($plugin)) {
-                $plugin['version'] = $newVersion;
-            } else {
-                $plugin = ['slug' => $slug, 'version' => $newVersion];
+        if ($type === '1' || strpos($type, 'Público') !== false) {
+            $plugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
+            foreach ($plugins as $plugin) {
+                $profile['plugins']['public'][] = $plugin;
             }
-        } elseif ($choice === '2') {
-            $question = new Question("Nuevo slug [{$slug}]: ", $slug);
-            $newSlug = $helper->ask($input, $output, $question);
-            if (is_array($plugin)) {
-                $plugin['slug'] = $newSlug;
-            } else {
-                $plugin = $newSlug;
+            $output->writeln('<info>✓ Plugins públicos agregados</info>');
+        } elseif ($type === '2' || strpos($type, 'Premium') !== false) {
+            $plugins = $this->selectPremiumPlugins($input, $output, $helper);
+            foreach ($plugins as $plugin) {
+                $profile['plugins']['premium'][] = $plugin;
             }
-        }
-    }
-
-    private function editPremiumPlugins(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
-    {
-        while (true) {
-            $current = $profile['plugins']['premium'] ?? [];
+            $output->writeln('<info>✓ Plugins premium agregados</info>');
+        } else {
+            $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
+            $path = $helper->ask($input, $output, $pathQuestion);
             
-            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║   💎 PLUGINS PREMIUM                 ║</>');
-            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
-            $output->writeln('');
-            
-            if (!empty($current)) {
-                $output->writeln('<comment>Plugins actuales (' . count($current) . '):</comment>');
-                foreach ($current as $index => $plugin) {
-                    $num = $index + 1;
-                    $output->writeln("  <fg=cyan>[{$num}]</> {$plugin['name']}:{$plugin['version']} ({$plugin['source']})");
+            if (!empty($path) && is_dir($path)) {
+                $detected = $this->profileService->scanCustomPlugins($path);
+                foreach (array_keys($detected) as $slug) {
+                    $profile['plugins']['custom'][] = $slug;
                 }
-                $output->writeln('');
-            } else {
-                $output->writeln('<comment>(ninguno)</comment>');
-                $output->writeln('');
+                $output->writeln('<info>✓ ' . count($detected) . ' plugins custom agregados</info>');
             }
-            
-            $output->writeln('<comment>Acciones:</comment>');
-            $output->writeln('  <fg=cyan>[A]</> ➕ Agregar nuevo plugin');
-            if (!empty($current)) {
-                $output->writeln('  <fg=cyan>[D]</> 🗑️  Eliminar plugin (número)');
-            }
-            $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver');
-            $output->writeln('');
-            
-            $question = new Question('> ');
-            $action = strtoupper(trim($helper->ask($input, $output, $question)));
-            
-            if ($action === '0') {
-                break;
-            }
-            
-            if ($action === 'A') {
-                $newPlugins = $this->selectPremiumPlugins($input, $output, $helper);
-                $profile['plugins']['premium'] = array_merge($current, $newPlugins);
-                $output->writeln('<info>✓ Plugins agregados</info>');
-            } elseif ($action === 'D' && !empty($current)) {
-                $question = new Question('Número de plugin a eliminar: ');
-                $num = (int)$helper->ask($input, $output, $question);
-                if ($num > 0 && $num <= count($current)) {
-                    $removed = array_splice($profile['plugins']['premium'], $num - 1, 1);
-                    $output->writeln("<info>✓ Plugin '{$removed[0]['name']}' eliminado</info>");
-                }
-            }
-            
-            $output->writeln('');
-        }
-    }
-
-    private function editCustomPlugins(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
-    {
-        while (true) {
-            $current = $profile['plugins']['custom'] ?? [];
-            
-            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan>║   🔧 PLUGINS CUSTOM                  ║</>');
-            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
-            $output->writeln('');
-            
-            if (!empty($current)) {
-                $output->writeln('<comment>Plugins actuales (' . count($current) . '):</comment>');
-                foreach ($current as $index => $slug) {
-                    $num = $index + 1;
-                    $output->writeln("  <fg=cyan>[{$num}]</> {$slug}");
-                }
-                $output->writeln('');
-            } else {
-                $output->writeln('<comment>(ninguno)</comment>');
-                $output->writeln('');
-            }
-            
-            $output->writeln('<comment>Acciones:</comment>');
-            $output->writeln('  <fg=cyan>[A]</> ➕ Escanear carpeta (detectar plugins)');
-            if (!empty($current)) {
-                $output->writeln('  <fg=cyan>[D]</> 🗑️  Eliminar plugin (número)');
-            }
-            $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver');
-            $output->writeln('');
-            
-            $question = new Question('> ');
-            $action = strtoupper(trim($helper->ask($input, $output, $question)));
-            
-            if ($action === '0') {
-                break;
-            }
-            
-            if ($action === 'A') {
-                $question = new Question('Path a carpeta de plugins: ');
-                $path = $helper->ask($input, $output, $question);
-                
-                if (!empty($path) && is_dir($path)) {
-                    $detected = $this->profileService->scanCustomPlugins($path);
-                    $profile['plugins']['custom'] = array_merge($current, array_keys($detected));
-                    $output->writeln('<info>✓ ' . count($detected) . ' plugins detectados</info>');
-                } else {
-                    $output->writeln('<error>Carpeta no válida</error>');
-                }
-            } elseif ($action === 'D' && !empty($current)) {
-                $question = new Question('Número de plugin a eliminar: ');
-                $num = (int)$helper->ask($input, $output, $question);
-                if ($num > 0 && $num <= count($current)) {
-                    $removed = array_splice($profile['plugins']['custom'], $num - 1, 1);
-                    $output->writeln("<info>✓ Plugin '{$removed[0]}' eliminado</info>");
-                }
-            }
-            
-            $output->writeln('');
         }
     }
 
