@@ -74,7 +74,7 @@ class ManageCommand extends Command
 
         switch ($choice) {
             case '1':
-                $this->runCommand('manage:plugins', [], $input, $output);
+                $this->runCommand('profile:manage-plugins', [], $input, $output);
                 return 'continue';
             case '2':
                 $this->runCommand('manage:themes', [], $input, $output);
