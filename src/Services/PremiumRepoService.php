@@ -52,7 +52,15 @@ class PremiumRepoService
         // Obtener lista de directorios en packages/
         $contents = $this->getDirectoryContents($repoUrl, $path, $domain);
 
+        if (!is_array($contents)) {
+            throw new RuntimeException('Error al obtener contenido del repositorio');
+        }
+
         foreach ($contents as $item) {
+            if (!is_array($item) || !isset($item['type'], $item['name'])) {
+                continue;
+            }
+            
             if ($item['type'] === 'tree') {
                 $pluginSlug = $item['name'];
                 $versions = $this->getPluginVersions($repoUrl, "{$path}/{$pluginSlug}", $domain);
@@ -232,7 +240,15 @@ class PremiumRepoService
         $contents = $this->getDirectoryContents($repoUrl, $path, $domain);
         $versions = [];
 
+        if (!is_array($contents)) {
+            return [];
+        }
+
         foreach ($contents as $item) {
+            if (!is_array($item) || !isset($item['type'], $item['name'])) {
+                continue;
+            }
+            
             if ($item['type'] === 'tree' && preg_match('/^\d+\.\d+/', $item['name'])) {
                 $versions[] = $item['name'];
             }
