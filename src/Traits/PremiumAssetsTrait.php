@@ -201,6 +201,12 @@ trait PremiumAssetsTrait
         $output->writeln('<info>📦 Archivo ZIP</info>');
         $output->writeln('');
         
+        if (!class_exists('ZipArchive')) {
+            $output->writeln('<error>Extensión ZIP no disponible en PHP</error>');
+            $output->writeln('<comment>Instala php-zip: apt install php-zip (Linux) o habilita en php.ini (Windows)</comment>');
+            return [];
+        }
+        
         $zipQuestion = new Question('<fg=yellow>Path al archivo ZIP:</> ');
         $zipPath = $helper->ask($input, $output, $zipQuestion);
         
