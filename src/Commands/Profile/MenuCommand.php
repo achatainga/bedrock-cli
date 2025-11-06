@@ -145,21 +145,22 @@ class MenuCommand extends Command
         $output->writeln('');
         $output->writeln(' <fg=cyan>[1]</> 👁️  Ver detalles (JSON completo)');
         $output->writeln(' <fg=cyan>[2]</> ✏️  Editar (abrir en editor)');
+        $output->writeln(' <fg=cyan>[3]</> 🧙 Editar con wizard');
         
         if ($inProject) {
-            $output->writeln(' <fg=cyan>[3]</> 📥 Aplicar (a proyecto actual)');
+            $output->writeln(' <fg=cyan>[4]</> 📥 Aplicar (a proyecto actual)');
         } else {
-            $output->writeln(' <comment>[3]</comment> <fg=gray>📥 Aplicar (requiere proyecto)</>');
+            $output->writeln(' <comment>[4]</comment> <fg=gray>📥 Aplicar (requiere proyecto)</>');
         }
         
-        $output->writeln(' <fg=cyan>[4]</> 🗑️  Eliminar');
+        $output->writeln(' <fg=cyan>[5]</> 🗑️  Eliminar');
         $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
+        $question = new Question('<fg=yellow>Opción [0-5]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
         
-        if (!is_numeric($choice) || $choice < 0 || $choice > 4) {
+        if (!is_numeric($choice) || $choice < 0 || $choice > 5) {
             $output->writeln('<error>Opción inválida</error>');
             $this->waitForEnter($input, $output);
             return;
@@ -174,6 +175,10 @@ class MenuCommand extends Command
                 $this->runCommand('profile:edit', ['name' => $profileName], $input, $output);
                 break;
             case '3':
+                $this->runCommand('profile:edit-wizard', ['name' => $profileName], $input, $output);
+                $this->waitForEnter($input, $output);
+                break;
+            case '4':
                 if ($inProject) {
                     $this->runCommand('profile:apply', ['name' => $profileName], $input, $output);
                     $this->waitForEnter($input, $output);
@@ -182,7 +187,7 @@ class MenuCommand extends Command
                     $this->waitForEnter($input, $output);
                 }
                 break;
-            case '4':
+            case '5':
                 $this->runCommand('profile:delete', ['name' => $profileName], $input, $output);
                 $this->waitForEnter($input, $output);
                 break;

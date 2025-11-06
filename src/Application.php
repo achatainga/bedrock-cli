@@ -54,6 +54,7 @@ use Roots\BedrockCli\Commands\Profile\AddPluginCommand as ProfileAddPluginComman
 use Roots\BedrockCli\Commands\Profile\RemovePluginCommand as ProfileRemovePluginCommand;
 use Roots\BedrockCli\Commands\Profile\SetThemeCommand as ProfileSetThemeCommand;
 use Roots\BedrockCli\Commands\Profile\AddRepoCommand as ProfileAddRepoCommand;
+use Roots\BedrockCli\Commands\Profile\EditWizardCommand as ProfileEditWizardCommand;
 use Roots\BedrockCli\Commands\Plugin\SearchCommand as PluginSearchCommand;
 use Roots\BedrockCli\Commands\Plugin\InfoCommand as PluginInfoCommand;
 use Roots\BedrockCli\Commands\Theme\SearchCommand as ThemeSearchCommand;
@@ -138,6 +139,7 @@ class Application extends BaseApplication
             new ProfileRemovePluginCommand(),
             new ProfileSetThemeCommand(),
             new ProfileAddRepoCommand(),
+            new ProfileEditWizardCommand(),
             new PluginSearchCommand(),
             new PluginInfoCommand(),
             new ThemeSearchCommand(),
