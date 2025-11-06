@@ -13,7 +13,7 @@ class MenuCommandTest extends TestCase
         $command = new MenuCommand();
         
         $this->assertEquals('themes', $command->getName());
-        $this->assertEquals('Menú de gestión de temas', $command->getDescription());
+        $this->assertEquals('Gestión de temas', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

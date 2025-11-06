@@ -13,7 +13,7 @@ class ThemeCommandTest extends TestCase
         $command = new ThemeCommand();
         
         $this->assertEquals('remove:theme', $command->getName());
-        $this->assertEquals('Eliminar theme del proyecto', $command->getDescription());
+        $this->assertEquals('Remover theme del proyecto', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

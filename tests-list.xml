@@ -1,0 +1,643 @@
+<?xml version="1.0"?>
+<testSuite xmlns="https://xml.phpunit.de/testSuite">
+ <tests>
+  <testClass name="Tests\Unit\Commands\AI\AICommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\AICommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\AICommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\AICommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\AskCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\AskCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\AskCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\AskCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\ChatCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\ChatCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\ChatCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\ChatCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\ConfigCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\ConfigCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\ConfigCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\ConfigCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\DiagnoseCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\DiagnoseCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\DiagnoseCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\DiagnoseCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\ModelSelectorCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\ModelSelectorCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\ModelSelectorCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\ModelSelectorCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\AI\SuggestCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\AI\SuggestCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\AI\SuggestCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\AI\SuggestCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Add\DependencyCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Add\DependencyCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Add\DependencyCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Add\DependencyCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Add\PluginCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Add\PluginCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Add\PluginCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Add\PluginCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Add\ThemeCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Add\ThemeCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Add\ThemeCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Add\ThemeCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Auth\AddCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Auth\AddCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Auth\AddCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Auth\AddCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Auth\ListCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Auth\ListCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Auth\ListCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Auth\ListCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Auth\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Auth\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Auth\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Auth\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Auth\RemoveCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Auth\RemoveCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Auth\RemoveCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Auth\RemoveCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Database\CleanCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Database\CleanCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Database\CleanCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Database\CleanCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Database\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Database\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Database\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Database\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Database\MigrateCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Database\MigrateCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Database\MigrateCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Database\MigrateCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Database\SnapshotCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Database\SnapshotCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Database\SnapshotCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Database\SnapshotCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\DockerCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\DockerCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\DockerCommandTest::test_command_is_configured" name="test_command_is_configured"/>
+   <testMethod id="Tests\Unit\Commands\DockerCommandTest::test_command_can_be_added_to_application" name="test_command_can_be_added_to_application"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\DoctorCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\DoctorCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\DoctorCommandTest::test_command_is_configured" name="test_command_is_configured"/>
+   <testMethod id="Tests\Unit\Commands\DoctorCommandTest::test_command_can_be_added_to_application" name="test_command_can_be_added_to_application"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\InitCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\InitCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\InitCommandTest::test_command_is_configured" name="test_command_is_configured"/>
+   <testMethod id="Tests\Unit\Commands\InitCommandTest::test_command_can_be_added_to_application" name="test_command_can_be_added_to_application"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Manage\DependenciesManageCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Manage\DependenciesManageCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Manage\DependenciesManageCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Manage\DependenciesManageCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Manage\ManageCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Manage\ManageCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Manage\ManageCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Manage\ManageCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Manage\PluginsManageCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Manage\PluginsManageCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Manage\PluginsManageCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Manage\PluginsManageCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Manage\ThemesManageCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Manage\ThemesManageCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Manage\ThemesManageCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Manage\ThemesManageCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Options\ListCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Options\ListCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Options\ListCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Options\ListCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Options\ManageCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Options\ManageCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Options\ManageCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Options\ManageCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Options\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Options\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Options\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Options\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Options\PullCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Options\PullCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Options\PullCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Options\PullCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Options\PushCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Options\PushCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Options\PushCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Options\PushCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugin\InfoCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugin\InfoCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugin\InfoCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugin\InfoCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugin\SearchCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugin\SearchCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugin\SearchCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugin\SearchCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\ActivateCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\ActivateCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\ActivateCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\ActivateCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\CompressCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\CompressCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\CompressCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\CompressCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\DeactivateCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\DeactivateCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\DeactivateCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\DeactivateCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\ListCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\ListCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\ListCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\ListCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\OrderBuilderCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\OrderBuilderCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderBuilderCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderBuilderCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\OrderCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\OrderCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\OrderMenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\OrderMenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderMenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\OrderMenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Plugins\StatusCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Plugins\StatusCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Plugins\StatusCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Plugins\StatusCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\AddPluginCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\AddPluginCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\AddPluginCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\AddPluginCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\AddRepoCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\AddRepoCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\AddRepoCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\AddRepoCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\ApplyCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\ApplyCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\ApplyCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\ApplyCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\CreateCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\CreateCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\CreateCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\CreateCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\DeleteCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\DeleteCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\DeleteCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\DeleteCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\EditCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\EditCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\EditCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\EditCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\ExportCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\ExportCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\ExportCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\ExportCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\ListCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\ListCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\ListCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\ListCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\RemovePluginCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\RemovePluginCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\RemovePluginCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\RemovePluginCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\SetThemeCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\SetThemeCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\SetThemeCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\SetThemeCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Profile\ShowCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Profile\ShowCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Profile\ShowCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Profile\ShowCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Remove\DependencyCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Remove\DependencyCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Remove\DependencyCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Remove\DependencyCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Remove\PluginCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Remove\PluginCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Remove\PluginCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Remove\PluginCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Remove\ThemeCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Remove\ThemeCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Remove\ThemeCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Remove\ThemeCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\SetupCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\SetupCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\SetupCommandTest::test_command_is_configured" name="test_command_is_configured"/>
+   <testMethod id="Tests\Unit\Commands\SetupCommandTest::test_command_can_be_added_to_application" name="test_command_can_be_added_to_application"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\BackupCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\BackupCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\BackupCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\BackupCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\ExportConfigCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\ExportConfigCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\ExportConfigCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\ExportConfigCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\ImportCoreCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\ImportCoreCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\ImportCoreCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\ImportCoreCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\InfoCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\InfoCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\InfoCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\InfoCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\InitMenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\InitMenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\InitMenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\InitMenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\MainMenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\MainMenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\MainMenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\MainMenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\ReinstallCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\ReinstallCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\ReinstallCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\ReinstallCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\SearchMenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\SearchMenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\SearchMenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\SearchMenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\System\SeedCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\System\SeedCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\System\SeedCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\System\SeedCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Theme\InfoCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Theme\InfoCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Theme\InfoCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Theme\InfoCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Theme\SearchCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Theme\SearchCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Theme\SearchCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Theme\SearchCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Themes\ActivateCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Themes\ActivateCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Themes\ActivateCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Themes\ActivateCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Themes\CompressCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Themes\CompressCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Themes\CompressCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Themes\CompressCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Themes\ListCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Themes\ListCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Themes\ListCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Themes\ListCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Themes\MenuCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Themes\MenuCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Themes\MenuCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Themes\MenuCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Commands\Themes\StatusCommandTest" file="C:\code\bedrock-cli\tests\Unit\Commands\Themes\StatusCommandTest.php">
+   <testMethod id="Tests\Unit\Commands\Themes\StatusCommandTest::testCommandConfiguration" name="testCommandConfiguration"/>
+   <testMethod id="Tests\Unit\Commands\Themes\StatusCommandTest::testCommandRegistration" name="testCommandRegistration"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\AIServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\AIServiceTest.php">
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_initializes_with_default_config" name="test_it_initializes_with_default_config"/>
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_initializes_with_custom_config" name="test_it_initializes_with_custom_config"/>
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_saves_config" name="test_it_saves_config"/>
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_checks_if_configured" name="test_it_checks_if_configured"/>
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_loads_config_from_file" name="test_it_loads_config_from_file"/>
+   <testMethod id="Tests\Unit\Services\AIServiceTest::test_it_throws_exception_for_unsupported_provider" name="test_it_throws_exception_for_unsupported_provider"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\AuthServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\AuthServiceTest.php">
+   <testMethod id="Tests\Unit\Services\AuthServiceTest::test_it_adds_gitlab_auth" name="test_it_adds_gitlab_auth"/>
+   <testMethod id="Tests\Unit\Services\AuthServiceTest::test_it_adds_http_basic_auth" name="test_it_adds_http_basic_auth"/>
+   <testMethod id="Tests\Unit\Services\AuthServiceTest::test_it_lists_auth" name="test_it_lists_auth"/>
+   <testMethod id="Tests\Unit\Services\AuthServiceTest::test_it_removes_auth" name="test_it_removes_auth"/>
+   <testMethod id="Tests\Unit\Services\AuthServiceTest::test_it_loads_auth_for_domain" name="test_it_loads_auth_for_domain"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\BlueprintServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\BlueprintServiceTest.php">
+   <testMethod id="Tests\Unit\Services\BlueprintServiceTest::test_it_creates_blueprints_directory" name="test_it_creates_blueprints_directory"/>
+   <testMethod id="Tests\Unit\Services\BlueprintServiceTest::test_it_initializes_with_stubs_path" name="test_it_initializes_with_stubs_path"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\ComposerServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\ComposerServiceTest.php">
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_throws_exception_when_composer_json_does_not_exist" name="test_it_throws_exception_when_composer_json_does_not_exist"/>
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_wpackagist_repository_when_missing" name="test_it_adds_wpackagist_repository_when_missing"/>
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_does_not_duplicate_wpackagist_repository" name="test_it_does_not_duplicate_wpackagist_repository"/>
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_profile_repositories" name="test_it_adds_profile_repositories"/>
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_profile_dependencies" name="test_it_adds_profile_dependencies"/>
+   <testMethod id="Tests\Unit\Services\ComposerServiceTest::test_it_copies_profile_to_project" name="test_it_copies_profile_to_project"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\DockerServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\DockerServiceTest.php">
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_up_process" name="test_it_creates_up_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_up_process_with_build" name="test_it_creates_up_process_with_build"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_down_process" name="test_it_creates_down_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_restart_process" name="test_it_creates_restart_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_status_process" name="test_it_creates_status_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_exec_process" name="test_it_creates_exec_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_rebuild_process" name="test_it_creates_rebuild_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_logs_process" name="test_it_creates_logs_process"/>
+   <testMethod id="Tests\Unit\Services\DockerServiceTest::test_it_creates_logs_process_with_follow" name="test_it_creates_logs_process_with_follow"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\PremiumRepoServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\PremiumRepoServiceTest.php">
+   <testMethod id="Tests\Unit\Services\PremiumRepoServiceTest::test_it_initializes" name="test_it_initializes"/>
+   <testMethod id="Tests\Unit\Services\PremiumRepoServiceTest::test_it_initializes_with_repo_url" name="test_it_initializes_with_repo_url"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\ProfileServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\ProfileServiceTest.php">
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_creates_directory_structure_on_initialization" name="test_it_creates_directory_structure_on_initialization"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_checks_if_profile_exists" name="test_it_checks_if_profile_exists"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_saves_and_loads_profile" name="test_it_saves_and_loads_profile"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_throws_exception_when_loading_nonexistent_profile" name="test_it_throws_exception_when_loading_nonexistent_profile"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_lists_all_profiles" name="test_it_lists_all_profiles"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_deletes_profile" name="test_it_deletes_profile"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_throws_exception_when_deleting_nonexistent_profile" name="test_it_throws_exception_when_deleting_nonexistent_profile"/>
+   <testMethod id="Tests\Unit\Services\ProfileServiceTest::test_it_gets_and_updates_config" name="test_it_gets_and_updates_config"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\ProgressServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\ProgressServiceTest.php">
+   <testMethod id="Tests\Unit\Services\ProgressServiceTest::test_it_initializes" name="test_it_initializes"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\SecurityServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\SecurityServiceTest.php">
+   <testMethod id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_confirmation_code" name="test_it_generates_confirmation_code"/>
+   <testMethod id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_different_codes" name="test_it_generates_different_codes"/>
+   <testMethod id="Tests\Unit\Services\SecurityServiceTest::test_it_confirms_dangerous_action_with_correct_code" name="test_it_confirms_dangerous_action_with_correct_code"/>
+   <testMethod id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_codes_within_valid_range" name="test_it_generates_codes_within_valid_range"/>
+   <testMethod id="Tests\Unit\Services\SecurityServiceTest::test_it_pads_codes_with_leading_zeros" name="test_it_pads_codes_with_leading_zeros"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\StateServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\StateServiceTest.php">
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_generates_initial_state" name="test_it_generates_initial_state"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_loads_existing_state" name="test_it_loads_existing_state"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_returns_null_when_state_does_not_exist" name="test_it_returns_null_when_state_does_not_exist"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_marks_step_as_completed" name="test_it_marks_step_as_completed"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_disables_wizard_mode_when_all_steps_completed" name="test_it_disables_wizard_mode_when_all_steps_completed"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_gets_current_step" name="test_it_gets_current_step"/>
+   <testMethod id="Tests\Unit\Services\StateServiceTest::test_it_returns_null_when_current_step_not_found" name="test_it_returns_null_when_current_step_not_found"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\UnzipServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\UnzipServiceTest.php">
+   <testMethod id="Tests\Unit\Services\UnzipServiceTest::test_it_initializes" name="test_it_initializes"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\WordPressApiServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\WordPressApiServiceTest.php">
+   <testMethod id="Tests\Unit\Services\WordPressApiServiceTest::test_it_creates_cache_directory" name="test_it_creates_cache_directory"/>
+   <testMethod id="Tests\Unit\Services\WordPressApiServiceTest::test_it_initializes" name="test_it_initializes"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\WpCliServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\WpCliServiceTest.php">
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_executes_wp_cli_command" name="test_it_executes_wp_cli_command"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_creates_database" name="test_it_creates_database"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_drops_database" name="test_it_drops_database"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_installs_wordpress_core" name="test_it_installs_wordpress_core"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_activates_plugin" name="test_it_activates_plugin"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_activates_theme" name="test_it_activates_theme"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_creates_user" name="test_it_creates_user"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_performs_search_replace" name="test_it_performs_search_replace"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_executes_custom_command" name="test_it_executes_custom_command"/>
+   <testMethod id="Tests\Unit\Services\WpCliServiceTest::test_it_updates_all_plugins" name="test_it_updates_all_plugins"/>
+  </testClass>
+  <testClass name="Tests\Unit\Services\ZipServiceTest" file="C:\code\bedrock-cli\tests\Unit\Services\ZipServiceTest.php">
+   <testMethod id="Tests\Unit\Services\ZipServiceTest::test_it_initializes" name="test_it_initializes"/>
+  </testClass>
+  <testClass name="Tests\Unit\Traits\InteractiveSearchTraitTest" file="C:\code\bedrock-cli\tests\Unit\Traits\InteractiveSearchTraitTest.php">
+   <testMethod id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_displays_plugins_table" name="test_it_displays_plugins_table"/>
+   <testMethod id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_displays_themes_table" name="test_it_displays_themes_table"/>
+   <testMethod id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_handles_empty_plugins_array" name="test_it_handles_empty_plugins_array"/>
+   <testMethod id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_handles_plugins_without_active_installs" name="test_it_handles_plugins_without_active_installs"/>
+  </testClass>
+  <testClass name="Tests\Unit\Traits\PremiumAssetsTraitTest" file="C:\code\bedrock-cli\tests\Unit\Traits\PremiumAssetsTraitTest.php">
+   <testMethod id="Tests\Unit\Traits\PremiumAssetsTraitTest::test_trait_can_be_used" name="test_trait_can_be_used"/>
+  </testClass>
+  <testClass name="Tests\Unit\Traits\ProjectSelectorTraitTest" file="C:\code\bedrock-cli\tests\Unit\Traits\ProjectSelectorTraitTest.php">
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_a_valid_bedrock_project" name="test_it_detects_a_valid_bedrock_project"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_rejects_directory_without_composer_json" name="test_it_rejects_directory_without_composer_json"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_rejects_project_without_bedrock_dependency" name="test_it_rejects_project_without_bedrock_dependency"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_project_with_roots_wordpress" name="test_it_detects_project_with_roots_wordpress"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_project_with_installer_paths" name="test_it_detects_project_with_installer_paths"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_returns_current_directory_when_is_bedrock_project" name="test_it_returns_current_directory_when_is_bedrock_project"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_returns_null_when_no_projects_found" name="test_it_returns_null_when_no_projects_found"/>
+   <testMethod id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_auto_selects_single_project_found" name="test_it_auto_selects_single_project_found"/>
+  </testClass>
+  <testClass name="Tests\Integration\ProjectSelectorIntegrationTest" file="C:\code\bedrock-cli\tests\Integration\ProjectSelectorIntegrationTest.php">
+   <testMethod id="Tests\Integration\ProjectSelectorIntegrationTest::test_it_handles_multiple_projects_with_user_selection" name="test_it_handles_multiple_projects_with_user_selection"/>
+   <testMethod id="Tests\Integration\ProjectSelectorIntegrationTest::test_it_handles_cancellation" name="test_it_handles_cancellation"/>
+  </testClass>
+ </tests>
+ <groups>
+  <group name="default">
+   <test id="Tests\Unit\Commands\AI\AICommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\AICommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\AskCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\AskCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\ChatCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\ChatCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\ConfigCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\ConfigCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\DiagnoseCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\DiagnoseCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\ModelSelectorCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\ModelSelectorCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\AI\SuggestCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\AI\SuggestCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Add\DependencyCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Add\DependencyCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Add\PluginCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Add\PluginCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Add\ThemeCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Add\ThemeCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Auth\AddCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Auth\AddCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Auth\ListCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Auth\ListCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Auth\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Auth\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Auth\RemoveCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Auth\RemoveCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Database\CleanCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Database\CleanCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Database\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Database\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Database\MigrateCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Database\MigrateCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Database\SnapshotCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Database\SnapshotCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\DockerCommandTest::test_command_is_configured"/>
+   <test id="Tests\Unit\Commands\DockerCommandTest::test_command_can_be_added_to_application"/>
+   <test id="Tests\Unit\Commands\DoctorCommandTest::test_command_is_configured"/>
+   <test id="Tests\Unit\Commands\DoctorCommandTest::test_command_can_be_added_to_application"/>
+   <test id="Tests\Unit\Commands\InitCommandTest::test_command_is_configured"/>
+   <test id="Tests\Unit\Commands\InitCommandTest::test_command_can_be_added_to_application"/>
+   <test id="Tests\Unit\Commands\Manage\DependenciesManageCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Manage\DependenciesManageCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Manage\ManageCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Manage\ManageCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Manage\PluginsManageCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Manage\PluginsManageCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Manage\ThemesManageCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Manage\ThemesManageCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Options\ListCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Options\ListCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Options\ManageCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Options\ManageCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Options\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Options\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Options\PullCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Options\PullCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Options\PushCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Options\PushCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugin\InfoCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugin\InfoCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugin\SearchCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugin\SearchCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\ActivateCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\ActivateCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\CompressCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\CompressCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\DeactivateCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\DeactivateCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\ListCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\ListCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderBuilderCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderBuilderCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderMenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\OrderMenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Plugins\StatusCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Plugins\StatusCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\AddPluginCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\AddPluginCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\AddRepoCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\AddRepoCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\ApplyCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\ApplyCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\CreateCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\CreateCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\DeleteCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\DeleteCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\EditCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\EditCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\ExportCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\ExportCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\ListCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\ListCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\RemovePluginCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\RemovePluginCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\SetThemeCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\SetThemeCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Profile\ShowCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Profile\ShowCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Remove\DependencyCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Remove\DependencyCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Remove\PluginCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Remove\PluginCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Remove\ThemeCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Remove\ThemeCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\SetupCommandTest::test_command_is_configured"/>
+   <test id="Tests\Unit\Commands\SetupCommandTest::test_command_can_be_added_to_application"/>
+   <test id="Tests\Unit\Commands\System\BackupCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\BackupCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\ExportConfigCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\ExportConfigCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\ImportCoreCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\ImportCoreCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\InfoCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\InfoCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\InitMenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\InitMenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\MainMenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\MainMenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\ReinstallCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\ReinstallCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\SearchMenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\SearchMenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\System\SeedCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\System\SeedCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Theme\InfoCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Theme\InfoCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Theme\SearchCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Theme\SearchCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Themes\ActivateCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Themes\ActivateCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Themes\CompressCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Themes\CompressCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Themes\ListCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Themes\ListCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Themes\MenuCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Themes\MenuCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Commands\Themes\StatusCommandTest::testCommandConfiguration"/>
+   <test id="Tests\Unit\Commands\Themes\StatusCommandTest::testCommandRegistration"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_initializes_with_default_config"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_initializes_with_custom_config"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_saves_config"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_checks_if_configured"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_loads_config_from_file"/>
+   <test id="Tests\Unit\Services\AIServiceTest::test_it_throws_exception_for_unsupported_provider"/>
+   <test id="Tests\Unit\Services\AuthServiceTest::test_it_adds_gitlab_auth"/>
+   <test id="Tests\Unit\Services\AuthServiceTest::test_it_adds_http_basic_auth"/>
+   <test id="Tests\Unit\Services\AuthServiceTest::test_it_lists_auth"/>
+   <test id="Tests\Unit\Services\AuthServiceTest::test_it_removes_auth"/>
+   <test id="Tests\Unit\Services\AuthServiceTest::test_it_loads_auth_for_domain"/>
+   <test id="Tests\Unit\Services\BlueprintServiceTest::test_it_creates_blueprints_directory"/>
+   <test id="Tests\Unit\Services\BlueprintServiceTest::test_it_initializes_with_stubs_path"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_throws_exception_when_composer_json_does_not_exist"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_wpackagist_repository_when_missing"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_does_not_duplicate_wpackagist_repository"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_profile_repositories"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_adds_profile_dependencies"/>
+   <test id="Tests\Unit\Services\ComposerServiceTest::test_it_copies_profile_to_project"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_up_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_up_process_with_build"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_down_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_restart_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_status_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_exec_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_rebuild_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_logs_process"/>
+   <test id="Tests\Unit\Services\DockerServiceTest::test_it_creates_logs_process_with_follow"/>
+   <test id="Tests\Unit\Services\PremiumRepoServiceTest::test_it_initializes"/>
+   <test id="Tests\Unit\Services\PremiumRepoServiceTest::test_it_initializes_with_repo_url"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_creates_directory_structure_on_initialization"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_checks_if_profile_exists"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_saves_and_loads_profile"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_throws_exception_when_loading_nonexistent_profile"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_lists_all_profiles"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_deletes_profile"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_throws_exception_when_deleting_nonexistent_profile"/>
+   <test id="Tests\Unit\Services\ProfileServiceTest::test_it_gets_and_updates_config"/>
+   <test id="Tests\Unit\Services\ProgressServiceTest::test_it_initializes"/>
+   <test id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_confirmation_code"/>
+   <test id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_different_codes"/>
+   <test id="Tests\Unit\Services\SecurityServiceTest::test_it_confirms_dangerous_action_with_correct_code"/>
+   <test id="Tests\Unit\Services\SecurityServiceTest::test_it_generates_codes_within_valid_range"/>
+   <test id="Tests\Unit\Services\SecurityServiceTest::test_it_pads_codes_with_leading_zeros"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_generates_initial_state"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_loads_existing_state"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_returns_null_when_state_does_not_exist"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_marks_step_as_completed"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_disables_wizard_mode_when_all_steps_completed"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_gets_current_step"/>
+   <test id="Tests\Unit\Services\StateServiceTest::test_it_returns_null_when_current_step_not_found"/>
+   <test id="Tests\Unit\Services\UnzipServiceTest::test_it_initializes"/>
+   <test id="Tests\Unit\Services\WordPressApiServiceTest::test_it_creates_cache_directory"/>
+   <test id="Tests\Unit\Services\WordPressApiServiceTest::test_it_initializes"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_executes_wp_cli_command"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_creates_database"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_drops_database"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_installs_wordpress_core"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_activates_plugin"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_activates_theme"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_creates_user"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_performs_search_replace"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_executes_custom_command"/>
+   <test id="Tests\Unit\Services\WpCliServiceTest::test_it_updates_all_plugins"/>
+   <test id="Tests\Unit\Services\ZipServiceTest::test_it_initializes"/>
+   <test id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_displays_plugins_table"/>
+   <test id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_displays_themes_table"/>
+   <test id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_handles_empty_plugins_array"/>
+   <test id="Tests\Unit\Traits\InteractiveSearchTraitTest::test_it_handles_plugins_without_active_installs"/>
+   <test id="Tests\Unit\Traits\PremiumAssetsTraitTest::test_trait_can_be_used"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_a_valid_bedrock_project"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_rejects_directory_without_composer_json"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_rejects_project_without_bedrock_dependency"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_project_with_roots_wordpress"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_detects_project_with_installer_paths"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_returns_current_directory_when_is_bedrock_project"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_returns_null_when_no_projects_found"/>
+   <test id="Tests\Unit\Traits\ProjectSelectorTraitTest::test_it_auto_selects_single_project_found"/>
+   <test id="Tests\Integration\ProjectSelectorIntegrationTest::test_it_handles_multiple_projects_with_user_selection"/>
+   <test id="Tests\Integration\ProjectSelectorIntegrationTest::test_it_handles_cancellation"/>
+  </group>
+ </groups>
+</testSuite>

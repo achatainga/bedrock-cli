@@ -13,7 +13,7 @@ class InfoCommandTest extends TestCase
         $command = new InfoCommand();
         
         $this->assertEquals('theme:info', $command->getName());
-        $this->assertEquals('Ver información de un tema', $command->getDescription());
+        $this->assertEquals('Get detailed information about a WordPress theme', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

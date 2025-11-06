@@ -12,8 +12,8 @@ class InitMenuCommandTest extends TestCase
     {
         $command = new InitMenuCommand();
         
-        $this->assertEquals('init-menu', $command->getName());
-        $this->assertEquals('Menú de inicialización', $command->getDescription());
+        $this->assertEquals('init:menu', $command->getName());
+        $this->assertEquals('Menú de inicialización de ambientes', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class InitMenuCommandTest extends TestCase
         $application = new Application();
         $application->add(new InitMenuCommand());
         
-        $this->assertTrue($application->has('init-menu'));
+        $this->assertTrue($application->has('init:menu'));
     }
 }

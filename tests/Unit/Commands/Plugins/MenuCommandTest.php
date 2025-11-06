@@ -13,7 +13,7 @@ class MenuCommandTest extends TestCase
         $command = new MenuCommand();
         
         $this->assertEquals('plugins', $command->getName());
-        $this->assertEquals('Menú de gestión de plugins', $command->getDescription());
+        $this->assertEquals('Gestión de plugins', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

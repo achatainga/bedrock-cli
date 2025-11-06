@@ -13,7 +13,7 @@ class CompressCommandTest extends TestCase
         $command = new CompressCommand();
         
         $this->assertEquals('plugins:compress', $command->getName());
-        $this->assertEquals('Comprimir plugins', $command->getDescription());
+        $this->assertEquals('Comprime un plugin a ZIP', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

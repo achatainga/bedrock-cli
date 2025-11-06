@@ -13,7 +13,7 @@ class SearchCommandTest extends TestCase
         $command = new SearchCommand();
         
         $this->assertEquals('theme:search', $command->getName());
-        $this->assertEquals('Buscar temas en WordPress.org', $command->getDescription());
+        $this->assertEquals('Search for WordPress themes interactively', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

@@ -13,7 +13,7 @@ class MainMenuCommandTest extends TestCase
         $command = new MainMenuCommand();
         
         $this->assertEquals('menu', $command->getName());
-        $this->assertEquals('Menú principal', $command->getDescription());
+        $this->assertEquals('Abre el menú interactivo', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

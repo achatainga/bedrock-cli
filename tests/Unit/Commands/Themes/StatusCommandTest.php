@@ -13,7 +13,7 @@ class StatusCommandTest extends TestCase
         $command = new StatusCommand();
         
         $this->assertEquals('themes:status', $command->getName());
-        $this->assertEquals('Ver estado de temas', $command->getDescription());
+        $this->assertEquals('Muestra información de un tema', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

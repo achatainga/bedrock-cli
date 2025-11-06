@@ -13,7 +13,7 @@ class InfoCommandTest extends TestCase
         $command = new InfoCommand();
         
         $this->assertEquals('plugin:info', $command->getName());
-        $this->assertEquals('Ver información de un plugin', $command->getDescription());
+        $this->assertEquals('Get detailed information about a WordPress plugin', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

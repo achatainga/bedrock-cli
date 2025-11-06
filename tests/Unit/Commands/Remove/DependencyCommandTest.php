@@ -13,7 +13,7 @@ class DependencyCommandTest extends TestCase
         $command = new DependencyCommand();
         
         $this->assertEquals('remove:dependency', $command->getName());
-        $this->assertEquals('Eliminar dependencia Composer del proyecto', $command->getDescription());
+        $this->assertEquals('Remover dependencia Composer del proyecto', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

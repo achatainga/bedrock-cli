@@ -13,7 +13,7 @@ class InfoCommandTest extends TestCase
         $command = new InfoCommand();
         
         $this->assertEquals('info', $command->getName());
-        $this->assertEquals('Información del sistema', $command->getDescription());
+        $this->assertEquals('Mostrar información del proyecto y estado actual', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

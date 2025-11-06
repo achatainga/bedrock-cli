@@ -13,7 +13,7 @@ class ListCommandTest extends TestCase
         $command = new ListCommand();
         
         $this->assertEquals('plugins:list', $command->getName());
-        $this->assertEquals('Listar plugins instalados', $command->getDescription());
+        $this->assertEquals('Lista todos los plugins instalados', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

@@ -12,8 +12,8 @@ class ExportConfigCommandTest extends TestCase
     {
         $command = new ExportConfigCommand();
         
-        $this->assertEquals('export-config', $command->getName());
-        $this->assertEquals('Exportar configuración', $command->getDescription());
+        $this->assertEquals('export:config', $command->getName());
+        $this->assertEquals('Exportar configuración de WordPress a JSON', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class ExportConfigCommandTest extends TestCase
         $application = new Application();
         $application->add(new ExportConfigCommand());
         
-        $this->assertTrue($application->has('export-config'));
+        $this->assertTrue($application->has('export:config'));
     }
 }

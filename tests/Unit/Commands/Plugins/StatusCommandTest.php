@@ -13,7 +13,7 @@ class StatusCommandTest extends TestCase
         $command = new StatusCommand();
         
         $this->assertEquals('plugins:status', $command->getName());
-        $this->assertEquals('Ver estado de plugins', $command->getDescription());
+        $this->assertEquals('Muestra información de un plugin', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

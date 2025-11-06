@@ -12,8 +12,8 @@ class ImportCoreCommandTest extends TestCase
     {
         $command = new ImportCoreCommand();
         
-        $this->assertEquals('import-core', $command->getName());
-        $this->assertEquals('Importar WordPress core', $command->getDescription());
+        $this->assertEquals('import:core', $command->getName());
+        $this->assertEquals('Importar golden-image.sql y aplicar configuraciones JSON', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class ImportCoreCommandTest extends TestCase
         $application = new Application();
         $application->add(new ImportCoreCommand());
         
-        $this->assertTrue($application->has('import-core'));
+        $this->assertTrue($application->has('import:core'));
     }
 }

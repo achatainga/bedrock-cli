@@ -12,8 +12,8 @@ class SearchMenuCommandTest extends TestCase
     {
         $command = new SearchMenuCommand();
         
-        $this->assertEquals('search', $command->getName());
-        $this->assertEquals('Menú de búsqueda', $command->getDescription());
+        $this->assertEquals('search:menu', $command->getName());
+        $this->assertEquals('Menú de búsqueda WordPress.org', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class SearchMenuCommandTest extends TestCase
         $application = new Application();
         $application->add(new SearchMenuCommand());
         
-        $this->assertTrue($application->has('search'));
+        $this->assertTrue($application->has('search:menu'));
     }
 }

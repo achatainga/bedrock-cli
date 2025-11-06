@@ -12,8 +12,8 @@ class OrderBuilderCommandTest extends TestCase
     {
         $command = new OrderBuilderCommand();
         
-        $this->assertEquals('plugins:order-builder', $command->getName());
-        $this->assertEquals('Constructor de orden de plugins', $command->getDescription());
+        $this->assertEquals('plugins:order:build', $command->getName());
+        $this->assertEquals('Constructor interactivo de orden de activación', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class OrderBuilderCommandTest extends TestCase
         $application = new Application();
         $application->add(new OrderBuilderCommand());
         
-        $this->assertTrue($application->has('plugins:order-builder'));
+        $this->assertTrue($application->has('plugins:order:build'));
     }
 }

@@ -13,7 +13,7 @@ class ListCommandTest extends TestCase
         $command = new ListCommand();
         
         $this->assertEquals('themes:list', $command->getName());
-        $this->assertEquals('Listar temas instalados', $command->getDescription());
+        $this->assertEquals('Lista todos los temas instalados', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

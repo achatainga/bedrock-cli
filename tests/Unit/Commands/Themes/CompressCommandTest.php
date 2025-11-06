@@ -13,7 +13,7 @@ class CompressCommandTest extends TestCase
         $command = new CompressCommand();
         
         $this->assertEquals('themes:compress', $command->getName());
-        $this->assertEquals('Comprimir temas', $command->getDescription());
+        $this->assertEquals('Comprime un tema a ZIP', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

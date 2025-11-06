@@ -13,7 +13,7 @@ class SeedCommandTest extends TestCase
         $command = new SeedCommand();
         
         $this->assertEquals('seed', $command->getName());
-        $this->assertEquals('Ejecutar seeders', $command->getDescription());
+        $this->assertEquals('Ejecutar seeders de base de datos', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

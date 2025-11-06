@@ -13,7 +13,7 @@ class SearchCommandTest extends TestCase
         $command = new SearchCommand();
         
         $this->assertEquals('plugin:search', $command->getName());
-        $this->assertEquals('Buscar plugins en WordPress.org', $command->getDescription());
+        $this->assertEquals('Search for WordPress plugins interactively', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

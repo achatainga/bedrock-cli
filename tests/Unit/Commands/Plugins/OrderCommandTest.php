@@ -13,7 +13,7 @@ class OrderCommandTest extends TestCase
         $command = new OrderCommand();
         
         $this->assertEquals('plugins:order', $command->getName());
-        $this->assertEquals('Ordenar carga de plugins', $command->getDescription());
+        $this->assertEquals('Gestionar orden de activación de plugins', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

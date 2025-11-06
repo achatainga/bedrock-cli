@@ -13,7 +13,7 @@ class PluginCommandTest extends TestCase
         $command = new PluginCommand();
         
         $this->assertEquals('remove:plugin', $command->getName());
-        $this->assertEquals('Eliminar plugin del proyecto', $command->getDescription());
+        $this->assertEquals('Remover plugin del proyecto', $command->getDescription());
     }
 
     public function testCommandRegistration(): void

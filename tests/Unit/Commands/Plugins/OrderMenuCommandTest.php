@@ -12,8 +12,8 @@ class OrderMenuCommandTest extends TestCase
     {
         $command = new OrderMenuCommand();
         
-        $this->assertEquals('plugins:order-menu', $command->getName());
-        $this->assertEquals('Menú de orden de plugins', $command->getDescription());
+        $this->assertEquals('plugins:order:menu', $command->getName());
+        $this->assertEquals('Menú interactivo para gestión de orden de plugins', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
@@ -21,6 +21,6 @@ class OrderMenuCommandTest extends TestCase
         $application = new Application();
         $application->add(new OrderMenuCommand());
         
-        $this->assertTrue($application->has('plugins:order-menu'));
+        $this->assertTrue($application->has('plugins:order:menu'));
     }
 }

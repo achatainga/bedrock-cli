@@ -13,7 +13,7 @@ class ReinstallCommandTest extends TestCase
         $command = new ReinstallCommand();
         
         $this->assertEquals('reinstall', $command->getName());
-        $this->assertEquals('Reinstalar WordPress', $command->getDescription());
+        $this->assertEquals('Reinstalar aplicación completa (DESTRUCTIVO)', $command->getDescription());
     }
 
     public function testCommandRegistration(): void
