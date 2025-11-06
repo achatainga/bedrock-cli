@@ -91,8 +91,16 @@ class SearchCommand extends Command
             $slug = $plugin['slug'];
             $version = $this->selectPluginVersion($slug, $helper, $input, $output);
             
-            $selectedPlugins[$slug] = $version;
-            $output->writeln("<info>✓ {$slug}:{$version}</info>");
+            $muQuestion = new Question("<fg=yellow>¿Marcar como MU-Plugin? (s/N):</> ", 'n');
+            $isMU = strtolower($helper->ask($input, $output, $muQuestion)) === 's';
+            
+            $selectedPlugins[] = [
+                'slug' => $slug,
+                'version' => $version,
+                'mu_plugin' => $isMU
+            ];
+            $muBadge = $isMU ? ' <fg=yellow>[MU]</>' : '';
+            $output->writeln("<info>✓ {$slug}:{$version}{$muBadge}</info>");
         }
 
         if (empty($selectedPlugins)) {
@@ -194,8 +202,8 @@ class SearchCommand extends Command
                 $profile['plugins']['public'] = [];
             }
             
-            foreach ($selectedPlugins as $slug => $version) {
-                $profile['plugins']['public'][$slug] = $version;
+            foreach ($selectedPlugins as $plugin) {
+                $profile['plugins']['public'][] = $plugin;
             }
             $profileService->saveProfile($profileName, $profile);
             $output->writeln("\n<info>✓ Plugins agregados al profile '{$profileName}'</info>");
