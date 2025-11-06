@@ -37,8 +37,12 @@ class PremiumRepoService
         return $result;
     }
 
-    public function scanRepository(string $repoUrl, string $path = 'packages'): array
+    public function scanRepository(string $repoUrl, string $path = 'packages', string $branch = ''): array
     {
+        if (!empty($branch)) {
+            $this->branch = $branch;
+        }
+        
         $access = $this->checkAccess($repoUrl);
         
         if (!$access['success']) {
@@ -65,14 +69,13 @@ class PremiumRepoService
                 $pluginSlug = $item['name'];
                 $versions = $this->getPluginVersions($repoUrl, "{$path}/{$pluginSlug}", $domain);
                 
-                if (!empty($versions)) {
-                    $plugins[] = [
-                        'slug' => $pluginSlug,
-                        'name' => ucwords(str_replace('-', ' ', $pluginSlug)),
-                        'versions' => $versions,
-                        'latest' => $versions[0] ?? null
-                    ];
-                }
+                // Agregar plugin incluso sin versiones (fallback a 'latest')
+                $plugins[] = [
+                    'slug' => $pluginSlug,
+                    'name' => ucwords(str_replace('-', ' ', $pluginSlug)),
+                    'versions' => !empty($versions) ? $versions : ['latest'],
+                    'latest' => $versions[0] ?? 'latest'
+                ];
             }
         }
 

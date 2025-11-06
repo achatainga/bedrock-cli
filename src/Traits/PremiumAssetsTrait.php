@@ -60,8 +60,11 @@ trait PremiumAssetsTrait
             return [];
         }
         
+        $branchQuestion = new Question('<fg=yellow>Rama [main]:</> ', 'main');
+        $branch = $helper->ask($input, $output, $branchQuestion);
+        
         // Verificar acceso
-        $service = new PremiumRepoService();
+        $service = new PremiumRepoService($repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
@@ -84,7 +87,7 @@ trait PremiumAssetsTrait
         $output->writeln('<comment>Escaneando repositorio...</comment>');
         
         try {
-            $plugins = $service->scanRepository($repoUrl, 'packages');
+            $plugins = $service->scanRepository($repoUrl, 'packages', $branch);
             
             if (empty($plugins)) {
                 $output->writeln('<error>No se encontraron plugins en packages/</error>');
