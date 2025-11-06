@@ -42,7 +42,8 @@ class PremiumRepoService
         $access = $this->checkAccess($repoUrl);
         
         if (!$access['success']) {
-            throw new RuntimeException($access['message']);
+            $message = $access['message'] ?? 'No se pudo acceder al repositorio';
+            throw new RuntimeException($message);
         }
 
         $domain = $this->extractDomain($repoUrl);

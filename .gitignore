@@ -4,6 +4,7 @@ composer.lock
 .idea/
 *.log
 .io/
+.io_old
 profiles/*.json
 .phpunit.cache/
 *.txt
