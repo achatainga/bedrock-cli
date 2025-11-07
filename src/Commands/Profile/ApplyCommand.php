@@ -9,9 +9,12 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class ApplyCommand extends Command
 {
+    use ProjectSelectorTrait;
+    
     private ProfileService $profileService;
     private ComposerService $composerService;
 
@@ -39,11 +42,11 @@ class ApplyCommand extends Command
             return Command::FAILURE;
         }
 
-        $projectRoot = $this->detectProjectRoot();
-        if (!$projectRoot) {
-            $output->writeln('<error>No estás en un proyecto Bedrock</error>');
+        if (!$this->ensureBedrockProject($input, $output)) {
             return Command::FAILURE;
         }
+        
+        $projectRoot = getcwd();
 
         $helper = $this->getHelper('question');
         $question = new ConfirmationQuestion(
@@ -80,17 +83,5 @@ class ApplyCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function detectProjectRoot(): ?string
-    {
-        $current = getcwd();
-        
-        while ($current !== dirname($current)) {
-            if (file_exists("{$current}/web/wp-config.php") || file_exists("{$current}/config/application.php")) {
-                return $current;
-            }
-            $current = dirname($current);
-        }
-        
-        return null;
-    }
+
 }
