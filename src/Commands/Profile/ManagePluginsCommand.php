@@ -74,26 +74,54 @@ class ManagePluginsCommand extends Command
         
         if ($type === '1' || strpos($type, 'Público') !== false) {
             $plugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
+            $added = 0;
             foreach ($plugins as $plugin) {
+                $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
+                $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'public');
+                if (!$validation['valid']) {
+                    $output->writeln("<error>{$validation['message']}</error>");
+                    continue;
+                }
                 $profile['plugins']['public'][] = $plugin;
+                $added++;
             }
-            $output->writeln('<info>✓ Plugins públicos agregados</info>');
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} plugin(s) público(s) agregado(s)</info>");
+            }
         } elseif ($type === '2' || strpos($type, 'Premium') !== false) {
             $plugins = $this->selectPremiumPlugins($input, $output, $helper);
+            $added = 0;
             foreach ($plugins as $plugin) {
+                $validation = $this->validateNoDuplicatePlugin($profile, $plugin['name'], 'premium');
+                if (!$validation['valid']) {
+                    $output->writeln("<error>{$validation['message']}</error>");
+                    continue;
+                }
                 $profile['plugins']['premium'][] = $plugin;
+                $added++;
             }
-            $output->writeln('<info>✓ Plugins premium agregados</info>');
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} plugin(s) premium agregado(s)</info>");
+            }
         } else {
             $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
             $path = $helper->ask($input, $output, $pathQuestion);
             
             if (!empty($path) && is_dir($path)) {
                 $detected = $this->profileService->scanCustomPlugins($path);
+                $added = 0;
                 foreach (array_keys($detected) as $slug) {
+                    $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'custom');
+                    if (!$validation['valid']) {
+                        $output->writeln("<error>{$validation['message']}</error>");
+                        continue;
+                    }
                     $profile['plugins']['custom'][] = $slug;
+                    $added++;
                 }
-                $output->writeln('<info>✓ ' . count($detected) . ' plugins custom agregados</info>');
+                if ($added > 0) {
+                    $output->writeln("<info>✓ {$added} plugin(s) custom agregado(s)</info>");
+                }
             }
         }
     }

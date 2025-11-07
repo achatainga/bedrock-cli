@@ -292,6 +292,48 @@ trait PluginManagementTrait
     }
     
     /**
+     * Valida que no exista duplicado del plugin en otras secciones
+     * Retorna array con ['valid' => bool, 'message' => string, 'section' => string]
+     */
+    protected function validateNoDuplicatePlugin(array $profile, string $pluginName, string $targetSection): array
+    {
+        $found = [];
+        
+        // Buscar en public
+        foreach ($profile['plugins']['public'] ?? [] as $plugin) {
+            $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
+            if ($slug === $pluginName && $targetSection !== 'public') {
+                $found[] = 'public';
+            }
+        }
+        
+        // Buscar en premium
+        foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
+            if ($plugin['name'] === $pluginName && $targetSection !== 'premium') {
+                $found[] = 'premium';
+            }
+        }
+        
+        // Buscar en custom
+        foreach ($profile['plugins']['custom'] ?? [] as $slug) {
+            if ($slug === $pluginName && $targetSection !== 'custom') {
+                $found[] = 'custom';
+            }
+        }
+        
+        if (!empty($found)) {
+            $sections = implode(', ', $found);
+            return [
+                'valid' => false,
+                'message' => "⚠️  El plugin '{$pluginName}' ya existe en: {$sections}",
+                'sections' => $found
+            ];
+        }
+        
+        return ['valid' => true, 'message' => '', 'sections' => []];
+    }
+    
+    /**
      * Agrega nuevo plugin (debe implementarse en el comando que use el trait)
      */
     abstract protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
