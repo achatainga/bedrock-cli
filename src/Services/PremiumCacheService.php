@@ -159,8 +159,8 @@ class PremiumCacheService
 
     public function pluginExists(string $name, string $version): bool
     {
-        $zipPath = $this->cachePath . "/{$name}/{$version}/{$name}.zip";
-        return file_exists($zipPath);
+        $pluginDir = $this->cachePath . "/{$name}/{$version}";
+        return is_dir($pluginDir);
     }
 
     public function clearCache(): void
