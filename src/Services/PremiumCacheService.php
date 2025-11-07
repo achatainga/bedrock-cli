@@ -406,4 +406,74 @@ class PremiumCacheService
         }
         return null;
     }
+
+    public function extractTheme(string $name, string $version): string
+    {
+        $themeDir = $this->cachePath . "/themes/{$name}/{$version}";
+        $zipPath = $themeDir . "/{$name}.zip";
+        $extractPath = $themeDir . "/extracted";
+
+        if (is_dir($extractPath)) {
+            return $extractPath;
+        }
+
+        if (!file_exists($zipPath)) {
+            throw new RuntimeException("Theme {$name} v{$version} no está en caché");
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new RuntimeException("No se pudo abrir {$zipPath}");
+        }
+
+        $zip->extractTo($extractPath);
+        $zip->close();
+
+        return $extractPath;
+    }
+
+    public function clearThemeComposerJson(string $name, string $version): void
+    {
+        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        $composerPath = $themePath . '/composer.json';
+        
+        if (file_exists($composerPath)) {
+            unlink($composerPath);
+        }
+    }
+
+    public function ensureThemeComposerJson(string $name, string $version, string $vendor = 'cached'): void
+    {
+        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        $composerPath = $themePath . '/composer.json';
+
+        if (file_exists($composerPath)) {
+            return;
+        }
+
+        $composerData = [
+            'name' => "{$vendor}/{$name}",
+            'version' => $version,
+            'type' => 'wordpress-theme',
+            'description' => "Premium theme {$name}",
+            'require' => [
+                'composer/installers' => '^2.0'
+            ]
+        ];
+
+        file_put_contents($composerPath, json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    public function getThemeCachePath(string $name, string $version): string
+    {
+        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        
+        if (is_dir($extractPath . '/' . $name)) {
+            return $extractPath . '/' . $name;
+        }
+        
+        return $extractPath;
+    }
 }
