@@ -66,10 +66,16 @@ class NewWizardCommand extends Command
             $output->writeln('  <fg=cyan>[' . ($idx + 1) . ']</> ' . $profile['name']);
         }
         $output->writeln('  <fg=cyan>[N]</> Crear nuevo profile');
+        $output->writeln('  <fg=cyan>[0]</> ⬅️  Cancelar');
         $output->writeln('');
         
         $profileQuestion = new Question('<fg=yellow>Opción [1]:</> ', '1');
         $selectedProfile = strtoupper($helper->ask($input, $output, $profileQuestion));
+        
+        if ($selectedProfile === '0') {
+            $output->writeln('<comment>Operación cancelada</comment>');
+            return Command::FAILURE;
+        }
         
         $profileName = 'default';
         if ($selectedProfile === 'N') {
