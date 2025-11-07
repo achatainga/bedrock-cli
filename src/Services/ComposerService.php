@@ -96,6 +96,28 @@ class ComposerService
             }
         }
 
+        // Agregar repositorios para themes premium
+        if (!empty($profile['themes']['premium'])) {
+            foreach ($profile['themes']['premium'] as $theme) {
+                if ($theme['source'] === 'cache') {
+                    $this->cacheService->extractTheme($theme['name'], $theme['version']);
+                    $vendor = 'cached';
+                    $this->cacheService->clearThemeComposerJson($theme['name'], $theme['version']);
+                    $this->cacheService->ensureThemeComposerJson($theme['name'], $theme['version'], $vendor);
+                    
+                    $cachePath = $this->cacheService->getThemeCachePath($theme['name'], $theme['version']);
+                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => true]];
+                    
+                    if (!$this->repositoryExists($composerData['repositories'], $repo)) {
+                        $composerData['repositories'][] = $repo;
+                    }
+                    
+                    $package = "{$vendor}/{$theme['name']}";
+                    $composerData['require'][$package] = $theme['version'];
+                }
+            }
+        }
+        
         // Agregar plugins custom desde repositorio path
         if (!empty($profile['plugins']['custom']) && !empty($profile['repositories'])) {
             foreach ($profile['plugins']['custom'] as $pluginName) {
