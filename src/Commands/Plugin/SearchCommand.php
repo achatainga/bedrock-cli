@@ -213,11 +213,15 @@ class SearchCommand extends Command
             $output->writeln('');
             $output->writeln('  <fg=cyan>[1]</> 💎 Premium (Repositorio privado)');
             $output->writeln('  <fg=cyan>[2]</> 🔧 Custom (Carpeta/ZIP local)');
-            $output->writeln('  <fg=cyan>[0]</> Cancelar');
+            $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
             $output->writeln('');
             
             $typeQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
             $typeChoice = $helper->ask($input, $output, $typeQuestion);
+            
+            if ($typeChoice === '0') {
+                return Command::SUCCESS;
+            }
             
             if ($typeChoice === '1') {
                 $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);

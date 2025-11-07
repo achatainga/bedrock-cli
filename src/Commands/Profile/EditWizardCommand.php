@@ -113,8 +113,8 @@ class EditWizardCommand extends Command
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
         $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
-        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta local)');
-        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta/ZIP local)');
+        $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
         $output->writeln('');
         
         $question = new Question('> ');
@@ -173,8 +173,8 @@ class EditWizardCommand extends Command
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
         $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
-        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta local)');
-        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta/ZIP local)');
+        $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
         $output->writeln('');
         
         $question = new Question('> ');
