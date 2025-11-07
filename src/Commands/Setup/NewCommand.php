@@ -146,7 +146,7 @@ class NewCommand extends Command
         $process->run();
 
         $process = new Process(['composer', 'require', 'roots/acorn', '--no-interaction'], $name);
-        $process->setTimeout(300);
+        $process->setTimeout(900);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
         // Copiar acorn-boot.php a mu-plugins
@@ -161,7 +161,7 @@ class NewCommand extends Command
         $output->writeln('<info>Instalando Redis Object Cache...</info>');
 
         $process = new Process(['composer', 'require', 'rhubarbgroup/redis-cache', '--no-interaction'], $name);
-        $process->setTimeout(300);
+        $process->setTimeout(900);
         $this->runWithLoader($process, $output, 'Instalando Redis');
 
         $output->writeln('<info>✓ Redis instalado</info>');
@@ -539,7 +539,7 @@ class NewCommand extends Command
             $output->writeln("<comment>Instalando {$package}:{$version}...</comment>");
             
             $process = new Process(['composer', 'require', "{$package}:{$version}", '--no-interaction'], $name);
-            $process->setTimeout(300);
+            $process->setTimeout(900);
             $process->run();
             
             if ($process->isSuccessful()) {
