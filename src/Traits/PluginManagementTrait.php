@@ -334,7 +334,86 @@ trait PluginManagementTrait
     }
     
     /**
+     * Selector interactivo de plugins custom
+     */
+    protected function selectCustomPluginsInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
+    {
+        $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
+        $path = $helper->ask($input, $output, $pathQuestion);
+        
+        if (empty($path) || !is_dir($path)) {
+            $output->writeln('<error>Directorio no válido</error>');
+            return 0;
+        }
+        
+        // Escanear plugins
+        $detected = $this->getProfileService()->scanCustomPlugins($path);
+        
+        if (empty($detected)) {
+            $output->writeln('<error>No se encontraron plugins válidos</error>');
+            return 0;
+        }
+        
+        // Mostrar lista
+        $output->writeln('');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   🔧 PLUGINS CUSTOM DETECTADOS    <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        
+        $pluginsList = [];
+        $index = 1;
+        foreach ($detected as $slug => $info) {
+            $output->writeln("  <fg=cyan>[{$index}]</> {$info['name']} <comment>({$slug})</comment>");
+            $pluginsList[$index] = $slug;
+            $index++;
+        }
+        
+        $output->writeln('');
+        $selectQuestion = new Question('<fg=yellow>Seleccionar números (ej: 1,3,5) o "all" para todos:</> ');
+        $selection = trim($helper->ask($input, $output, $selectQuestion));
+        
+        if (empty($selection)) {
+            return 0;
+        }
+        
+        // Procesar selección
+        $selected = [];
+        if (strtolower($selection) === 'all') {
+            $selected = array_values($pluginsList);
+        } else {
+            $numbers = array_map('trim', explode(',', $selection));
+            foreach ($numbers as $num) {
+                $num = (int)$num;
+                if (isset($pluginsList[$num])) {
+                    $selected[] = $pluginsList[$num];
+                }
+            }
+        }
+        
+        // Agregar con validación
+        $added = 0;
+        foreach ($selected as $slug) {
+            $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'custom');
+            if (!$validation['valid']) {
+                $output->writeln("<error>{$validation['message']}</error>");
+                continue;
+            }
+            $profile['plugins']['custom'][] = $slug;
+            $output->writeln("<info>✓ {$slug}</info>");
+            $added++;
+        }
+        
+        return $added;
+    }
+    
+    /**
      * Agrega nuevo plugin (debe implementarse en el comando que use el trait)
      */
     abstract protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
+    
+    /**
+     * ProfileService getter (debe implementarse en el comando)
+     */
+    abstract protected function getProfileService();
 }

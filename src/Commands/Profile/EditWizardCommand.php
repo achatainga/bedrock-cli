@@ -156,28 +156,18 @@ class EditWizardCommand extends Command
                 $output->writeln("<info>✓ {$added} plugin(s) premium agregado(s)</info>");
             }
         } elseif ($type === '3') {
-            $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
-            $path = $helper->ask($input, $output, $pathQuestion);
-            
-            if (!empty($path) && is_dir($path)) {
-                $detected = $this->profileService->scanCustomPlugins($path);
-                $added = 0;
-                foreach (array_keys($detected) as $slug) {
-                    $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'custom');
-                    if (!$validation['valid']) {
-                        $output->writeln("<error>{$validation['message']}</error>");
-                        continue;
-                    }
-                    $profile['plugins']['custom'][] = $slug;
-                    $added++;
-                }
-                if ($added > 0) {
-                    $output->writeln("<info>✓ {$added} plugin(s) custom agregado(s)</info>");
-                }
+            $added = $this->selectCustomPluginsInteractive($profile, $input, $output, $helper);
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} plugin(s) custom agregado(s)</info>");
             }
         }
     }
 
+    protected function getProfileService()
+    {
+        return $this->profileService;
+    }
+    
     protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');

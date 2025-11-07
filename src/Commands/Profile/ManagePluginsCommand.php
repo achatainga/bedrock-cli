@@ -53,6 +53,11 @@ class ManagePluginsCommand extends Command
         return Command::SUCCESS;
     }
 
+    protected function getProfileService()
+    {
+        return $this->profileService;
+    }
+    
     protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $typeQuestion = new ChoiceQuestion(
@@ -104,24 +109,9 @@ class ManagePluginsCommand extends Command
                 $output->writeln("<info>✓ {$added} plugin(s) premium agregado(s)</info>");
             }
         } else {
-            $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
-            $path = $helper->ask($input, $output, $pathQuestion);
-            
-            if (!empty($path) && is_dir($path)) {
-                $detected = $this->profileService->scanCustomPlugins($path);
-                $added = 0;
-                foreach (array_keys($detected) as $slug) {
-                    $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'custom');
-                    if (!$validation['valid']) {
-                        $output->writeln("<error>{$validation['message']}</error>");
-                        continue;
-                    }
-                    $profile['plugins']['custom'][] = $slug;
-                    $added++;
-                }
-                if ($added > 0) {
-                    $output->writeln("<info>✓ {$added} plugin(s) custom agregado(s)</info>");
-                }
+            $added = $this->selectCustomPluginsInteractive($profile, $input, $output, $helper);
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} plugin(s) custom agregado(s)</info>");
             }
         }
     }

@@ -104,4 +104,10 @@ class PluginManagementTraitTest extends TestCase
     {
         // Implementación dummy para satisfacer el trait
     }
+    
+    protected function getProfileService()
+    {
+        // Implementación dummy para satisfacer el trait
+        return null;
+    }
 }
