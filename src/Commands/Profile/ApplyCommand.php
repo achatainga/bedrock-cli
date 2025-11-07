@@ -64,11 +64,12 @@ class ApplyCommand extends Command
         $output->writeln('');
         $output->writeln('<info>Aplicando profile...</info>');
         
-        // Regenerar composer.json
+        // IMPORTANTE: Regenerar composer.json ANTES de copiar el nuevo profile
+        // para que cleanPreviousProfilePackages() pueda leer el profile anterior
         $this->composerService->generateFromProfile($profile, $projectRoot);
         $output->writeln('✓ composer.json actualizado');
         
-        // Actualizar .bedrock/profile.json
+        // Actualizar .bedrock/profile.json DESPUÉS de generar composer.json
         $this->composerService->copyProfileToProject($profile, $projectRoot);
         $output->writeln('✓ .bedrock/profile.json actualizado');
         

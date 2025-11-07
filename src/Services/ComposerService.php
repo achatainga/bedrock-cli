@@ -137,6 +137,8 @@ class ComposerService
             mkdir($bedrockDir, 0755, true);
         }
 
+        // IMPORTANTE: Guardar el nuevo profile DESPUÉS de que generateFromProfile() 
+        // haya leído el profile anterior
         file_put_contents(
             $bedrockDir . '/profile.json',
             json_encode($profile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
@@ -248,79 +250,36 @@ class ComposerService
     
     private function cleanPreviousProfilePackages(array &$composerData, string $projectPath): void
     {
-        $bedrockProfilePath = $projectPath . '/.bedrock/profile.json';
+        // Paquetes core de Bedrock que NUNCA se deben eliminar
+        $corePackages = [
+            'php', 'composer/installers', 'vlucas/phpdotenv', 'oscarotero/env',
+            'roots/bedrock-autoloader', 'roots/bedrock-disallow-indexing',
+            'roots/wordpress', 'roots/wp-config', 'roots/acorn',
+            'wpackagist-theme/twentytwentyfive', 'rhubarbgroup/redis-cache',
+            'roave/security-advisories', 'laravel/pint'
+        ];
         
-        // Si no existe profile anterior, no hay nada que limpiar
-        if (!file_exists($bedrockProfilePath)) {
-            return;
-        }
-        
-        $previousProfile = json_decode(file_get_contents($bedrockProfilePath), true);
-        if (!$previousProfile) {
-            return;
-        }
-        
-        // Eliminar plugins públicos del profile anterior
-        if (!empty($previousProfile['plugins']['public'])) {
-            foreach ($previousProfile['plugins']['public'] as $plugin) {
-                $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
-                $package = "wpackagist-plugin/{$slug}";
+        // Eliminar todos los plugins (wpackagist-plugin/*)
+        foreach (array_keys($composerData['require']) as $package) {
+            if (str_starts_with($package, 'wpackagist-plugin/')) {
                 unset($composerData['require'][$package]);
             }
         }
         
-        // Eliminar plugins premium del profile anterior
-        if (!empty($previousProfile['plugins']['premium'])) {
-            foreach ($previousProfile['plugins']['premium'] as $plugin) {
-                // Extraer vendor del plugin anterior
-                $vendor = 'detodo24dev';
-                if (!empty($plugin['original_url'])) {
-                    $vendor = $this->extractVendorFromUrl($plugin['original_url']);
-                } elseif (!empty($plugin['url'])) {
-                    $vendor = $this->extractVendorFromUrl($plugin['url']);
-                }
-                $package = "{$vendor}/{$plugin['name']}";
+        // Eliminar todos los paquetes que NO sean core
+        foreach (array_keys($composerData['require']) as $package) {
+            if (!in_array($package, $corePackages) && !str_starts_with($package, 'wpackagist-theme/')) {
                 unset($composerData['require'][$package]);
             }
         }
         
-        // Eliminar plugins custom del profile anterior
-        if (!empty($previousProfile['plugins']['custom'])) {
-            foreach ($previousProfile['plugins']['custom'] as $pluginName) {
-                // Intentar con diferentes vendors posibles
-                foreach ($composerData['require'] as $package => $version) {
-                    if (str_ends_with($package, "/{$pluginName}")) {
-                        unset($composerData['require'][$package]);
-                    }
-                }
+        // Limpiar repositories (mantener solo wpackagist)
+        $newRepositories = [];
+        foreach ($composerData['repositories'] as $repo) {
+            if (isset($repo['url']) && strpos($repo['url'], 'wpackagist.org') !== false) {
+                $newRepositories[] = $repo;
             }
         }
-        
-        // Limpiar repositories del profile anterior (excepto wpackagist)
-        if (!empty($previousProfile['repositories'])) {
-            $newRepositories = [];
-            foreach ($composerData['repositories'] as $repo) {
-                // Mantener wpackagist
-                if (isset($repo['url']) && strpos($repo['url'], 'wpackagist.org') !== false) {
-                    $newRepositories[] = $repo;
-                    continue;
-                }
-                
-                // Verificar si este repo está en el profile anterior
-                $isFromPreviousProfile = false;
-                foreach ($previousProfile['repositories'] as $prevRepo) {
-                    if ($this->normalizePath($repo['url']) === $this->normalizePath($prevRepo['url'])) {
-                        $isFromPreviousProfile = true;
-                        break;
-                    }
-                }
-                
-                // Si no es del profile anterior, mantenerlo
-                if (!$isFromPreviousProfile) {
-                    $newRepositories[] = $repo;
-                }
-            }
-            $composerData['repositories'] = $newRepositories;
-        }
+        $composerData['repositories'] = $newRepositories;
     }
 }
