@@ -69,6 +69,10 @@ class ApplyCommand extends Command
         $this->composerService->copyProfileToProject($profile, $projectRoot);
         $output->writeln('✓ .bedrock/profile.json actualizado');
         
+        // Copiar archivos .zip custom
+        $this->composerService->copyCustomZipFiles($profile, $projectRoot);
+        $output->writeln('✓ Archivos .zip copiados');
+        
         $output->writeln('');
         $output->writeln('<comment>Ejecuta:</comment> composer update');
         $output->writeln('');
