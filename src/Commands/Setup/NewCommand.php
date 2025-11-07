@@ -573,7 +573,7 @@ class NewCommand extends Command
         $config = [
             'http_port' => $httpPort,
             'has_acorn' => !$input->getOption('no-acorn'),
-            'has_plugins' => $profile && (!empty($profile['plugins']['public']) || !empty($profile['plugins']['premium']) || !empty($profile['plugins']['custom']))
+            'has_plugins' => $profile && (!empty($profile['plugins']['public']) || !empty($profile['plugins']['premium']) || !empty($profile['plugins']['custom'])),
             'has_theme' => $profile && !empty($profile['themes']),
             'theme_name' => $themeName
         ];
