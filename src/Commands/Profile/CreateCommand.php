@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\PremiumCacheService;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
@@ -20,11 +21,13 @@ class CreateCommand extends Command
     
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
+    private PremiumCacheService $cacheService;
 
     public function __construct()
     {
         parent::__construct();
         $this->profileService = new ProfileService();
+        $this->cacheService = new PremiumCacheService();
     }
 
     protected function configure(): void
@@ -79,6 +82,9 @@ class CreateCommand extends Command
 
         // Plugins premium usando trait
         $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
+        
+        // Descargar plugins premium a caché
+        $premiumPlugins = $this->downloadPremiumPluginsToCache($premiumPlugins, $output);
 
         $output->writeln('');
         $output->writeln('<comment>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</comment>');
@@ -289,9 +295,15 @@ class CreateCommand extends Command
 
     private function extractVendorFromPlugin(array $plugin): string
     {
+        // Si es cache, extraer del URL original
+        if ($plugin['source'] === 'cache' && !empty($plugin['original_url'])) {
+            if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['original_url'], $matches)) {
+                return $matches[1];
+            }
+        }
+        
         // Si es VCS, extraer vendor del URL del repositorio
         if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
-            // https://gitlab.com/vendor/repo.git → vendor
             if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['url'], $matches)) {
                 return $matches[1];
             }
@@ -303,13 +315,46 @@ class CreateCommand extends Command
             if (file_exists($composerPath)) {
                 $composer = json_decode(file_get_contents($composerPath), true);
                 if (!empty($composer['name'])) {
-                    // vendor/package → vendor
                     return explode('/', $composer['name'])[0];
                 }
             }
         }
         
-        // Fallback
         return 'local';
+    }
+    
+    private function downloadPremiumPluginsToCache(array $premiumPlugins, OutputInterface $output): array
+    {
+        $processedPlugins = [];
+        
+        foreach ($premiumPlugins as $plugin) {
+            // Solo procesar plugins de tipo VCS con path (repositorio de paquetes)
+            if ($plugin['source'] === 'vcs' && !empty($plugin['path'])) {
+                $output->writeln("<comment>📥 Descargando {$plugin['name']} v{$plugin['version']} a caché...</comment>");
+                
+                try {
+                    $this->cacheService->downloadPlugin(
+                        $plugin['url'],
+                        $plugin['name'],
+                        $plugin['version'],
+                        $plugin['path']
+                    );
+                    
+                    // Cambiar source a cache
+                    $plugin['source'] = 'cache';
+                    $plugin['original_url'] = $plugin['url'];
+                    unset($plugin['url']);
+                    
+                    $output->writeln("<info>✓ {$plugin['name']} descargado</info>");
+                } catch (\Exception $e) {
+                    $output->writeln("<error>✗ Error: {$e->getMessage()}</error>");
+                    continue;
+                }
+            }
+            
+            $processedPlugins[] = $plugin;
+        }
+        
+        return $processedPlugins;
     }
 }

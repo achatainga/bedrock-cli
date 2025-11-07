@@ -4,6 +4,12 @@ namespace Roots\BedrockCli\Services;
 
 class ComposerService
 {
+    private PremiumCacheService $cacheService;
+    
+    public function __construct()
+    {
+        $this->cacheService = new PremiumCacheService();
+    }
     public function generateFromProfile(array $profile, string $projectPath): void
     {
         $composerJsonPath = $projectPath . '/composer.json';
@@ -29,7 +35,22 @@ class ComposerService
         // Agregar repositorios para plugins premium
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
-                if ($plugin['source'] === 'vcs') {
+                if ($plugin['source'] === 'cache') {
+                    // Extraer y preparar plugin desde caché
+                    $this->cacheService->extractPlugin($plugin['name'], $plugin['version']);
+                    $vendor = !empty($plugin['original_url']) ? $this->extractVendorFromUrl($plugin['original_url']) : 'detodo24dev';
+                    $this->cacheService->ensureComposerJson($plugin['name'], $plugin['version'], $vendor);
+                    
+                    $cachePath = $this->cacheService->getCachePath($plugin['name'], $plugin['version']);
+                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => true]];
+                    
+                    if (!$this->repositoryExists($composerData['repositories'], $repo)) {
+                        $composerData['repositories'][] = $repo;
+                    }
+                    
+                    $package = "{$vendor}/{$plugin['name']}";
+                    $composerData['require'][$package] = $plugin['version'];
+                } elseif ($plugin['source'] === 'vcs') {
                     $repo = ['type' => 'vcs', 'url' => $plugin['url']];
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
