@@ -7,6 +7,7 @@ use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\PluginManagementTrait;
 use Roots\BedrockCli\Traits\ThemeManagementTrait;
+use Roots\BedrockCli\Traits\VendorExtractionTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,6 +22,7 @@ class EditWizardCommand extends Command
     use PremiumAssetsTrait;
     use PluginManagementTrait;
     use ThemeManagementTrait;
+    use VendorExtractionTrait;
     
     protected static $defaultName = 'profile:edit-wizard';
     private ProfileService $profileService;
@@ -272,15 +274,16 @@ class EditWizardCommand extends Command
     
     private function regenerateRequire(array &$profile): void
     {
-        $profile['require'] = [];
+        // Limpiar require completamente
+        $newRequire = [];
         
         // Plugins públicos
         if (!empty($profile['plugins']['public'])) {
             foreach ($profile['plugins']['public'] as $plugin) {
                 if (is_array($plugin)) {
-                    $profile['require']["wpackagist-plugin/{$plugin['slug']}"] = $plugin['version'];
+                    $newRequire["wpackagist-plugin/{$plugin['slug']}"] = $plugin['version'];
                 } else {
-                    $profile['require']["wpackagist-plugin/{$plugin}"] = '*';
+                    $newRequire["wpackagist-plugin/{$plugin}"] = '*';
                 }
             }
         }
@@ -289,33 +292,11 @@ class EditWizardCommand extends Command
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
                 $vendor = $this->extractVendorFromPlugin($plugin);
-                $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
-            }
-        }
-    }
-    
-    private function extractVendorFromPlugin(array $plugin): string
-    {
-        if ($plugin['source'] === 'cache') {
-            return 'cached';
-        }
-        
-        if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
-            if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['url'], $matches)) {
-                return $matches[1];
+                $newRequire["{$vendor}/{$plugin['name']}"] = $plugin['version'];
             }
         }
         
-        if (($plugin['source'] === 'path' || $plugin['source'] === 'zip') && !empty($plugin['path'])) {
-            $composerPath = $plugin['path'] . '/composer.json';
-            if (file_exists($composerPath)) {
-                $composer = json_decode(file_get_contents($composerPath), true);
-                if (!empty($composer['name'])) {
-                    return explode('/', $composer['name'])[0];
-                }
-            }
-        }
-        
-        return 'local';
+        // Reemplazar require completamente
+        $profile['require'] = $newRequire;
     }
 }

@@ -7,6 +7,7 @@ use Roots\BedrockCli\Services\PremiumCacheService;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
+use Roots\BedrockCli\Traits\VendorExtractionTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -18,6 +19,7 @@ class CreateCommand extends Command
 {
     use InteractiveSearchTrait;
     use PremiumAssetsTrait;
+    use VendorExtractionTrait;
     
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
@@ -301,33 +303,7 @@ class CreateCommand extends Command
         return $this->searchWithCancelOption($input, $output, $helper, 'plugin');
     }
 
-    private function extractVendorFromPlugin(array $plugin): string
-    {
-        // Si es cache, SIEMPRE usar 'cached'
-        if ($plugin['source'] === 'cache') {
-            return 'cached';
-        }
-        
-        // Si es VCS, extraer vendor del URL del repositorio
-        if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
-            if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['url'], $matches)) {
-                return $matches[1];
-            }
-        }
-        
-        // Si es path o zip, intentar leer composer.json
-        if (($plugin['source'] === 'path' || $plugin['source'] === 'zip') && !empty($plugin['path'])) {
-            $composerPath = $plugin['path'] . '/composer.json';
-            if (file_exists($composerPath)) {
-                $composer = json_decode(file_get_contents($composerPath), true);
-                if (!empty($composer['name'])) {
-                    return explode('/', $composer['name'])[0];
-                }
-            }
-        }
-        
-        return 'local';
-    }
+
     
     private function downloadPremiumPluginsToCache(array $premiumPlugins, OutputInterface $output): array
     {
