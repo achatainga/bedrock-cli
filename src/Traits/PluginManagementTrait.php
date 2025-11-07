@@ -338,11 +338,16 @@ trait PluginManagementTrait
      */
     protected function selectCustomPluginsInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
     {
-        $pathQuestion = new Question('<fg=yellow>Path a carpeta de plugins custom:</> ');
+        $pathQuestion = new Question('<fg=yellow>Path a carpeta o archivo .zip de plugins custom:</> ');
         $path = $helper->ask($input, $output, $pathQuestion);
         
-        if (empty($path) || !is_dir($path)) {
-            $output->writeln('<error>Directorio no válido</error>');
+        if (empty($path)) {
+            return 0;
+        }
+        
+        // Validar que sea directorio o archivo .zip
+        if (!is_dir($path) && !(is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip')) {
+            $output->writeln('<error>Debe ser un directorio válido o un archivo .zip</error>');
             return 0;
         }
         
