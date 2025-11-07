@@ -248,4 +248,88 @@ class ProfileService
 
         return $headers;
     }
+    
+    public function scanCustomThemes(string $path): array
+    {
+        if (!is_dir($path)) {
+            throw new RuntimeException("Path '{$path}' no existe o no es un directorio");
+        }
+
+        $themes = [];
+        
+        // Primero verificar si el path mismo es un theme
+        $slug = basename($path);
+        $styleFile = $path . '/style.css';
+        
+        if (file_exists($styleFile)) {
+            $headers = $this->getThemeHeaders($styleFile);
+            if (!empty($headers['Name'])) {
+                return [
+                    $slug => [
+                        'slug' => $slug,
+                        'name' => $headers['Name'],
+                        'version' => $headers['Version'] ?? 'N/A',
+                        'description' => $headers['Description'] ?? '',
+                        'path' => $path
+                    ]
+                ];
+            }
+        }
+        
+        // Si no es theme, buscar en subdirectorios
+        $items = scandir($path);
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $themePath = $path . '/' . $item;
+            
+            if (!is_dir($themePath)) {
+                continue;
+            }
+
+            $styleFile = $themePath . '/style.css';
+            
+            if (!file_exists($styleFile)) {
+                continue;
+            }
+
+            $headers = $this->getThemeHeaders($styleFile);
+            
+            if (!empty($headers['Name'])) {
+                $themes[$item] = [
+                    'slug' => $item,
+                    'name' => $headers['Name'],
+                    'version' => $headers['Version'] ?? 'N/A',
+                    'description' => $headers['Description'] ?? '',
+                    'path' => $themePath
+                ];
+            }
+        }
+
+        return $themes;
+    }
+    
+    private function getThemeHeaders(string $file): array
+    {
+        $content = file_get_contents($file, false, null, 0, 8192);
+        $headers = [];
+
+        $fields = [
+            'Name' => 'Theme Name',
+            'Version' => 'Version',
+            'Description' => 'Description',
+            'Author' => 'Author'
+        ];
+
+        foreach ($fields as $key => $field) {
+            if (preg_match('/^[ \t\/*#@]*' . preg_quote($field, '/') . ':(.*)$/mi', $content, $match)) {
+                $headers[$key] = trim($match[1]);
+            }
+        }
+
+        return $headers;
+    }
 }

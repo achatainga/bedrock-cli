@@ -41,6 +41,7 @@ trait ThemeManagementTrait
         
         $publicThemes = $profile['themes']['public'] ?? [];
         $premiumThemes = $profile['themes']['premium'] ?? [];
+        $customThemes = $profile['themes']['custom'] ?? [];
         
         $index = 1;
         
@@ -59,6 +60,15 @@ trait ThemeManagementTrait
             $output->writeln('<fg=magenta>💎 PREMIUM (' . count($premiumThemes) . ')</>');
             foreach ($premiumThemes as $theme) {
                 $output->writeln("  <fg=cyan>[{$index}]</> {$theme['name']}:{$theme['version']}");
+                $index++;
+            }
+            $output->writeln('');
+        }
+        
+        if (!empty($customThemes)) {
+            $output->writeln('<fg=yellow>🔧 CUSTOM (' . count($customThemes) . ')</>');
+            foreach ($customThemes as $slug) {
+                $output->writeln("  <fg=cyan>[{$index}]</> {$slug}");
                 $index++;
             }
             $output->writeln('');
@@ -89,7 +99,10 @@ trait ThemeManagementTrait
         $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         
-        $output->writeln("  <fg=cyan>[1]</> Cambiar versión (actual: {$theme['version']})");
+        if ($theme['type'] !== 'custom') {
+            $output->writeln("  <fg=cyan>[1]</> Cambiar versión (actual: {$theme['version']})");
+        }
+        
         $output->writeln('  <fg=cyan>[2]</> 🗑️  Eliminar este theme');
         $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
@@ -97,7 +110,7 @@ trait ThemeManagementTrait
         $question = new Question('> ');
         $choice = trim($helper->ask($input, $output, $question));
         
-        if ($choice === '1') {
+        if ($choice === '1' && $theme['type'] !== 'custom') {
             $this->changeThemeVersion($profile, $num, $input, $output, $helper);
         } elseif ($choice === '2') {
             $this->deleteThemeByNumber($profile, $num, $output);
@@ -129,6 +142,18 @@ trait ThemeManagementTrait
                     'slug' => $theme['name'],
                     'version' => $theme['version'],
                     'display' => "{$theme['name']}:{$theme['version']}"
+                ];
+            }
+            $index++;
+        }
+        
+        foreach ($profile['themes']['custom'] ?? [] as $slug) {
+            if ($index === $num) {
+                return [
+                    'type' => 'custom',
+                    'slug' => $slug,
+                    'version' => '*',
+                    'display' => $slug
                 ];
             }
             $index++;
@@ -192,7 +217,85 @@ trait ThemeManagementTrait
             }
             $index++;
         }
+        
+        foreach ($profile['themes']['custom'] as $key => $slug) {
+            if ($index === $num) {
+                unset($profile['themes']['custom'][$key]);
+                $profile['themes']['custom'] = array_values($profile['themes']['custom']);
+                $output->writeln("<info>✓ Theme '{$slug}' eliminado</info>");
+                return;
+            }
+            $index++;
+        }
+    }
+    
+    protected function selectCustomThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
+    {
+        $pathQuestion = new Question('<fg=yellow>Path a carpeta de themes custom:</> ');
+        $path = $helper->ask($input, $output, $pathQuestion);
+        
+        if (empty($path) || !is_dir($path)) {
+            $output->writeln('<error>Directorio no válido</error>');
+            return 0;
+        }
+        
+        $detected = $this->getProfileService()->scanCustomThemes($path);
+        
+        if (empty($detected)) {
+            $output->writeln('<error>No se encontraron themes válidos</error>');
+            return 0;
+        }
+        
+        $output->writeln('');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   🎨 THEMES CUSTOM DETECTADOS     <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        
+        $themesList = [];
+        $index = 1;
+        foreach ($detected as $slug => $info) {
+            $output->writeln("  <fg=cyan>[{$index}]</> {$info['name']} <comment>({$slug})</comment>");
+            $themesList[$index] = $slug;
+            $index++;
+        }
+        
+        $output->writeln('');
+        $selectQuestion = new Question('<fg=yellow>Seleccionar números (ej: 1,3,5) o "all" para todos:</> ');
+        $selection = trim($helper->ask($input, $output, $selectQuestion));
+        
+        if (empty($selection)) {
+            return 0;
+        }
+        
+        $selected = [];
+        if (strtolower($selection) === 'all') {
+            $selected = array_values($themesList);
+        } else {
+            $numbers = array_map('trim', explode(',', $selection));
+            foreach ($numbers as $num) {
+                $num = (int)$num;
+                if (isset($themesList[$num])) {
+                    $selected[] = $themesList[$num];
+                }
+            }
+        }
+        
+        $added = 0;
+        foreach ($selected as $slug) {
+            if (in_array($slug, $profile['themes']['custom'] ?? [])) {
+                $output->writeln("<error>⚠️  El theme '{$slug}' ya existe en custom</error>");
+                continue;
+            }
+            
+            $profile['themes']['custom'][] = $slug;
+            $output->writeln("<info>✓ {$slug}</info>");
+            $added++;
+        }
+        
+        return $added;
     }
     
     abstract protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
+    abstract protected function getProfileService();
 }
