@@ -64,7 +64,7 @@ class ComposerService
                 if ($plugin['source'] === 'cache') {
                     // Extraer y preparar plugin desde caché
                     $this->cacheService->extractPlugin($plugin['name'], $plugin['version']);
-                    $vendor = !empty($plugin['original_url']) ? $this->extractVendorFromUrl($plugin['original_url']) : 'detodo24dev';
+                    $vendor = !empty($plugin['original_url']) ? $this->extractVendorFromUrl($plugin['original_url']) : 'cached';
                     $this->cacheService->ensureComposerJson($plugin['name'], $plugin['version'], $vendor);
                     
                     $cachePath = $this->cacheService->getCachePath($plugin['name'], $plugin['version']);

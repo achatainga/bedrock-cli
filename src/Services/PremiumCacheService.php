@@ -114,7 +114,7 @@ class PremiumCacheService
         return $extractPath;
     }
 
-    public function ensureComposerJson(string $name, string $version, string $vendor = 'detodo24dev'): void
+    public function ensureComposerJson(string $name, string $version, string $vendor = 'cached'): void
     {
         $extractPath = $this->cachePath . "/{$name}/{$version}/extracted";
         
