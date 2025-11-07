@@ -230,6 +230,16 @@ class ProfileService
             $headers = $this->getPluginHeaders($mainFile);
             
             if (!empty($headers['Name'])) {
+                // Validar composer.json si existe
+                $composerFile = $pluginPath . '/composer.json';
+                if (file_exists($composerFile)) {
+                    $composerData = json_decode(file_get_contents($composerFile), true);
+                    if (empty($composerData['name'])) {
+                        // Omitir plugin sin nombre en composer.json
+                        continue;
+                    }
+                }
+                
                 $plugins[$item] = [
                     'slug' => $item,
                     'name' => $headers['Name'],

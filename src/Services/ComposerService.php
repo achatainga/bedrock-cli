@@ -205,11 +205,20 @@ class ComposerService
     
     private function repositoryExists(array $repositories, array $newRepo): bool
     {
+        $newUrl = $this->normalizePath($newRepo['url']);
+        
         foreach ($repositories as $repo) {
-            if ($repo['type'] === $newRepo['type'] && $repo['url'] === $newRepo['url']) {
+            $repoUrl = $this->normalizePath($repo['url']);
+            if ($repo['type'] === $newRepo['type'] && $repoUrl === $newUrl) {
                 return true;
             }
         }
         return false;
+    }
+    
+    private function normalizePath(string $path): string
+    {
+        // Normalizar separadores de directorio
+        return str_replace('/', DIRECTORY_SEPARATOR, $path);
     }
 }
