@@ -179,13 +179,8 @@ class MenuCommand extends Command
                 $this->waitForEnter($input, $output);
                 break;
             case '4':
-                if ($inProject) {
-                    $this->runCommand('profile:apply', ['name' => $profileName], $input, $output);
-                    $this->waitForEnter($input, $output);
-                } else {
-                    $output->writeln('<error>Debes estar en un proyecto Bedrock para aplicar un profile</error>');
-                    $this->waitForEnter($input, $output);
-                }
+                $this->runCommand('profile:apply', ['name' => $profileName], $input, $output);
+                $this->waitForEnter($input, $output);
                 break;
             case '5':
                 $this->runCommand('profile:delete', ['name' => $profileName], $input, $output);
