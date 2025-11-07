@@ -142,6 +142,7 @@ class EditWizardCommand extends Command
             }
         } elseif ($type === '2') {
             $plugins = $this->selectPremiumPlugins($input, $output, $helper);
+            $plugins = $this->downloadPremiumPluginsToCache($plugins, $input, $output);
             $added = 0;
             foreach ($plugins as $plugin) {
                 $validation = $this->validateNoDuplicatePlugin($profile, $plugin['name'], 'premium');
@@ -166,6 +167,60 @@ class EditWizardCommand extends Command
     protected function getProfileService()
     {
         return $this->profileService;
+    }
+    
+    private function downloadPremiumPluginsToCache(array $premiumPlugins, InputInterface $input, OutputInterface $output): array
+    {
+        $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+        $processedPlugins = [];
+        $helper = $this->getHelper('question');
+        
+        foreach ($premiumPlugins as $plugin) {
+            if ($plugin['source'] === 'vcs' && !empty($plugin['path'])) {
+                if ($cacheService->pluginExists($plugin['name'], $plugin['version'])) {
+                    $question = new ConfirmationQuestion(
+                        "<fg=yellow>{$plugin['name']} v{$plugin['version']} ya existe en caché. ¿Redescargar? (Y/n):</> ",
+                        false
+                    );
+                    
+                    if ($helper->ask($input, $output, $question)) {
+                        $cacheService->clearPluginCache($plugin['name'], $plugin['version']);
+                        $output->writeln("<info>✓ Caché de {$plugin['name']} limpiado</info>");
+                    } else {
+                        $output->writeln("<comment>✓ Usando {$plugin['name']} v{$plugin['version']} desde caché</comment>");
+                        $plugin['source'] = 'cache';
+                        $plugin['original_url'] = $plugin['url'];
+                        unset($plugin['url']);
+                        $processedPlugins[] = $plugin;
+                        continue;
+                    }
+                }
+                
+                $output->writeln("<comment>📥 Descargando {$plugin['name']} v{$plugin['version']} a caché...</comment>");
+                
+                try {
+                    $cacheService->downloadPlugin(
+                        $plugin['url'],
+                        $plugin['name'],
+                        $plugin['version'],
+                        $plugin['path']
+                    );
+                    
+                    $plugin['source'] = 'cache';
+                    $plugin['original_url'] = $plugin['url'];
+                    unset($plugin['url']);
+                    
+                    $output->writeln("<info>✓ {$plugin['name']} descargado</info>");
+                } catch (\Exception $e) {
+                    $output->writeln("<error>✗ Error: {$e->getMessage()}</error>");
+                    continue;
+                }
+            }
+            
+            $processedPlugins[] = $plugin;
+        }
+        
+        return $processedPlugins;
     }
     
     protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
