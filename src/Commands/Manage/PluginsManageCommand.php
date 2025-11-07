@@ -100,6 +100,7 @@ class PluginsManageCommand extends Command
         $output->writeln(' <fg=cyan>[3]</> 🗑️  Desinstalar plugin');
         $output->writeln(' <fg=cyan>[4]</> 📊 Ver detalles de plugin');
         $output->writeln(' <fg=cyan>[5]</> 🧹 Limpiar cola');
+        $output->writeln(' <fg=cyan>[6]</> 📦 Importar .zip local');
         $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
@@ -123,6 +124,9 @@ class PluginsManageCommand extends Command
                 $this->pendingPlugins = [];
                 $output->writeln('<info>✓ Cola limpiada</info>');
                 $this->waitForEnter($input, $output);
+                return 'continue';
+            case '6':
+                $this->importZipPlugin($input, $output);
                 return 'continue';
             case '0':
                 return 'exit';
@@ -336,6 +340,90 @@ class PluginsManageCommand extends Command
         if ($input->isInteractive()) {
             fgets(STDIN);
         }
+    }
+
+    private function importZipPlugin(InputInterface $input, OutputInterface $output): void
+    {
+        $helper = $this->getHelper('question');
+        
+        $output->writeln('');
+        $output->writeln('<info>📦 Importar plugin desde .zip local</info>');
+        $output->writeln('');
+        
+        $question = new Question('<fg=yellow>Path al archivo .zip:</> ');
+        $zipPath = $helper->ask($input, $output, $question);
+        
+        if (empty($zipPath) || !file_exists($zipPath)) {
+            $output->writeln('<error>Archivo no encontrado</error>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
+        
+        $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+        
+        try {
+            $output->writeln('  ⏳ Extrayendo metadata...');
+            $metadata = $cacheService->extractMetadataFromZip($zipPath, 'plugin');
+            
+            $name = $metadata['name'];
+            $version = $metadata['version'];
+            
+            if (!$name) {
+                $question = new Question('  ❓ Ingresa el nombre del plugin: ');
+                $name = $helper->ask($input, $output, $question);
+            } else {
+                $output->writeln("  ✓ Nombre detectado: {$name}");
+            }
+            
+            if (!$version) {
+                $question = new Question('  ❓ Ingresa la versión (o Enter para "imported-zip"): ', 'imported-zip');
+                $version = $helper->ask($input, $output, $question);
+            } else {
+                $output->writeln("  ✓ Versión detectada: {$version}");
+            }
+            
+            $output->writeln('  ⏳ Importando a cache...');
+            $cacheService->importToCache($zipPath, $name, $version, 'plugin');
+            
+            $output->writeln('');
+            $output->writeln("<info>✓ {$name} {$version} importado a cache</info>");
+            $output->writeln('');
+            
+            $question = new ConfirmationQuestion('<fg=yellow>¿Agregar al proyecto ahora? (Y/n):</> ', true);
+            if ($helper->ask($input, $output, $question)) {
+                $this->pluginManager->add($name, 'cached', $version);
+                
+                $cachePath = $cacheService->getCachePath($name, $version);
+                
+                $exitCode = $this->dependencyManager->requireWithRepository(
+                    "cached/{$name}",
+                    $version,
+                    [
+                        'type' => 'path',
+                        'url' => $cachePath,
+                        'options' => ['symlink' => true]
+                    ],
+                    false,
+                    function($buffer) use ($output) {
+                        $output->write($buffer);
+                    }
+                );
+                
+                if ($exitCode === 0) {
+                    $output->writeln('');
+                    $output->writeln("<info>✓ Plugin {$name} instalado en el proyecto</info>");
+                } else {
+                    $output->writeln('');
+                    $output->writeln('<error>✗ Error al instalar plugin</error>');
+                }
+            }
+            
+        } catch (\Exception $e) {
+            $output->writeln('');
+            $output->writeln("<error>Error: {$e->getMessage()}</error>");
+        }
+        
+        $this->waitForEnter($input, $output);
     }
 }
 

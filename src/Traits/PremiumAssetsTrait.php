@@ -25,8 +25,9 @@ trait PremiumAssetsTrait
             [
                 '1' => 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)',
                 '2' => 'Repositorio individual (1 repo = 1 plugin)',
-                '3' => 'Carpeta local',
-                '4' => 'Archivo ZIP',
+                '3' => 'Importar .zip local ahora',
+                '4' => 'Desde cache (ya importado)',
+                '5' => 'Carpeta local',
                 '0' => 'Omitir'
             ],
             '0'
@@ -41,8 +42,9 @@ trait PremiumAssetsTrait
         return match($source) {
             '1', 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)' => $this->selectFromRepository($input, $output, $helper),
             '2', 'Repositorio individual (1 repo = 1 plugin)' => $this->selectFromIndividualRepo($input, $output, $helper, 'plugin'),
-            '3', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
-            '4', 'Archivo ZIP' => $this->selectFromZip($input, $output, $helper),
+            '3', 'Importar .zip local ahora' => $this->importLocalZip($input, $output, $helper, 'plugin'),
+            '4', 'Desde cache (ya importado)' => $this->selectFromCache($input, $output, $helper, 'plugin'),
+            '5', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
             default => []
         };
     }
@@ -337,8 +339,9 @@ trait PremiumAssetsTrait
             [
                 '1' => 'Repositorio de paquetes (packages/theme1/, packages/theme2/)',
                 '2' => 'Repositorio individual (1 repo = 1 tema)',
-                '3' => 'Carpeta local',
-                '4' => 'Archivo ZIP',
+                '3' => 'Importar .zip local ahora',
+                '4' => 'Desde cache (ya importado)',
+                '5' => 'Carpeta local',
                 '0' => 'Omitir'
             ],
             '0'
@@ -353,11 +356,70 @@ trait PremiumAssetsTrait
         $result = match($source) {
             '1', 'Repositorio de paquetes (packages/theme1/, packages/theme2/)' => $this->selectFromRepository($input, $output, $helper),
             '2', 'Repositorio individual (1 repo = 1 tema)' => $this->selectFromIndividualRepo($input, $output, $helper, 'theme'),
-            '3', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
-            '4', 'Archivo ZIP' => $this->selectFromZip($input, $output, $helper),
+            '3', 'Importar .zip local ahora' => $this->importLocalZip($input, $output, $helper, 'theme'),
+            '4', 'Desde cache (ya importado)' => $this->selectFromCache($input, $output, $helper, 'theme'),
+            '5', 'Carpeta local' => $this->selectFromLocalPath($input, $output, $helper),
             default => []
         };
         
         return !empty($result) ? $result[0] : null;
+    }
+
+    private function importLocalZip(InputInterface $input, OutputInterface $output, $helper, string $type): array
+    {
+        $output->writeln('');
+        $output->writeln("<info>📦 Importar .zip local ({$type})</info>");
+        $output->writeln('');
+        
+        $zipQuestion = new Question('<fg=yellow>Path al archivo .zip:</> ');
+        $zipPath = $helper->ask($input, $output, $zipQuestion);
+        
+        if (empty($zipPath) || !file_exists($zipPath)) {
+            $output->writeln('<error>Archivo no encontrado</error>');
+            return [];
+        }
+        
+        $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+        
+        try {
+            $output->writeln('  ⏳ Extrayendo metadata...');
+            $metadata = $cacheService->extractMetadataFromZip($zipPath, $type);
+            
+            $name = $metadata['name'] ?? basename($zipPath, '.zip');
+            $version = $metadata['version'] ?? 'imported-zip';
+            
+            if ($metadata['name']) {
+                $output->writeln("  ✓ Nombre detectado: {$name}");
+            }
+            if ($metadata['version']) {
+                $output->writeln("  ✓ Versión detectada: {$version}");
+            } else {
+                $output->writeln("  ⚠️  Versión no detectada, usando: imported-zip");
+            }
+            
+            $output->writeln('  ⏳ Importando a cache...');
+            $cacheService->importToCache($zipPath, $name, $version, $type);
+            $output->writeln("  ✓ {$name} {$version} importado");
+            
+            return [[
+                'name' => $name,
+                'version' => $version,
+                'source' => 'cache',
+                'original_url' => 'local:' . basename($zipPath)
+            ]];
+            
+        } catch (\Exception $e) {
+            $output->writeln("<error>Error: {$e->getMessage()}</error>");
+            return [];
+        }
+    }
+
+    private function selectFromCache(InputInterface $input, OutputInterface $output, $helper, string $type): array
+    {
+        $output->writeln('');
+        $output->writeln("<info>💾 Seleccionar desde cache ({$type})</info>");
+        $output->writeln('');
+        $output->writeln('<comment>Función pendiente de implementar</comment>');
+        return [];
     }
 }

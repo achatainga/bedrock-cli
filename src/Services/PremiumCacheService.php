@@ -4,6 +4,7 @@ namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
 use ZipArchive;
+use Symfony\Component\Filesystem\Filesystem;
 
 class PremiumCacheService
 {
@@ -219,5 +220,190 @@ class PremiumCacheService
         }
         
         throw new RuntimeException("Solo GitLab soportado por ahora");
+    }
+
+    public function extractMetadataFromZip(string $zipPath, string $type): array
+    {
+        if (!file_exists($zipPath)) {
+            throw new RuntimeException("File not found: {$zipPath}");
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new RuntimeException("Cannot open zip file: {$zipPath}");
+        }
+
+        $name = null;
+        $version = null;
+        $source = null;
+
+        $composerJson = $this->findFileInZip($zip, 'composer.json');
+        if ($composerJson) {
+            $data = json_decode($composerJson, true);
+            if (isset($data['version'])) {
+                $version = $data['version'];
+                $source = 'composer.json';
+            }
+            if (isset($data['name'])) {
+                $parts = explode('/', $data['name']);
+                $name = $this->sanitizeSlug(end($parts));
+            }
+        }
+
+        if (!$version) {
+            if ($type === 'theme') {
+                $styleCss = $this->findFileInZip($zip, 'style.css');
+                if ($styleCss) {
+                    if (preg_match('/Theme Name:\s*(.+)/i', $styleCss, $m)) {
+                        $name = $name ?? $this->sanitizeSlug(trim($m[1]));
+                    }
+                    if (preg_match('/Version:\s*([\d\.]+)/i', $styleCss, $m)) {
+                        $version = trim($m[1]);
+                        $source = 'style.css';
+                    }
+                }
+            }
+
+            if ($type === 'plugin') {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $filename = $zip->getNameIndex($i);
+                    if (preg_match('/\.php$/', $filename) && !str_contains($filename, '/vendor/')) {
+                        $content = $zip->getFromIndex($i);
+                        if (preg_match('/Plugin Name:\s*(.+)/i', $content, $m)) {
+                            $name = $name ?? $this->sanitizeSlug(trim($m[1]));
+                        }
+                        if (preg_match('/Version:\s*([\d\.]+)/i', $content, $m)) {
+                            $version = trim($m[1]);
+                            $source = basename($filename);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        $zip->close();
+
+        return [
+            'name' => $name,
+            'version' => $version,
+            'source' => $source
+        ];
+    }
+
+    private function findFileInZip(ZipArchive $zip, string $filename): ?string
+    {
+        $content = $zip->getFromName($filename);
+        if ($content !== false) {
+            return $content;
+        }
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (str_ends_with($name, '/' . $filename)) {
+                return $zip->getFromIndex($i);
+            }
+        }
+
+        return null;
+    }
+
+    private function sanitizeSlug(string $name): string
+    {
+        $slug = strtolower($name);
+        $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+        return trim($slug, '-');
+    }
+
+    public function importToCache(string $zipPath, string $name, string $version, string $type): bool
+    {
+        if (!file_exists($zipPath)) {
+            throw new RuntimeException("File not found: {$zipPath}");
+        }
+
+        $typeDir = $type === 'plugin' ? 'plugins' : 'themes';
+        $targetDir = $this->cachePath . "/{$typeDir}/{$name}/{$version}";
+        $targetZip = $targetDir . "/{$name}.zip";
+        $extractPath = $targetDir . "/extracted";
+
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        copy($zipPath, $targetZip);
+
+        $zip = new ZipArchive();
+        if ($zip->open($targetZip) !== true) {
+            throw new RuntimeException("Cannot open zip file: {$targetZip}");
+        }
+
+        $zip->extractTo($extractPath);
+        $zip->close();
+
+        $pluginPath = $extractPath;
+        if (is_dir($extractPath . '/' . $name)) {
+            $pluginPath = $extractPath . '/' . $name;
+        }
+
+        $composerPath = $pluginPath . '/composer.json';
+        if (!file_exists($composerPath)) {
+            $composerData = [
+                'name' => "cached/{$name}",
+                'version' => $version,
+                'type' => $type === 'plugin' ? 'wordpress-plugin' : 'wordpress-theme',
+                'description' => "Premium {$type} {$name}",
+                'require' => [
+                    'composer/installers' => '^2.0'
+                ]
+            ];
+            file_put_contents($composerPath, json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+
+        return true;
+    }
+
+    public function updateCacheVersion(string $name, string $oldVersion, string $newVersion): ?string
+    {
+        $type = $this->detectCacheType($name, $oldVersion);
+        if (!$type) {
+            throw new RuntimeException("No se encontró {$name} {$oldVersion} en cache");
+        }
+
+        $typeDir = $type === 'plugin' ? 'plugins' : 'themes';
+        $oldPath = $this->cachePath . "/{$typeDir}/{$name}/{$oldVersion}";
+        $newPath = $this->cachePath . "/{$typeDir}/{$name}/{$newVersion}";
+
+        if (!is_dir($oldPath)) {
+            throw new RuntimeException("No existe {$name} {$oldVersion} en cache");
+        }
+
+        if (is_dir($newPath)) {
+            throw new RuntimeException("Ya existe {$name} {$newVersion} en cache");
+        }
+
+        rename($oldPath, $newPath);
+
+        $extractPath = $newPath . "/extracted";
+        $pluginPath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        $composerPath = $pluginPath . '/composer.json';
+
+        if (file_exists($composerPath)) {
+            $composerData = json_decode(file_get_contents($composerPath), true);
+            $composerData['version'] = $newVersion;
+            file_put_contents($composerPath, json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+
+        return $type;
+    }
+
+    private function detectCacheType(string $name, string $version): ?string
+    {
+        if (is_dir($this->cachePath . "/plugins/{$name}/{$version}")) {
+            return 'plugin';
+        }
+        if (is_dir($this->cachePath . "/themes/{$name}/{$version}")) {
+            return 'theme';
+        }
+        return null;
     }
 }
