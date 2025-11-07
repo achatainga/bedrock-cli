@@ -83,6 +83,15 @@ trait PremiumAssetsTrait
         $output->writeln('<info>✓ Acceso verificado</info>');
         $output->writeln('');
         
+        // Preguntar si limpiar caché
+        $clearCacheQuestion = new ConfirmationQuestion('<fg=yellow>¿Limpiar caché de plugins premium? (Y/n):</> ', false);
+        if ($helper->ask($input, $output, $clearCacheQuestion)) {
+            $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+            $cacheService->clearCache();
+            $output->writeln('<info>✓ Caché limpiado</info>');
+            $output->writeln('');
+        }
+        
         // Escanear plugins
         $output->writeln('<comment>Escaneando repositorio...</comment>');
         

@@ -163,6 +163,27 @@ class PremiumCacheService
         return file_exists($zipPath);
     }
 
+    public function clearCache(): void
+    {
+        if (is_dir($this->cachePath)) {
+            $this->deleteDirectory($this->cachePath);
+            mkdir($this->cachePath, 0755, true);
+        }
+    }
+
+    private function deleteDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
+        }
+        rmdir($dir);
+    }
+
     private function extractDomain(string $url): string
     {
         $parsed = parse_url($url);
