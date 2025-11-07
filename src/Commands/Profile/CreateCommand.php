@@ -303,13 +303,8 @@ class CreateCommand extends Command
 
     private function extractVendorFromPlugin(array $plugin): string
     {
-        // Si es cache, extraer de original_url o usar 'cached'
+        // Si es cache, SIEMPRE usar 'cached'
         if ($plugin['source'] === 'cache') {
-            if (!empty($plugin['original_url'])) {
-                if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['original_url'], $matches)) {
-                    return $matches[1];
-                }
-            }
             return 'cached';
         }
         
