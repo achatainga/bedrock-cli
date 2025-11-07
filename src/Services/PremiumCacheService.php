@@ -171,6 +171,14 @@ class PremiumCacheService
         }
     }
 
+    public function clearPluginCache(string $name, string $version): void
+    {
+        $pluginDir = $this->cachePath . "/{$name}/{$version}";
+        if (is_dir($pluginDir)) {
+            $this->deleteDirectory($pluginDir);
+        }
+    }
+
     private function deleteDirectory(string $dir): void
     {
         if (!is_dir($dir)) {

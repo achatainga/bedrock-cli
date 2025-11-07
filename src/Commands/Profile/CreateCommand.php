@@ -334,10 +334,32 @@ class CreateCommand extends Command
     private function downloadPremiumPluginsToCache(array $premiumPlugins, OutputInterface $output): array
     {
         $processedPlugins = [];
+        $helper = $this->getHelper('question');
+        $input = new \Symfony\Component\Console\Input\ArgvInput();
         
         foreach ($premiumPlugins as $plugin) {
             // Solo procesar plugins de tipo VCS con path (repositorio de paquetes)
             if ($plugin['source'] === 'vcs' && !empty($plugin['path'])) {
+                // Verificar si ya existe en caché
+                if ($this->cacheService->pluginExists($plugin['name'], $plugin['version'])) {
+                    $question = new ConfirmationQuestion(
+                        "<fg=yellow>{$plugin['name']} v{$plugin['version']} ya existe en caché. ¿Redescargar? (Y/n):</> ",
+                        false
+                    );
+                    
+                    if ($helper->ask($input, $output, $question)) {
+                        $this->cacheService->clearPluginCache($plugin['name'], $plugin['version']);
+                        $output->writeln("<info>✓ Caché de {$plugin['name']} limpiado</info>");
+                    } else {
+                        $output->writeln("<comment>✓ Usando {$plugin['name']} v{$plugin['version']} desde caché</comment>");
+                        $plugin['source'] = 'cache';
+                        $plugin['original_url'] = $plugin['url'];
+                        unset($plugin['url']);
+                        $processedPlugins[] = $plugin;
+                        continue;
+                    }
+                }
+                
                 $output->writeln("<comment>📥 Descargando {$plugin['name']} v{$plugin['version']} a caché...</comment>");
                 
                 try {
