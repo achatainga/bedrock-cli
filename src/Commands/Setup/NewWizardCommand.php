@@ -44,11 +44,9 @@ class NewWizardCommand extends Command
 
         // 2. Verificar si existe
         if (is_dir($name)) {
-            $forceQuestion = new ConfirmationQuestion(
-                "<fg=yellow>El directorio '{$name}' ya existe. ¿Sobrescribir? (s/N):</> ",
-                false
-            );
-            if (!$helper->ask($input, $output, $forceQuestion)) {
+            $forceQuestion = new Question("<fg=yellow>El directorio '{$name}' ya existe. ¿Sobrescribir? (s/N):</> ", 'N');
+            $forceAnswer = strtoupper(trim($helper->ask($input, $output, $forceQuestion)));
+            if ($forceAnswer !== 'S' && $forceAnswer !== 'Y') {
                 $output->writeln('<error>Operación cancelada</error>');
                 return Command::FAILURE;
             }
@@ -119,23 +117,17 @@ class NewWizardCommand extends Command
         $output->writeln('');
         $output->writeln('<fg=cyan>═══ OPCIONES ADICIONALES ═══</>');
         
-        $dockerQuestion = new ConfirmationQuestion(
-            '<fg=yellow>¿Generar archivos Docker? (S/n):</> ',
-            true
-        );
-        $withDocker = $helper->ask($input, $output, $dockerQuestion);
+        $dockerQuestion = new Question('<fg=yellow>¿Generar archivos Docker? (S/n):</> ', 'S');
+        $dockerAnswer = strtoupper(trim($helper->ask($input, $output, $dockerQuestion)));
+        $withDocker = $dockerAnswer === 'S' || $dockerAnswer === 'Y' || $dockerAnswer === '';
         
-        $acornQuestion = new ConfirmationQuestion(
-            '<fg=yellow>¿Instalar Roots Acorn? (S/n):</> ',
-            true
-        );
-        $withAcorn = $helper->ask($input, $output, $acornQuestion);
+        $acornQuestion = new Question('<fg=yellow>¿Instalar Roots Acorn? (S/n):</> ', 'S');
+        $acornAnswer = strtoupper(trim($helper->ask($input, $output, $acornQuestion)));
+        $withAcorn = $acornAnswer === 'S' || $acornAnswer === 'Y' || $acornAnswer === '';
         
-        $redisQuestion = new ConfirmationQuestion(
-            '<fg=yellow>¿Instalar Redis Object Cache? (S/n):</> ',
-            true
-        );
-        $withRedis = $helper->ask($input, $output, $redisQuestion);
+        $redisQuestion = new Question('<fg=yellow>¿Instalar Redis Object Cache? (S/n):</> ', 'S');
+        $redisAnswer = strtoupper(trim($helper->ask($input, $output, $redisQuestion)));
+        $withRedis = $redisAnswer === 'S' || $redisAnswer === 'Y' || $redisAnswer === '';
 
         // 6. Puertos (solo si Docker está habilitado)
         $httpPort = 80;
@@ -171,12 +163,10 @@ class NewWizardCommand extends Command
         }
         $output->writeln('');
         
-        $confirmQuestion = new ConfirmationQuestion(
-            '<fg=yellow>¿Crear proyecto con esta configuración? (S/n):</> ',
-            true
-        );
+        $confirmQuestion = new Question('<fg=yellow>¿Crear proyecto con esta configuración? (S/n):</> ', 'S');
+        $confirmAnswer = strtoupper(trim($helper->ask($input, $output, $confirmQuestion)));
         
-        if (!$helper->ask($input, $output, $confirmQuestion)) {
+        if ($confirmAnswer === 'N') {
             $output->writeln('<error>Operación cancelada</error>');
             return Command::FAILURE;
         }
