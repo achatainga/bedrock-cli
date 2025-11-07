@@ -554,12 +554,25 @@ class NewCommand extends Command
         $stateService = new StateService();
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
 
+        $themeName = 'twentytwentyfive';
+        if ($profile && !empty($profile['themes'])) {
+            $allThemes = array_merge(
+                $profile['themes']['public'] ?? [],
+                $profile['themes']['premium'] ?? [],
+                $profile['themes']['custom'] ?? []
+            );
+            if (!empty($allThemes)) {
+                $firstTheme = reset($allThemes);
+                $themeName = is_array($firstTheme) ? ($firstTheme['slug'] ?? $firstTheme['name']) : $firstTheme;
+            }
+        }
+
         $config = [
             'http_port' => $httpPort,
             'has_acorn' => !$input->getOption('no-acorn'),
-            'has_plugins' => $profile && !empty($profile['plugins']['wordpress_org']),
-            'has_theme' => $profile && !empty($profile['theme']),
-            'theme_name' => $profile['theme'] ?? 'twentytwentyfive'
+            'has_plugins' => $profile && !empty($profile['plugins']['public']),
+            'has_theme' => $profile && !empty($profile['themes']),
+            'theme_name' => $themeName
         ];
 
         $stateService->generateInitialState($name, $config);
