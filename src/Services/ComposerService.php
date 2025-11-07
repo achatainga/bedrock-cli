@@ -20,6 +20,9 @@ class ComposerService
 
         $composerData = json_decode(file_get_contents($composerJsonPath), true);
 
+        // Limpiar plugins/themes del profile anterior
+        $this->cleanPreviousProfilePackages($composerData, $projectPath);
+
         // Agregar wpackagist.org si no existe
         $this->ensureWpackagist($composerData);
 
@@ -241,5 +244,83 @@ class ComposerService
     {
         // Normalizar a forward slashes para comparación consistente
         return str_replace('\\', '/', $path);
+    }
+    
+    private function cleanPreviousProfilePackages(array &$composerData, string $projectPath): void
+    {
+        $bedrockProfilePath = $projectPath . '/.bedrock/profile.json';
+        
+        // Si no existe profile anterior, no hay nada que limpiar
+        if (!file_exists($bedrockProfilePath)) {
+            return;
+        }
+        
+        $previousProfile = json_decode(file_get_contents($bedrockProfilePath), true);
+        if (!$previousProfile) {
+            return;
+        }
+        
+        // Eliminar plugins públicos del profile anterior
+        if (!empty($previousProfile['plugins']['public'])) {
+            foreach ($previousProfile['plugins']['public'] as $plugin) {
+                $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
+                $package = "wpackagist-plugin/{$slug}";
+                unset($composerData['require'][$package]);
+            }
+        }
+        
+        // Eliminar plugins premium del profile anterior
+        if (!empty($previousProfile['plugins']['premium'])) {
+            foreach ($previousProfile['plugins']['premium'] as $plugin) {
+                // Extraer vendor del plugin anterior
+                $vendor = 'detodo24dev';
+                if (!empty($plugin['original_url'])) {
+                    $vendor = $this->extractVendorFromUrl($plugin['original_url']);
+                } elseif (!empty($plugin['url'])) {
+                    $vendor = $this->extractVendorFromUrl($plugin['url']);
+                }
+                $package = "{$vendor}/{$plugin['name']}";
+                unset($composerData['require'][$package]);
+            }
+        }
+        
+        // Eliminar plugins custom del profile anterior
+        if (!empty($previousProfile['plugins']['custom'])) {
+            foreach ($previousProfile['plugins']['custom'] as $pluginName) {
+                // Intentar con diferentes vendors posibles
+                foreach ($composerData['require'] as $package => $version) {
+                    if (str_ends_with($package, "/{$pluginName}")) {
+                        unset($composerData['require'][$package]);
+                    }
+                }
+            }
+        }
+        
+        // Limpiar repositories del profile anterior (excepto wpackagist)
+        if (!empty($previousProfile['repositories'])) {
+            $newRepositories = [];
+            foreach ($composerData['repositories'] as $repo) {
+                // Mantener wpackagist
+                if (isset($repo['url']) && strpos($repo['url'], 'wpackagist.org') !== false) {
+                    $newRepositories[] = $repo;
+                    continue;
+                }
+                
+                // Verificar si este repo está en el profile anterior
+                $isFromPreviousProfile = false;
+                foreach ($previousProfile['repositories'] as $prevRepo) {
+                    if ($this->normalizePath($repo['url']) === $this->normalizePath($prevRepo['url'])) {
+                        $isFromPreviousProfile = true;
+                        break;
+                    }
+                }
+                
+                // Si no es del profile anterior, mantenerlo
+                if (!$isFromPreviousProfile) {
+                    $newRepositories[] = $repo;
+                }
+            }
+            $composerData['repositories'] = $newRepositories;
+        }
     }
 }
