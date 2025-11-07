@@ -197,7 +197,7 @@ trait ThemeManagementTrait
     {
         $index = 1;
         
-        foreach ($profile['themes']['public'] as $key => $theme) {
+        foreach ($profile['themes']['public'] ?? [] as $key => $theme) {
             if ($index === $num) {
                 $slug = is_array($theme) ? $theme['slug'] : $theme;
                 unset($profile['themes']['public'][$key]);
@@ -208,7 +208,7 @@ trait ThemeManagementTrait
             $index++;
         }
         
-        foreach ($profile['themes']['premium'] as $key => $theme) {
+        foreach ($profile['themes']['premium'] ?? [] as $key => $theme) {
             if ($index === $num) {
                 unset($profile['themes']['premium'][$key]);
                 $profile['themes']['premium'] = array_values($profile['themes']['premium']);

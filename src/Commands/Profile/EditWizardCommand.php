@@ -230,46 +230,7 @@ class EditWizardCommand extends Command
     
     protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
-        $output->writeln('');
-        $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
-        $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
-        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta/ZIP local)');
-        $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
-        $output->writeln('');
-        
-        $question = new Question('> ');
-        $type = trim($helper->ask($input, $output, $question));
-        
-        if ($type === '0') {
-            return;
-        }
-        
-        if ($type === '1') {
-            $themes = $this->searchWithCancelOption($input, $output, $helper, 'theme');
-            $added = 0;
-            foreach ($themes as $theme) {
-                $profile['themes']['public'][] = $theme;
-                $added++;
-            }
-            if ($added > 0) {
-                $output->writeln("<info>✓ {$added} theme(s) público(s) agregado(s)</info>");
-            }
-        } elseif ($type === '2') {
-            $themes = $this->selectPremiumThemes($input, $output, $helper);
-            $added = 0;
-            foreach ($themes as $theme) {
-                $profile['themes']['premium'][] = $theme;
-                $added++;
-            }
-            if ($added > 0) {
-                $output->writeln("<info>✓ {$added} theme(s) premium agregado(s)</info>");
-            }
-        } elseif ($type === '3') {
-            $added = $this->selectCustomThemesInteractive($profile, $input, $output, $helper);
-            if ($added > 0) {
-                $output->writeln("<info>✓ {$added} theme(s) custom agregado(s)</info>");
-            }
-        }
+        $this->addThemeToProfile($profile, $input, $output, $helper, 'theme');
     }
     
     private function regenerateRequire(array &$profile): void
