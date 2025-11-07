@@ -381,9 +381,12 @@ class NewCommand extends Command
             $composerService->copyProfileToProject($profile, $name);
             
             $output->writeln('<info>Instalando dependencias del profile...</info>');
-            $process = new Process(['composer', 'install', '--no-interaction'], $name);
+            $process = new Process(['composer', 'update', '--no-interaction'], $name);
             $process->setTimeout(600);
             $this->runWithLoader($process, $output, 'Instalando dependencias');
+            
+            $composerService->copyCustomZipFiles($profile, $name);
+            $output->writeln('<info>✓ Archivos .zip copiados</info>');
             
             $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
             return $profile;
@@ -570,7 +573,7 @@ class NewCommand extends Command
         $config = [
             'http_port' => $httpPort,
             'has_acorn' => !$input->getOption('no-acorn'),
-            'has_plugins' => $profile && !empty($profile['plugins']['public']),
+            'has_plugins' => $profile && (!empty($profile['plugins']['public']) || !empty($profile['plugins']['premium']) || !empty($profile['plugins']['custom']))
             'has_theme' => $profile && !empty($profile['themes']),
             'theme_name' => $themeName
         ];
