@@ -301,6 +301,14 @@ class EditWizardCommand extends Command
             }
         }
         
+        // Themes premium
+        if (!empty($profile['themes']['premium'])) {
+            foreach ($profile['themes']['premium'] as $theme) {
+                $vendor = $theme['source'] === 'cache' ? 'cached' : 'wpackagist-theme';
+                $newRequire["{$vendor}/{$theme['name']}"] = $theme['version'];
+            }
+        }
+        
         // Reemplazar require completamente
         $profile['require'] = $newRequire;
     }
