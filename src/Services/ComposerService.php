@@ -24,6 +24,29 @@ class ComposerService
             }
         }
 
+        // Agregar repositorios para plugins premium
+        if (!empty($profile['plugins']['premium'])) {
+            foreach ($profile['plugins']['premium'] as $plugin) {
+                if ($plugin['source'] === 'vcs') {
+                    $composerData['repositories'][] = ['type' => 'vcs', 'url' => $plugin['url']];
+                    $package = "detodo24/{$plugin['name']}";
+                    $composerData['require'][$package] = $plugin['version'];
+                } elseif ($plugin['source'] === 'path') {
+                    $composerData['repositories'][] = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+                    $package = "local/{$plugin['name']}";
+                    $composerData['require'][$package] = $plugin['version'];
+                }
+            }
+        }
+
+        // Agregar plugins custom desde repositorio path
+        if (!empty($profile['plugins']['custom']) && !empty($profile['repositories'])) {
+            foreach ($profile['plugins']['custom'] as $pluginName) {
+                $package = "detodo24/{$pluginName}";
+                $composerData['require'][$package] = '*';
+            }
+        }
+
         // Agregar dependencias del profile
         if (!empty($profile['require'])) {
             foreach ($profile['require'] as $package => $version) {

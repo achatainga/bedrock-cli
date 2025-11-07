@@ -77,7 +77,22 @@ class ApplyCommand extends Command
         $output->writeln('✓ Archivos .zip copiados');
         
         $output->writeln('');
-        $output->writeln('<comment>Ejecuta:</comment> composer update');
+        $output->writeln('<info>Ejecutando composer update...</info>');
+        
+        $process = new \Symfony\Component\Process\Process(['composer', 'update', '--no-interaction'], $projectRoot);
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if (!$process->isSuccessful()) {
+            $output->writeln('<error>Error al ejecutar composer update</error>');
+            $output->writeln($process->getErrorOutput());
+            return Command::FAILURE;
+        }
+        
+        $output->writeln('');
+        $output->writeln('<info>✓ Profile aplicado y dependencias instaladas</info>');
         $output->writeln('');
 
         return Command::SUCCESS;
