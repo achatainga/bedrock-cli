@@ -221,7 +221,15 @@ class CreateCommand extends Command
 
         // Agregar repositorios premium desde plugins
         foreach ($premiumPlugins as $plugin) {
-            if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
+            if ($plugin['source'] === 'cache') {
+                // Para plugins en caché, agregar path al extracted
+                $cachePath = $this->cacheService->getCachePath($plugin['name'], $plugin['version']);
+                $profile['repositories'][] = [
+                    'type' => 'path',
+                    'url' => $cachePath,
+                    'options' => ['symlink' => true]
+                ];
+            } elseif ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
                 $exists = false;
                 foreach ($profile['repositories'] as $repo) {
                     if ($repo['url'] === $plugin['url']) {
