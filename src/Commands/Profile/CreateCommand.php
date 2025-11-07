@@ -124,13 +124,13 @@ class CreateCommand extends Command
                                         $customPluginsList[] = $pluginsList[$num];
                                     }
                                 }
-                                
-                                if (!empty($customPluginsList)) {
-                                    $output->writeln("\n<info>Plugins seleccionados:</info>");
-                                    foreach ($customPluginsList as $slug) {
-                                        $output->writeln("  ✓ {$slug}");
-                                    }
-                                }
+                            }
+                        }
+                        
+                        if (!empty($customPluginsList)) {
+                            $output->writeln("\n<info>Plugins seleccionados:</info>");
+                            foreach ($customPluginsList as $slug) {
+                                $output->writeln("  ✓ {$slug}");
                             }
                         }
                     } else {
@@ -154,11 +154,15 @@ class CreateCommand extends Command
 
         $themeData = null;
         $themeLicenseEnv = null;
+        $themeName = null;
+        $isPremiumTheme = false;
         
         if ($usePremiumTheme) {
             $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
             if ($premiumTheme) {
                 $themeData = $premiumTheme;
+                $themeName = $premiumTheme['name'];
+                $isPremiumTheme = true;
                 $question = new Question('Variable de licencia en .env (opcional, ej: MOTTA_LICENSE): ');
                 $themeLicenseEnv = $helper->ask($input, $output, $question);
             }
@@ -256,7 +260,7 @@ class CreateCommand extends Command
         
         // Agregar plugins premium a require
         foreach ($premiumPlugins as $plugin) {
-            $vendor = $plugin['source'] === 'vcs' ? 'detodo24' : 'local';
+            $vendor = $this->extractVendorFromPlugin($plugin);
             $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
         }
 
@@ -281,5 +285,31 @@ class CreateCommand extends Command
     private function searchPluginsInteractive(InputInterface $input, OutputInterface $output, $helper): array
     {
         return $this->searchWithCancelOption($input, $output, $helper, 'plugin');
+    }
+
+    private function extractVendorFromPlugin(array $plugin): string
+    {
+        // Si es VCS, extraer vendor del URL del repositorio
+        if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
+            // https://gitlab.com/vendor/repo.git → vendor
+            if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['url'], $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        // Si es path o zip, intentar leer composer.json
+        if (($plugin['source'] === 'path' || $plugin['source'] === 'zip') && !empty($plugin['path'])) {
+            $composerPath = $plugin['path'] . '/composer.json';
+            if (file_exists($composerPath)) {
+                $composer = json_decode(file_get_contents($composerPath), true);
+                if (!empty($composer['name'])) {
+                    // vendor/package → vendor
+                    return explode('/', $composer['name'])[0];
+                }
+            }
+        }
+        
+        // Fallback
+        return 'local';
     }
 }

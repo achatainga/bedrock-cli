@@ -218,7 +218,7 @@ class ComposerService
     
     private function normalizePath(string $path): string
     {
-        // Normalizar separadores de directorio
-        return str_replace('/', DIRECTORY_SEPARATOR, $path);
+        // Normalizar a forward slashes para comparación consistente
+        return str_replace('\\', '/', $path);
     }
 }
