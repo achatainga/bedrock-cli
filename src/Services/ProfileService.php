@@ -157,8 +157,23 @@ class ProfileService
 
     public function scanCustomPlugins(string $path): array
     {
+        // Detectar si es archivo .zip
+        if (is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip') {
+            $slug = pathinfo($path, PATHINFO_FILENAME);
+            return [
+                $slug => [
+                    'slug' => $slug,
+                    'name' => $slug,
+                    'version' => 'N/A',
+                    'description' => 'Plugin desde archivo ZIP',
+                    'path' => $path,
+                    'source' => 'zip'
+                ]
+            ];
+        }
+        
         if (!is_dir($path)) {
-            throw new RuntimeException("Path '{$path}' no existe o no es un directorio");
+            throw new RuntimeException("Path '{$path}' no existe o no es un directorio válido");
         }
 
         $plugins = [];
@@ -251,8 +266,23 @@ class ProfileService
     
     public function scanCustomThemes(string $path): array
     {
+        // Detectar si es archivo .zip
+        if (is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip') {
+            $slug = pathinfo($path, PATHINFO_FILENAME);
+            return [
+                $slug => [
+                    'slug' => $slug,
+                    'name' => $slug,
+                    'version' => 'N/A',
+                    'description' => 'Theme desde archivo ZIP',
+                    'path' => $path,
+                    'source' => 'zip'
+                ]
+            ];
+        }
+        
         if (!is_dir($path)) {
-            throw new RuntimeException("Path '{$path}' no existe o no es un directorio");
+            throw new RuntimeException("Path '{$path}' no existe o no es un directorio válido");
         }
 
         $themes = [];

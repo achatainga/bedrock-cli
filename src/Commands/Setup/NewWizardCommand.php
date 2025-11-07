@@ -59,22 +59,20 @@ class NewWizardCommand extends Command
         $output->writeln('<fg=cyan>═══ CONFIGURACIÓN DE PROFILE ═══</>');
         
         $profileService = new ProfileService();
-        $profiles = $profileService->listProfiles();
+        $profiles = array_values($profileService->listProfiles());
         
-        $profileChoices = ['[Crear nuevo profile]'];
-        foreach ($profiles as $profile) {
-            $profileChoices[] = $profile['name'];
+        $output->writeln('');
+        foreach ($profiles as $idx => $profile) {
+            $output->writeln('  <fg=cyan>[' . ($idx + 1) . ']</> ' . $profile['name']);
         }
+        $output->writeln('  <fg=cyan>[N]</> Crear nuevo profile');
+        $output->writeln('');
         
-        $profileQuestion = new ChoiceQuestion(
-            '<fg=yellow>Selecciona un profile:</> ',
-            $profileChoices,
-            0
-        );
-        $selectedProfile = $helper->ask($input, $output, $profileQuestion);
+        $profileQuestion = new Question('<fg=yellow>Opción [1]:</> ', '1');
+        $selectedProfile = strtoupper($helper->ask($input, $output, $profileQuestion));
         
         $profileName = 'default';
-        if ($selectedProfile === '[Crear nuevo profile]') {
+        if ($selectedProfile === 'N') {
             $output->writeln('');
             $output->writeln('<fg=cyan>Creando nuevo profile...</>');
             
@@ -89,7 +87,10 @@ class NewWizardCommand extends Command
             ]);
             $createProfileCmd->run($createProfileInput, $output);
         } else {
-            $profileName = $selectedProfile;
+            $profileIndex = (int)$selectedProfile - 1;
+            if (isset($profiles[$profileIndex])) {
+                $profileName = $profiles[$profileIndex]['name'];
+            }
         }
 
         // 4. Configuración de base de datos

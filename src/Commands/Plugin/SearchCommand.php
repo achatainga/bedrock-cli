@@ -209,14 +209,34 @@ class SearchCommand extends Command
             $output->writeln("\n<info>✓ Plugins agregados al profile '{$profileName}'</info>");
             
         } elseif ($action === '3') {
-            // Buscar plugins premium
-            $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
+            // Buscar plugins premium o custom
+            $output->writeln('');
+            $output->writeln('  <fg=cyan>[1]</> 💎 Premium (Repositorio privado)');
+            $output->writeln('  <fg=cyan>[2]</> 🔧 Custom (Carpeta/ZIP local)');
+            $output->writeln('  <fg=cyan>[0]</> Cancelar');
+            $output->writeln('');
             
-            if (!empty($premiumPlugins)) {
-                $output->writeln('');
-                $output->writeln('<info>✓ Plugins premium seleccionados:</info>');
-                foreach ($premiumPlugins as $plugin) {
-                    $output->writeln("  • {$plugin['name']} v{$plugin['version']} ({$plugin['source']})");
+            $typeQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
+            $typeChoice = $helper->ask($input, $output, $typeQuestion);
+            
+            if ($typeChoice === '1') {
+                $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
+                
+                if (!empty($premiumPlugins)) {
+                    $output->writeln('');
+                    $output->writeln('<info>✓ Plugins premium seleccionados:</info>');
+                    foreach ($premiumPlugins as $plugin) {
+                        $output->writeln("  • {$plugin['name']} v{$plugin['version']} ({$plugin['source']})");
+                    }
+                }
+            } elseif ($typeChoice === '2') {
+                $pathQuestion = new Question('<fg=yellow>Ruta a carpeta o archivo .zip:</> ');
+                $customPath = $helper->ask($input, $output, $pathQuestion);
+                
+                if ($customPath && (is_dir($customPath) || (is_file($customPath) && pathinfo($customPath, PATHINFO_EXTENSION) === 'zip'))) {
+                    $output->writeln('<info>✓ Plugin custom: ' . basename($customPath) . '</info>');
+                } else {
+                    $output->writeln('<error>Ruta inválida</error>');
                 }
             }
             
