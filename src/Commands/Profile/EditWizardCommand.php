@@ -173,6 +173,7 @@ class EditWizardCommand extends Command
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
         $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
+        $output->writeln('  <fg=cyan>[3]</> 🔧 Custom (Carpeta local)');
         $output->writeln('  <fg=cyan>[0]</> Cancelar');
         $output->writeln('');
         
@@ -202,6 +203,11 @@ class EditWizardCommand extends Command
             }
             if ($added > 0) {
                 $output->writeln("<info>✓ {$added} theme(s) premium agregado(s)</info>");
+            }
+        } elseif ($type === '3') {
+            $added = $this->selectCustomThemesInteractive($profile, $input, $output, $helper);
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} theme(s) custom agregado(s)</info>");
             }
         }
     }
