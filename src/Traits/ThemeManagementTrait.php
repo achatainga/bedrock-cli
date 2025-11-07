@@ -231,16 +231,16 @@ trait ThemeManagementTrait
     
     protected function selectCustomThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
     {
-        $pathQuestion = new Question('<fg=yellow>Path a carpeta o archivo .zip de themes custom:</> ');
+        $pathQuestion = new Question('<fg=yellow>Path a carpeta de themes custom:</> ');
         $path = $helper->ask($input, $output, $pathQuestion);
         
         if (empty($path)) {
             return 0;
         }
         
-        // Validar que sea directorio o archivo .zip
-        if (!is_dir($path) && !(is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip')) {
-            $output->writeln('<error>Debe ser un directorio válido o un archivo .zip</error>');
+        // Validar que sea directorio
+        if (!is_dir($path)) {
+            $output->writeln('<error>Debe ser un directorio válido</error>');
             return 0;
         }
         
