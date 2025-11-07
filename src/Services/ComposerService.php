@@ -78,7 +78,7 @@ class ComposerService
         $this->copyCustomZipFiles($profile, $projectPath);
     }
     
-    private function copyCustomZipFiles(array $profile, string $projectPath): void
+    public function copyCustomZipFiles(array $profile, string $projectPath): void
     {
         // Copiar plugins .zip
         if (!empty($profile['plugins']['custom'])) {
