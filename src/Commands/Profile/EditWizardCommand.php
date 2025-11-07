@@ -230,7 +230,51 @@ class EditWizardCommand extends Command
     
     protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
-        $this->addThemeToProfile($profile, $input, $output, $helper, 'theme');
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
+        $output->writeln('  <fg=cyan>[2]</> 💎 Premium (Repositorio privado)');
+        $output->writeln('  <fg=cyan>[3]</> 📦 Importar .zip local');
+        $output->writeln('  <fg=cyan>[4]</> 🔧 Custom (Carpeta/ZIP local)');
+        $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
+        $output->writeln('');
+        
+        $question = new Question('> ');
+        $type = trim($helper->ask($input, $output, $question));
+        
+        if ($type === '0') {
+            return;
+        }
+        
+        if ($type === '1') {
+            $themes = $this->searchWithCancelOption($input, $output, $helper, 'theme');
+            $added = 0;
+            foreach ($themes as $theme) {
+                $profile['themes']['public'][] = $theme;
+                $added++;
+            }
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} theme(s) público(s) agregado(s)</info>");
+            }
+        } elseif ($type === '2') {
+            $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
+            if ($premiumTheme) {
+                $profile['themes']['premium'][] = $premiumTheme;
+                $output->writeln("<info>✓ Theme premium agregado</info>");
+            }
+        } elseif ($type === '3') {
+            $imported = $this->importLocalZip($input, $output, $helper, 'theme');
+            if (!empty($imported)) {
+                foreach ($imported as $theme) {
+                    $profile['themes']['premium'][] = $theme;
+                }
+                $output->writeln("<info>✓ Theme importado</info>");
+            }
+        } elseif ($type === '4') {
+            $added = $this->selectCustomThemesInteractive($profile, $input, $output, $helper);
+            if ($added > 0) {
+                $output->writeln("<info>✓ {$added} theme(s) custom agregado(s)</info>");
+            }
+        }
     }
     
     private function regenerateRequire(array &$profile): void
