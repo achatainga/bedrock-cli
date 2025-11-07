@@ -19,19 +19,42 @@ class ComposerService
         }
 
         $composerData = json_decode(file_get_contents($composerJsonPath), true);
+        
+        // Guardar paquetes core de Bedrock
+        $corePackages = [
+            'php', 'composer/installers', 'vlucas/phpdotenv', 'oscarotero/env',
+            'roots/bedrock-autoloader', 'roots/bedrock-disallow-indexing',
+            'roots/wordpress', 'roots/wp-config', 'roots/acorn',
+            'rhubarbgroup/redis-cache'
+        ];
+        
+        $newRequire = [];
+        foreach ($corePackages as $pkg) {
+            if (isset($composerData['require'][$pkg])) {
+                $newRequire[$pkg] = $composerData['require'][$pkg];
+            }
+        }
+        
+        // Mantener temas wpackagist
+        foreach ($composerData['require'] as $pkg => $version) {
+            if (str_starts_with($pkg, 'wpackagist-theme/')) {
+                $newRequire[$pkg] = $version;
+            }
+        }
+        
+        // REEMPLAZAR require con solo core + temas
+        $composerData['require'] = $newRequire;
+        
+        // Limpiar repositories (mantener solo wpackagist)
+        $composerData['repositories'] = [];
 
-        // Limpiar plugins/themes del profile anterior
-        $this->cleanPreviousProfilePackages($composerData, $projectPath);
-
-        // Agregar wpackagist.org si no existe
+        // Agregar wpackagist.org
         $this->ensureWpackagist($composerData);
 
-        // Agregar repositorios del profile (evitando duplicados)
+        // Agregar repositorios del profile
         if (!empty($profile['repositories'])) {
             foreach ($profile['repositories'] as $repo) {
-                if (!$this->repositoryExists($composerData['repositories'], $repo)) {
-                    $composerData['repositories'][] = $repo;
-                }
+                $composerData['repositories'][] = $repo;
             }
         }
 
@@ -74,18 +97,19 @@ class ComposerService
 
         // Agregar plugins custom desde repositorio path
         if (!empty($profile['plugins']['custom']) && !empty($profile['repositories'])) {
-            // Extraer vendor del primer repositorio path
-            $pathRepo = null;
-            foreach ($profile['repositories'] as $repo) {
-                if ($repo['type'] === 'path') {
-                    $pathRepo = $repo['url'];
-                    break;
+            foreach ($profile['plugins']['custom'] as $pluginName) {
+                // Buscar el repository path de este plugin
+                $pluginPath = null;
+                foreach ($profile['repositories'] as $repo) {
+                    if ($repo['type'] === 'path' && str_contains($repo['url'], $pluginName)) {
+                        $pluginPath = $repo['url'];
+                        break;
+                    }
                 }
-            }
-            
-            if ($pathRepo) {
-                $vendor = $this->extractVendorFromPath($pathRepo);
-                foreach ($profile['plugins']['custom'] as $pluginName) {
+                
+                if ($pluginPath) {
+                    // Leer vendor del composer.json del plugin
+                    $vendor = $this->extractVendorFromPluginComposer($pluginPath);
                     $package = "{$vendor}/{$pluginName}";
                     $composerData['require'][$package] = '*';
                 }
@@ -246,6 +270,22 @@ class ComposerService
     {
         // Normalizar a forward slashes para comparación consistente
         return str_replace('\\', '/', $path);
+    }
+    
+    private function extractVendorFromPluginComposer(string $pluginPath): string
+    {
+        $composerPath = $pluginPath . '/composer.json';
+        
+        if (file_exists($composerPath)) {
+            $composer = json_decode(file_get_contents($composerPath), true);
+            if (!empty($composer['name'])) {
+                // vendor/package → vendor
+                return explode('/', $composer['name'])[0];
+            }
+        }
+        
+        // Fallback: extraer del path
+        return $this->extractVendorFromPath($pluginPath);
     }
     
     private function cleanPreviousProfilePackages(array &$composerData, string $projectPath): void
