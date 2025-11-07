@@ -179,6 +179,17 @@ class PremiumCacheService
         }
     }
 
+    public function clearPluginComposerJson(string $name, string $version): void
+    {
+        $extractPath = $this->cachePath . "/{$name}/{$version}/extracted";
+        $pluginPath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        $composerPath = $pluginPath . '/composer.json';
+        
+        if (file_exists($composerPath)) {
+            unlink($composerPath);
+        }
+    }
+
     private function deleteDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
