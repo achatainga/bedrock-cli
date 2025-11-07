@@ -29,7 +29,8 @@ class ComposerService
             foreach ($profile['plugins']['premium'] as $plugin) {
                 if ($plugin['source'] === 'vcs') {
                     $composerData['repositories'][] = ['type' => 'vcs', 'url' => $plugin['url']];
-                    $package = "detodo24/{$plugin['name']}";
+                    $vendor = $this->extractVendorFromUrl($plugin['url']);
+                    $package = "{$vendor}/{$plugin['name']}";
                     $composerData['require'][$package] = $plugin['version'];
                 } elseif ($plugin['source'] === 'path') {
                     $composerData['repositories'][] = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
@@ -152,5 +153,17 @@ class ComposerService
         if (!file_exists($gitignorePath)) {
             file_put_contents($gitignorePath, $content);
         }
+    }
+    
+    private function extractVendorFromUrl(string $url): string
+    {
+        // Extraer vendor de URLs como: https://gitlab.com/detodo24dev/repo.git
+        // o https://github.com/vendor/repo.git
+        if (preg_match('#(?:gitlab\.com|github\.com)/([^/]+)/#', $url, $matches)) {
+            return $matches[1];
+        }
+        
+        // Fallback si no se puede extraer
+        return 'vendor';
     }
 }
