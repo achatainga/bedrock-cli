@@ -30,7 +30,8 @@ class ApplyCommand extends Command
         $this
             ->setName('profile:apply')
             ->setDescription('Aplicar un profile a un proyecto existente')
-            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile');
+            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile')
+            ->addOption('yes', 'y', null, 'Confirmar automáticamente sin preguntar');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -48,15 +49,17 @@ class ApplyCommand extends Command
         
         $projectRoot = getcwd();
 
-        $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion(
-            "<question>¿Aplicar profile '{$name}' a este proyecto? Esto modificará composer.json (Y/n):</question> ",
-            false
-        );
+        if (!$input->getOption('yes')) {
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                "<question>¿Aplicar profile '{$name}' a este proyecto? Esto modificará composer.json (Y/n):</question> ",
+                false
+            );
 
-        if (!$helper->ask($input, $output, $question)) {
-            $output->writeln('<comment>Operación cancelada</comment>');
-            return Command::SUCCESS;
+            if (!$helper->ask($input, $output, $question)) {
+                $output->writeln('<comment>Operación cancelada</comment>');
+                return Command::SUCCESS;
+            }
         }
 
         $profile = $this->profileService->loadProfile($name);
