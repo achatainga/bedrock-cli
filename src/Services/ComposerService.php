@@ -17,10 +17,12 @@ class ComposerService
         // Agregar wpackagist.org si no existe
         $this->ensureWpackagist($composerData);
 
-        // Agregar repositorios del profile
+        // Agregar repositorios del profile (evitando duplicados)
         if (!empty($profile['repositories'])) {
             foreach ($profile['repositories'] as $repo) {
-                $composerData['repositories'][] = $repo;
+                if (!$this->repositoryExists($composerData['repositories'], $repo)) {
+                    $composerData['repositories'][] = $repo;
+                }
             }
         }
 
@@ -28,12 +30,18 @@ class ComposerService
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
                 if ($plugin['source'] === 'vcs') {
-                    $composerData['repositories'][] = ['type' => 'vcs', 'url' => $plugin['url']];
+                    $repo = ['type' => 'vcs', 'url' => $plugin['url']];
+                    if (!$this->repositoryExists($composerData['repositories'], $repo)) {
+                        $composerData['repositories'][] = $repo;
+                    }
                     $vendor = $this->extractVendorFromUrl($plugin['url']);
                     $package = "{$vendor}/{$plugin['name']}";
                     $composerData['require'][$package] = $plugin['version'];
                 } elseif ($plugin['source'] === 'path') {
-                    $composerData['repositories'][] = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+                    $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+                    if (!$this->repositoryExists($composerData['repositories'], $repo)) {
+                        $composerData['repositories'][] = $repo;
+                    }
                     $package = "local/{$plugin['name']}";
                     $composerData['require'][$package] = $plugin['version'];
                 }
@@ -42,9 +50,21 @@ class ComposerService
 
         // Agregar plugins custom desde repositorio path
         if (!empty($profile['plugins']['custom']) && !empty($profile['repositories'])) {
-            foreach ($profile['plugins']['custom'] as $pluginName) {
-                $package = "detodo24/{$pluginName}";
-                $composerData['require'][$package] = '*';
+            // Extraer vendor del primer repositorio path
+            $pathRepo = null;
+            foreach ($profile['repositories'] as $repo) {
+                if ($repo['type'] === 'path') {
+                    $pathRepo = $repo['url'];
+                    break;
+                }
+            }
+            
+            if ($pathRepo) {
+                $vendor = $this->extractVendorFromPath($pathRepo);
+                foreach ($profile['plugins']['custom'] as $pluginName) {
+                    $package = "{$vendor}/{$pluginName}";
+                    $composerData['require'][$package] = '*';
+                }
             }
         }
 
@@ -165,5 +185,31 @@ class ComposerService
         
         // Fallback si no se puede extraer
         return 'vendor';
+    }
+    
+    private function extractVendorFromPath(string $path): string
+    {
+        // Extraer vendor del nombre de la carpeta padre
+        // Ej: C:\code\dt24\plugin-name -> dt24
+        // Ej: /var/www/dt24/plugin-name -> dt24
+        $parts = explode(DIRECTORY_SEPARATOR, rtrim($path, DIRECTORY_SEPARATOR));
+        
+        // Si el path termina en un plugin específico, tomar el penúltimo
+        // Si es la carpeta madre, tomar el último
+        if (count($parts) >= 2) {
+            return $parts[count($parts) - 2];
+        }
+        
+        return 'vendor';
+    }
+    
+    private function repositoryExists(array $repositories, array $newRepo): bool
+    {
+        foreach ($repositories as $repo) {
+            if ($repo['type'] === $newRepo['type'] && $repo['url'] === $newRepo['url']) {
+                return true;
+            }
+        }
+        return false;
     }
 }

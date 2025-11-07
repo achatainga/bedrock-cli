@@ -234,13 +234,15 @@ class CreateCommand extends Command
             }
         }
 
-        // Agregar path de plugins custom si existe
-        if ($customPluginsPath) {
-            $profile['repositories'][] = [
-                'type' => 'path',
-                'url' => $customPluginsPath,
-                'options' => ['symlink' => true]
-            ];
+        // Agregar path de plugins custom si existe (uno por cada plugin)
+        if ($customPluginsPath && !empty($customPluginsList)) {
+            foreach ($customPluginsList as $pluginSlug) {
+                $profile['repositories'][] = [
+                    'type' => 'path',
+                    'url' => $customPluginsPath . DIRECTORY_SEPARATOR . $pluginSlug,
+                    'options' => ['symlink' => true]
+                ];
+            }
         }
 
         // Agregar plugins públicos a require
