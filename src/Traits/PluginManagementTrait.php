@@ -391,14 +391,22 @@ trait PluginManagementTrait
             }
         }
         
-        // Agregar con validación
+        // Agregar con validación de duplicados
         $added = 0;
         foreach ($selected as $slug) {
+            // Validar duplicados en otras secciones
             $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'custom');
             if (!$validation['valid']) {
                 $output->writeln("<error>{$validation['message']}</error>");
                 continue;
             }
+            
+            // Validar duplicados en misma sección
+            if (in_array($slug, $profile['plugins']['custom'] ?? [])) {
+                $output->writeln("<error>⚠️  El plugin '{$slug}' ya existe en custom</error>");
+                continue;
+            }
+            
             $profile['plugins']['custom'][] = $slug;
             $output->writeln("<info>✓ {$slug}</info>");
             $added++;

@@ -162,6 +162,32 @@ class ProfileService
         }
 
         $plugins = [];
+        
+        // Primero verificar si el path mismo es un plugin
+        $slug = basename($path);
+        $mainFile = $path . '/' . $slug . '.php';
+        
+        if (!file_exists($mainFile)) {
+            $phpFiles = glob($path . '/*.php');
+            $mainFile = !empty($phpFiles) ? $phpFiles[0] : null;
+        }
+        
+        if ($mainFile && file_exists($mainFile)) {
+            $headers = $this->getPluginHeaders($mainFile);
+            if (!empty($headers['Name'])) {
+                return [
+                    $slug => [
+                        'slug' => $slug,
+                        'name' => $headers['Name'],
+                        'version' => $headers['Version'] ?? 'N/A',
+                        'description' => $headers['Description'] ?? '',
+                        'path' => $path
+                    ]
+                ];
+            }
+        }
+        
+        // Si no es plugin, buscar en subdirectorios
         $items = scandir($path);
 
         foreach ($items as $item) {
