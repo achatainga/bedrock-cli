@@ -72,6 +72,9 @@ class EditWizardCommand extends Command
             $output->writeln('');
         }
 
+        // Regenerar require antes de guardar
+        $this->regenerateRequire($profile);
+        
         $this->profileService->saveProfile($name, $profile);
         $output->writeln('');
         $output->writeln("<info>✅ Profile '{$name}' actualizado</info>");
@@ -265,5 +268,54 @@ class EditWizardCommand extends Command
                 $output->writeln("<info>✓ {$added} theme(s) custom agregado(s)</info>");
             }
         }
+    }
+    
+    private function regenerateRequire(array &$profile): void
+    {
+        $profile['require'] = [];
+        
+        // Plugins públicos
+        if (!empty($profile['plugins']['public'])) {
+            foreach ($profile['plugins']['public'] as $plugin) {
+                if (is_array($plugin)) {
+                    $profile['require']["wpackagist-plugin/{$plugin['slug']}"] = $plugin['version'];
+                } else {
+                    $profile['require']["wpackagist-plugin/{$plugin}"] = '*';
+                }
+            }
+        }
+        
+        // Plugins premium
+        if (!empty($profile['plugins']['premium'])) {
+            foreach ($profile['plugins']['premium'] as $plugin) {
+                $vendor = $this->extractVendorFromPlugin($plugin);
+                $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
+            }
+        }
+    }
+    
+    private function extractVendorFromPlugin(array $plugin): string
+    {
+        if ($plugin['source'] === 'cache') {
+            return 'cached';
+        }
+        
+        if ($plugin['source'] === 'vcs' && !empty($plugin['url'])) {
+            if (preg_match('#[:/]([^/]+)/[^/]+(?:\.git)?$#', $plugin['url'], $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        if (($plugin['source'] === 'path' || $plugin['source'] === 'zip') && !empty($plugin['path'])) {
+            $composerPath = $plugin['path'] . '/composer.json';
+            if (file_exists($composerPath)) {
+                $composer = json_decode(file_get_contents($composerPath), true);
+                if (!empty($composer['name'])) {
+                    return explode('/', $composer['name'])[0];
+                }
+            }
+        }
+        
+        return 'local';
     }
 }
