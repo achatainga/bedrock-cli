@@ -150,10 +150,17 @@ class PremiumCacheService
     {
         $newPath = $this->cachePath . "/plugins/{$name}/{$version}/extracted";
         if (is_dir($newPath)) {
+            if (is_dir($newPath . '/' . $name)) {
+                return $newPath . '/' . $name;
+            }
             return $newPath;
         }
         
-        return $this->cachePath . "/{$name}/{$version}/extracted";
+        $legacyPath = $this->cachePath . "/{$name}/{$version}/extracted";
+        if (is_dir($legacyPath . '/' . $name)) {
+            return $legacyPath . '/' . $name;
+        }
+        return $legacyPath;
     }
 
     public function pluginExists(string $name, string $version): bool
@@ -468,9 +475,16 @@ class PremiumCacheService
     {
         $newPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
         if (is_dir($newPath)) {
+            if (is_dir($newPath . '/' . $name)) {
+                return $newPath . '/' . $name;
+            }
             return $newPath;
         }
         
-        return $this->cachePath . "/{$name}/{$version}/extracted";
+        $legacyPath = $this->cachePath . "/{$name}/{$version}/extracted";
+        if (is_dir($legacyPath . '/' . $name)) {
+            return $legacyPath . '/' . $name;
+        }
+        return $legacyPath;
     }
 }
