@@ -66,10 +66,11 @@ class ManageCommand extends Command
         $output->writeln(' <fg=cyan>[1]</> 🔌 Plugins');
         $output->writeln(' <fg=cyan>[2]</> 🎨 Themes');
         $output->writeln(' <fg=cyan>[3]</> 📦 Dependencias Composer');
+        $output->writeln(' <fg=cyan>[4]</> 🔧 MU-Plugins');
         $output->writeln(' <fg=cyan>[0]</> ❌ Salir');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
+        $question = new Question('<fg=yellow>Opción [0-4]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {
@@ -81,6 +82,9 @@ class ManageCommand extends Command
                 return 'continue';
             case '3':
                 $this->runCommand('manage:dependencies', [], $input, $output);
+                return 'continue';
+            case '4':
+                $this->showMuPluginsMenu($input, $output);
                 return 'continue';
             case '0':
                 return 'exit';
@@ -109,5 +113,71 @@ class ManageCommand extends Command
         if ($input->isInteractive()) {
             fgets(STDIN);
         }
+    }
+
+    private function showMuPluginsMenu(InputInterface $input, OutputInterface $output): void
+    {
+        $helper = $this->getHelper('question');
+
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('<fg=magenta;options=bold>  🔧 MU-PLUGINS MANAGER</>');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> 📥 Instalar Bedrock CLI API');
+        $output->writeln(' <fg=cyan>[2]</> ✅ Verificar instalación');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+
+        $question = new Question('<fg=yellow>Opción [0-2]: </>', '0');
+        $choice = $helper->ask($input, $output, $question);
+
+        switch ($choice) {
+            case '1':
+                $this->runCommand('install:mu-plugin', [], $input, $output);
+                $this->waitForEnter($input, $output);
+                break;
+            case '2':
+                $this->verifyMuPlugin($output);
+                $this->waitForEnter($input, $output);
+                break;
+        }
+    }
+
+    private function verifyMuPlugin(OutputInterface $output): void
+    {
+        $muPluginPath = getcwd() . '/web/app/mu-plugins/bedrock-cli-api.php';
+
+        $output->writeln('');
+        $output->writeln('<fg=yellow;options=bold>🔍 Verificando instalación...</>');
+        $output->writeln('');
+
+        if (!file_exists($muPluginPath)) {
+            $output->writeln('<fg=red>✗ MU-Plugin NO instalado</>');
+            $output->writeln('<comment>Ejecuta la opción [1] para instalarlo</comment>');
+            return;
+        }
+
+        $output->writeln('<fg=green>✓ MU-Plugin instalado</>');
+        $output->writeln("<fg=gray>  Ubicación: {$muPluginPath}</>");
+        $output->writeln('');
+
+        // Verificar token
+        $process = new \Symfony\Component\Process\Process([
+            'docker-compose', 'exec', '-T', 'web', 'wp', 'eval',
+            "echo get_option('bedrock_cli_token') ? 'EXISTS' : 'MISSING';"
+        ]);
+        $process->setTimeout(10);
+        $process->run();
+
+        if ($process->isSuccessful() && trim($process->getOutput()) === 'EXISTS') {
+            $output->writeln('<fg=green>✓ Token generado</>');
+            $output->writeln('<comment>  REST API lista para usar</comment>');
+        } else {
+            $output->writeln('<fg=yellow>⚠ Token no generado aún</>');
+            $output->writeln('<comment>  Se generará automáticamente en la primera petición</comment>');
+        }
+
+        $output->writeln('');
     }
 }

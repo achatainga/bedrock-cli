@@ -70,6 +70,7 @@ class NewCommand extends Command
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
+        $this->installMuPlugin($name, $output);
         $profile = $this->applyProfile($name, $input, $output);
         $this->generateBlueprints($name, $input, $output);
         $this->copySeeders($name, $output);
@@ -364,6 +365,22 @@ class NewCommand extends Command
         $this->copyStub("{$stubsDir}/config/environments/staging.php.stub", "{$name}/config/environments/staging.php", []);
         
         $output->writeln('<info>✓ application.php y environments configurados</info>');
+    }
+
+    private function installMuPlugin(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Instalando Bedrock CLI MU-Plugin...</info>');
+
+        $stubsDir = $this->getStubsDir();
+        $source = "{$stubsDir}/mu-plugins/bedrock-cli-api.php";
+        $destination = "{$name}/web/app/mu-plugins/bedrock-cli-api.php";
+
+        if (file_exists($source)) {
+            copy($source, $destination);
+            $output->writeln('<info>✓ MU-Plugin instalado (REST API habilitada)</info>');
+        } else {
+            $output->writeln('<comment>⚠ MU-Plugin stub no encontrado, omitiendo...</comment>');
+        }
     }
 
     private function applyProfile(string $name, InputInterface $input, OutputInterface $output): ?array

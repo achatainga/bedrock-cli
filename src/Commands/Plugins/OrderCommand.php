@@ -205,6 +205,16 @@ PHP;
             return Command::SUCCESS;
         }
 
+        // Detectar REST API
+        $token = $this->getBedrockToken();
+        $url = $this->getWordPressUrl();
+        $useRestApi = $token && $url;
+
+        if ($useRestApi) {
+            $output->writeln('');
+            $output->writeln('<fg=green>✓ REST API detectada - Activación rápida habilitada</>');
+        }
+
         // Validar que plugins existen
         $output->writeln('');
         
@@ -270,75 +280,22 @@ PHP;
                 $output->writeln("  • {$plugin}{$depInfo}");
             }
             
-            // Activar todo el nivel en UN SOLO wp eval
-            $pluginsJson = json_encode($levelPlugins);
-            $php = <<<'PHP'
-$plugins = json_decode('{PLUGINS_JSON}', true);
-$results = [];
-
-foreach ($plugins as $slug) {
-    // Buscar archivo principal del plugin
-    $pluginDir = WP_PLUGIN_DIR . '/' . $slug;
-    $pluginFile = null;
-    
-    // Intentar slug/slug.php primero
-    if (file_exists($pluginDir . '/' . $slug . '.php')) {
-        $pluginFile = $slug . '/' . $slug . '.php';
-    } else {
-        // Buscar cualquier .php con Plugin Name header
-        foreach (glob($pluginDir . '/*.php') as $file) {
-            $content = file_get_contents($file);
-            if (strpos($content, 'Plugin Name:') !== false) {
-                $pluginFile = $slug . '/' . basename($file);
-                break;
+            // Intentar REST API primero
+            $results = null;
+            if ($useRestApi) {
+                $results = $this->activateViaRestApi($url, $token, $levelPlugins, $output);
             }
-        }
-    }
-    
-    if (!$pluginFile) {
-        $results[] = ['plugin' => $slug, 'status' => 'error', 'msg' => 'Plugin file not found'];
-        continue;
-    }
-    
-    if (is_plugin_active($pluginFile)) {
-        $results[] = ['plugin' => $slug, 'status' => 'skip'];
-        continue;
-    }
-    
-    $result = activate_plugin($pluginFile, '', false, true);
-    
-    if (is_wp_error($result)) {
-        $results[] = [
-            'plugin' => $slug, 
-            'status' => 'error', 
-            'msg' => $result->get_error_message()
-        ];
-    } else {
-        $results[] = ['plugin' => $slug, 'status' => 'ok'];
-    }
-}
-
-echo json_encode($results);
-PHP;
             
-            $php = str_replace('{PLUGINS_JSON}', $pluginsJson, $php);
-
-            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
-            $process->setTimeout(120);
+            // Fallback a wp eval si REST falla
+            if (!$results) {
+                if ($useRestApi) {
+                    $output->writeln('  <fg=yellow>⚠ REST API falló, usando wp eval...</>');
+                }
+                $results = $this->activateViaWpEval($levelPlugins, $levelNum, $output);
+            }
             
-            // Ejecutar con feedback en tiempo real
-            $this->runWithSpinner($process, $output, "Activando nivel {$levelNum}");
-            
-            if (!$process->isSuccessful()) {
+            if (!$results) {
                 $output->writeln("<error>Error al ejecutar nivel {$levelNum}</error>");
-                return Command::FAILURE;
-            }
-            
-            $results = json_decode($process->getOutput(), true);
-            
-            if (!is_array($results)) {
-                $output->writeln('<error>Error al procesar resultados</error>');
-                $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
                 return Command::FAILURE;
             }
             
@@ -534,5 +491,158 @@ PHP;
         } else {
             $output->write("\r<comment>{$message}</comment> <error>✗</error>\n");
         }
+    }
+
+    protected function getBedrockToken(): ?string
+    {
+        $php = "echo get_option('bedrock_cli_token');";
+        
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(10);
+        $process->run();
+        
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+        
+        $token = trim($process->getOutput());
+        return !empty($token) ? $token : null;
+    }
+
+    protected function getWordPressUrl(): ?string
+    {
+        $envFile = getcwd() . '/.env';
+        
+        if (!file_exists($envFile)) {
+            return null;
+        }
+        
+        $content = file_get_contents($envFile);
+        
+        if (preg_match('/^WP_HOME=(.+)$/m', $content, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        return null;
+    }
+
+    protected function activateViaRestApi(string $url, string $token, array $plugins, OutputInterface $output): ?array
+    {
+        $endpoint = rtrim($url, '/') . '/wp-json/bedrock-cli/v1/plugins/activate';
+        
+        $data = json_encode(['plugins' => $plugins]);
+        
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-Bedrock-Token: ' . $token,
+            ],
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || !$response) {
+            return null;
+        }
+        
+        $data = json_decode($response, true);
+        
+        if (!isset($data['results'])) {
+            return null;
+        }
+        
+        // Convertir formato REST a formato wp eval
+        $results = [];
+        foreach ($data['results'] as $slug => $result) {
+            if (isset($result['already_active']) && $result['already_active']) {
+                $results[] = ['plugin' => $slug, 'status' => 'skip'];
+            } elseif ($result['success']) {
+                $results[] = ['plugin' => $slug, 'status' => 'ok'];
+            } else {
+                $results[] = [
+                    'plugin' => $slug,
+                    'status' => 'error',
+                    'msg' => $result['error'] ?? 'Unknown error'
+                ];
+            }
+        }
+        
+        return $results;
+    }
+
+    protected function activateViaWpEval(array $levelPlugins, int $levelNum, OutputInterface $output): ?array
+    {
+        $pluginsJson = json_encode($levelPlugins);
+        $php = <<<'PHP'
+$plugins = json_decode('{PLUGINS_JSON}', true);
+$results = [];
+
+foreach ($plugins as $slug) {
+    $pluginDir = WP_PLUGIN_DIR . '/' . $slug;
+    $pluginFile = null;
+    
+    if (file_exists($pluginDir . '/' . $slug . '.php')) {
+        $pluginFile = $slug . '/' . $slug . '.php';
+    } else {
+        foreach (glob($pluginDir . '/*.php') as $file) {
+            $content = file_get_contents($file);
+            if (strpos($content, 'Plugin Name:') !== false) {
+                $pluginFile = $slug . '/' . basename($file);
+                break;
+            }
+        }
+    }
+    
+    if (!$pluginFile) {
+        $results[] = ['plugin' => $slug, 'status' => 'error', 'msg' => 'Plugin file not found'];
+        continue;
+    }
+    
+    if (is_plugin_active($pluginFile)) {
+        $results[] = ['plugin' => $slug, 'status' => 'skip'];
+        continue;
+    }
+    
+    $result = activate_plugin($pluginFile, '', false, true);
+    
+    if (is_wp_error($result)) {
+        $results[] = [
+            'plugin' => $slug, 
+            'status' => 'error', 
+            'msg' => $result->get_error_message()
+        ];
+    } else {
+        $results[] = ['plugin' => $slug, 'status' => 'ok'];
+    }
+}
+
+echo json_encode($results);
+PHP;
+        
+        $php = str_replace('{PLUGINS_JSON}', $pluginsJson, $php);
+
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(120);
+        
+        $this->runWithSpinner($process, $output, "Activando nivel {$levelNum}");
+        
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+        
+        $results = json_decode($process->getOutput(), true);
+        
+        if (!is_array($results)) {
+            return null;
+        }
+        
+        return $results;
     }
 }
