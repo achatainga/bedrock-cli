@@ -162,20 +162,27 @@ class ManageCommand extends Command
         $output->writeln("<fg=gray>  Ubicación: {$muPluginPath}</>");
         $output->writeln('');
 
-        // Verificar token
+        // Verificar token (opcional)
+        $output->writeln('<fg=cyan>Verificando token...</>');
+        
         $process = new \Symfony\Component\Process\Process([
             'docker-compose', 'exec', '-T', 'web', 'wp', 'eval',
             "echo get_option('bedrock_cli_token') ? 'EXISTS' : 'MISSING';"
         ]);
-        $process->setTimeout(10);
+        $process->setTimeout(30);
         $process->run();
 
-        if ($process->isSuccessful() && trim($process->getOutput()) === 'EXISTS') {
-            $output->writeln('<fg=green>✓ Token generado</>');
-            $output->writeln('<comment>  REST API lista para usar</comment>');
+        if ($process->isSuccessful()) {
+            if (trim($process->getOutput()) === 'EXISTS') {
+                $output->writeln('<fg=green>✓ Token generado</>');
+                $output->writeln('<comment>  REST API lista para usar</comment>');
+            } else {
+                $output->writeln('<fg=yellow>⚠ Token no generado aún</>');
+                $output->writeln('<comment>  Se generará automáticamente en la primera petición</comment>');
+            }
         } else {
-            $output->writeln('<fg=yellow>⚠ Token no generado aún</>');
-            $output->writeln('<comment>  Se generará automáticamente en la primera petición</comment>');
+            $output->writeln('<fg=yellow>⚠ No se pudo verificar token (WordPress no responde)</>');
+            $output->writeln('<comment>  Asegúrate de que Docker esté corriendo</comment>');
         }
 
         $output->writeln('');
