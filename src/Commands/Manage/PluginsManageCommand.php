@@ -61,6 +61,8 @@ class PluginsManageCommand extends Command
 
 
 
+    private array $pendingPlugins = [];
+
     private function showMenu(InputInterface $input, OutputInterface $output): string
     {
         $helper = $this->getHelper('question');
@@ -82,14 +84,14 @@ class PluginsManageCommand extends Command
                 $index++;
             }
             $output->writeln('');
-            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar plugin');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar (uno o varios)');
             $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
             $output->writeln(' <fg=yellow>[O]</> 🔢 Orden de activación');
             $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         } else {
             $output->writeln('<comment>No hay plugins instalados</comment>');
             $output->writeln('');
-            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar plugin');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar (uno o varios)');
             $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
             $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         }
@@ -320,72 +322,115 @@ class PluginsManageCommand extends Command
 
     private function searchAndInstall(InputInterface $input, OutputInterface $output): void
     {
-        $helper = $this->getHelper('question');
+        $this->pendingPlugins = [];
         
-        $output->writeln('');
-        $question = new Question('<fg=yellow>Buscar plugin:</> ');
-        $query = $helper->ask($input, $output, $question);
+        while (true) {
+            $helper = $this->getHelper('question');
+            
+            $output->writeln('');
+            $question = new Question('<fg=yellow>Buscar plugin:</> ');
+            $query = $helper->ask($input, $output, $question);
 
-        if (!$query) {
+            if (!$query) {
+                if (!empty($this->pendingPlugins)) {
+                    $this->installPendingPlugins($input, $output);
+                }
+                return;
+            }
+
+            $output->writeln('<info>Buscando...</info>');
+            $response = $this->wpApi->searchPlugins($query);
+            $plugins = $response['plugins'] ?? [];
+
+            if (empty($plugins)) {
+                $output->writeln('<comment>No se encontraron plugins</comment>');
+                continue;
+            }
+
+            $output->writeln('');
+            $output->writeln('<comment>Resultados:</comment>');
+            $output->writeln('');
+            
+            $this->displayPluginsTable(array_slice($plugins, 0, 10), $output);
+            
+            $output->writeln('');
+            $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
+            $selection = $helper->ask($input, $output, $question);
+            
+            if (empty($selection)) {
+                if (!empty($this->pendingPlugins)) {
+                    $this->installPendingPlugins($input, $output);
+                }
+                return;
+            }
+            
+            $index = (int)$selection - 1;
+            if (!isset($plugins[$index])) {
+                $output->writeln('<error>Selección inválida</error>');
+                continue;
+            }
+            
+            $slug = $plugins[$index]['slug'];
+            $version = $this->selectPluginVersion($slug, $helper, $input, $output);
+            
+            $this->pendingPlugins[$slug] = $version;
+            $output->writeln('');
+            $output->writeln("<info>✓ {$slug} agregado</info>");
+            
+            if (count($this->pendingPlugins) === 1) {
+                $output->writeln('');
+                $question = new ConfirmationQuestion('<fg=yellow>¿Instalar ahora o buscar más plugins? (I=instalar, Enter=buscar más):</> ', false);
+                if ($helper->ask($input, $output, $question)) {
+                    $this->installPendingPlugins($input, $output);
+                    return;
+                }
+            } else {
+                $output->writeln("<comment>Plugins seleccionados: " . count($this->pendingPlugins) . "</comment>");
+                $output->writeln('');
+                $question = new ConfirmationQuestion('<fg=yellow>¿Instalar ahora o buscar más? (I=instalar, Enter=buscar más):</> ', false);
+                if ($helper->ask($input, $output, $question)) {
+                    $this->installPendingPlugins($input, $output);
+                    return;
+                }
+            }
+        }
+    }
+    
+    private function installPendingPlugins(InputInterface $input, OutputInterface $output): void
+    {
+        if (empty($this->pendingPlugins)) {
             return;
         }
-
-        $output->writeln('<info>Buscando...</info>');
-        $response = $this->wpApi->searchPlugins($query);
-        $plugins = $response['plugins'] ?? [];
-
-        if (empty($plugins)) {
-            $output->writeln('<comment>No se encontraron plugins</comment>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
-
-        $output->writeln('');
-        $output->writeln('<comment>Resultados:</comment>');
-        $output->writeln('');
-        
-        $this->displayPluginsTable(array_slice($plugins, 0, 10), $output);
         
         $output->writeln('');
-        $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
-        $selection = $helper->ask($input, $output, $question);
+        $output->writeln('<info>Instalando ' . count($this->pendingPlugins) . ' plugin(s)...</info>');
+        $output->writeln('');
         
-        if (empty($selection)) {
-            return;
+        foreach ($this->pendingPlugins as $slug => $version) {
+            $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
         }
         
-        $index = (int)$selection - 1;
-        if (!isset($plugins[$index])) {
-            $output->writeln('<error>Selección inválida</error>');
-            $this->waitForEnter($input, $output);
-            return;
+        $packages = [];
+        foreach ($this->pendingPlugins as $slug => $version) {
+            $packages[] = "wpackagist-plugin/{$slug}" . ($version === '*' ? '' : ":{$version}");
         }
         
-        $slug = $plugins[$index]['slug'];
-        $version = $this->selectPluginVersion($slug, $helper, $input, $output);
-        
-        $output->writeln('');
-        $output->writeln("<info>Instalando plugin: {$slug}</info>");
-        
-        $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
-        
-        $exitCode = $this->dependencyManager->require(
-            "wpackagist-plugin/{$slug}",
-            $version === '*' ? null : $version,
-            false,
+        $exitCode = $this->dependencyManager->requireMultiple(
+            $packages,
             function($buffer) use ($output) {
                 $output->write($buffer);
             }
         );
-
+        
         if ($exitCode === 0) {
             $output->writeln('');
-            $output->writeln('<info>✓ Plugin instalado correctamente</info>');
+            $output->writeln('<info>✓ Plugins instalados correctamente</info>');
         } else {
             $output->writeln('');
-            $output->writeln('<error>✗ Error al instalar plugin</error>');
+            $output->writeln('<error>✗ Error al instalar plugins</error>');
         }
-
+        
+        $this->pendingPlugins = [];
         $this->waitForEnter($input, $output);
     }
 

@@ -132,6 +132,15 @@ class DependencyManager
         return $this->runComposerCommand($command, $root, $outputCallback);
     }
 
+    public function requireMultiple(array $packages, ?callable $outputCallback = null): int
+    {
+        $root = $this->management->getProjectRoot();
+        $command = ['composer', 'require'];
+        $command = array_merge($command, $packages);
+
+        return $this->runComposerCommand($command, $root, $outputCallback);
+    }
+
     private function runComposerCommand(array $command, string $cwd, ?callable $outputCallback = null): int
     {
         if ($this->management->isDryRun()) {

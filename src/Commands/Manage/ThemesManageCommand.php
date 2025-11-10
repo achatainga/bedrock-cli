@@ -21,6 +21,7 @@ class ThemesManageCommand extends Command
     private ThemeManager $themeManager;
     private DependencyManager $dependencyManager;
     private WordPressApiService $wpApi;
+    private array $pendingThemes = [];
 
     public function __construct()
     {
@@ -76,13 +77,13 @@ class ThemesManageCommand extends Command
                 $index++;
             }
             $output->writeln('');
-            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar theme');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar (uno o varios)');
             $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
             $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         } else {
             $output->writeln('<comment>No hay themes instalados</comment>');
             $output->writeln('');
-            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar theme');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar (uno o varios)');
             $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
             $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         }
@@ -113,92 +114,135 @@ class ThemesManageCommand extends Command
 
     private function searchAndInstall(InputInterface $input, OutputInterface $output): void
     {
-        $helper = $this->getHelper('question');
+        $this->pendingThemes = [];
         
-        $output->writeln('');
-        $question = new Question('<fg=yellow>Buscar theme:</> ');
-        $query = $helper->ask($input, $output, $question);
-
-        if (!$query) {
-            return;
-        }
-
-        $output->writeln('<info>Buscando...</info>');
-        $response = $this->wpApi->searchThemes($query);
-        $themes = $response['themes'] ?? [];
-
-        if (empty($themes)) {
-            $output->writeln('<comment>No se encontraron themes</comment>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
-
-        $output->writeln('');
-        $output->writeln('<comment>Resultados:</comment>');
-        $output->writeln('');
-        
-        $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white', 'gray', 'bright-cyan', 'bright-green'];
-        
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Nombre', 'Slug', 'Rating']);
-        $table->setColumnMaxWidth(1, 40); // Limitar ancho de nombre
-        
-        foreach (array_slice($themes, 0, 10) as $index => $theme) {
-            $color = $colors[$index % count($colors)];
-            $num = $index + 1;
-            $name = $theme['name'] ?? 'N/A';
-            $slug = $theme['slug'] ?? 'N/A';
-            $rating = ($theme['rating'] ?? 0) . '/100';
+        while (true) {
+            $helper = $this->getHelper('question');
             
-            $table->addRow([
-                "<fg={$color}>{$num}</>",
-                wordwrap($name, 40, "\n", true),
-                "<fg={$color}>{$slug}</>",
-                $rating
-            ]);
+            $output->writeln('');
+            $question = new Question('<fg=yellow>Buscar theme:</> ');
+            $query = $helper->ask($input, $output, $question);
+
+            if (!$query) {
+                if (!empty($this->pendingThemes)) {
+                    $this->installPendingThemes($input, $output);
+                }
+                return;
+            }
+
+            $output->writeln('<info>Buscando...</info>');
+            $response = $this->wpApi->searchThemes($query);
+            $themes = $response['themes'] ?? [];
+
+            if (empty($themes)) {
+                $output->writeln('<comment>No se encontraron themes</comment>');
+                continue;
+            }
+
+            $output->writeln('');
+            $output->writeln('<comment>Resultados:</comment>');
+            $output->writeln('');
+            
+            $colors = ['cyan', 'green', 'yellow', 'blue', 'magenta', 'red', 'white', 'gray', 'bright-cyan', 'bright-green'];
+            
+            $table = new Table($output);
+            $table->setHeaders(['#', 'Nombre', 'Slug', 'Rating']);
+            $table->setColumnMaxWidth(1, 40);
+            
+            foreach (array_slice($themes, 0, 10) as $index => $theme) {
+                $color = $colors[$index % count($colors)];
+                $num = $index + 1;
+                $name = $theme['name'] ?? 'N/A';
+                $slug = $theme['slug'] ?? 'N/A';
+                $rating = ($theme['rating'] ?? 0) . '/100';
+                
+                $table->addRow([
+                    "<fg={$color}>{$num}</>",
+                    wordwrap($name, 40, "\n", true),
+                    "<fg={$color}>{$slug}</>",
+                    $rating
+                ]);
+            }
+            
+            $table->render();
+            
+            $output->writeln('');
+            $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
+            $selection = $helper->ask($input, $output, $question);
+            
+            if (empty($selection)) {
+                if (!empty($this->pendingThemes)) {
+                    $this->installPendingThemes($input, $output);
+                }
+                return;
+            }
+            
+            $index = (int)$selection - 1;
+            if (!isset($themes[$index])) {
+                $output->writeln('<error>Selección inválida</error>');
+                continue;
+            }
+            
+            $slug = $themes[$index]['slug'];
+            $this->pendingThemes[] = $slug;
+            
+            $output->writeln('');
+            $output->writeln("<info>✓ {$slug} agregado</info>");
+            
+            if (count($this->pendingThemes) === 1) {
+                $output->writeln('');
+                $question = new \Symfony\Component\Console\Question\ConfirmationQuestion('<fg=yellow>¿Instalar ahora o buscar más themes? (I=instalar, Enter=buscar más):</> ', false);
+                if ($helper->ask($input, $output, $question)) {
+                    $this->installPendingThemes($input, $output);
+                    return;
+                }
+            } else {
+                $output->writeln("<comment>Themes seleccionados: " . count($this->pendingThemes) . "</comment>");
+                $output->writeln('');
+                $question = new \Symfony\Component\Console\Question\ConfirmationQuestion('<fg=yellow>¿Instalar ahora o buscar más? (I=instalar, Enter=buscar más):</> ', false);
+                if ($helper->ask($input, $output, $question)) {
+                    $this->installPendingThemes($input, $output);
+                    return;
+                }
+            }
         }
-        
-        $table->render();
-        
-        $output->writeln('');
-        $question = new Question('<fg=yellow>Seleccionar número (o Enter para cancelar):</> ');
-        $selection = $helper->ask($input, $output, $question);
-        
-        if (empty($selection)) {
+    }
+    
+    private function installPendingThemes(InputInterface $input, OutputInterface $output): void
+    {
+        if (empty($this->pendingThemes)) {
             return;
         }
         
-        $index = (int)$selection - 1;
-        if (!isset($themes[$index])) {
-            $output->writeln('<error>Selección inválida</error>');
-            $this->waitForEnter($input, $output);
-            return;
+        $output->writeln('');
+        $output->writeln('<info>Instalando ' . count($this->pendingThemes) . ' theme(s)...</info>');
+        $output->writeln('');
+        
+        foreach ($this->pendingThemes as $slug) {
+            $this->themeManager->add($slug);
         }
         
-        $slug = $themes[$index]['slug'];
+        $packages = [];
+        foreach ($this->pendingThemes as $slug) {
+            $packages[] = "wpackagist-theme/{$slug}";
+        }
         
-        $output->writeln('');
-        $output->writeln("<info>Instalando theme: {$slug}</info>");
-        
-        $this->themeManager->add($slug);
-        
-        $exitCode = $this->dependencyManager->require(
-            "wpackagist-theme/{$slug}",
-            null,
-            false,
+        $exitCode = $this->dependencyManager->requireMultiple(
+            $packages,
             function($buffer) use ($output) {
                 $output->write($buffer);
             }
         );
-
+        
         if ($exitCode === 0) {
             $output->writeln('');
-            $output->writeln('<info>✓ Theme instalado correctamente</info>');
+            $output->writeln('<info>✓ Themes instalados correctamente</info>');
         } else {
             $output->writeln('');
-            $output->writeln('<error>✗ Error al instalar theme</error>');
+            $output->writeln('<error>✗ Error al instalar themes</error>');
         }
-
+        
+        $this->pendingThemes = [];
         $this->waitForEnter($input, $output);
     }
 
