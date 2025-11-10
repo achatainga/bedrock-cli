@@ -8,8 +8,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class InstallMuPluginCommand extends Command
 {
-    protected static $defaultName = 'install:mu-plugin';
-    protected static $defaultDescription = 'Install Bedrock CLI MU-Plugin for REST API operations';
+    protected function configure(): void
+    {
+        $this->setName('install:mu-plugin')
+             ->setDescription('Install Bedrock CLI MU-Plugin for REST API operations');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
