@@ -98,8 +98,62 @@ class ApplyCommand extends Command
         $output->writeln('');
         $output->writeln('<info>✓ Profile aplicado y dependencias instaladas</info>');
         $output->writeln('');
+        
+        // Verificar si profile tiene activation_order
+        if (isset($profile['activation_order'])) {
+            $this->applyActivationOrder($input, $output, $profile, $projectRoot);
+        }
 
         return Command::SUCCESS;
+    }
+    
+    private function applyActivationOrder(InputInterface $input, OutputInterface $output, array $profile, string $projectRoot): void
+    {
+        $orderData = $profile['activation_order'];
+        
+        // Guardar en config/plugins/activation-order.json
+        $configDir = $projectRoot . '/config/plugins';
+        if (!is_dir($configDir)) {
+            mkdir($configDir, 0755, true);
+        }
+        
+        $orderFile = $configDir . '/activation-order.json';
+        file_put_contents($orderFile, json_encode([
+            'activation_order' => $orderData['order'],
+            'dependencies' => $orderData['dependencies'] ?? [],
+            'created_at' => $orderData['updated_at']
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        
+        $output->writeln('<info>✓ Orden de activación guardado</info>');
+        
+        // Preguntar si aplicar ahora
+        if (!$input->getOption('yes')) {
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                '<fg=yellow>¿Aplicar orden de activación ahora? [S/n]:</> ',
+                true
+            );
+            
+            if ($helper->ask($input, $output, $question)) {
+                $output->writeln('');
+                $output->writeln('<info>Activando plugins en orden...</info>');
+                
+                $process = new \Symfony\Component\Process\Process(
+                    ['php', 'vendor/bin/bedrock', 'plugins:order', 'activate'],
+                    $projectRoot
+                );
+                $process->setTimeout(300);
+                $process->run(function ($type, $buffer) use ($output) {
+                    $output->write($buffer);
+                });
+                
+                if ($process->isSuccessful()) {
+                    $output->writeln('<info>✓ Plugins activados correctamente</info>');
+                } else {
+                    $output->writeln('<error>Error al activar plugins</error>');
+                }
+            }
+        }
     }
 
 
