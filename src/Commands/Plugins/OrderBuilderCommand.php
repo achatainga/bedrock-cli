@@ -7,7 +7,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Roots\BedrockCli\Services\UnzipService;
+use Roots\BedrockCli\Services\Management\ContextDetector;
+use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\OrderValidator;
 
 class OrderBuilderCommand extends Command
 {
@@ -555,6 +559,100 @@ class OrderBuilderCommand extends Command
         $output->writeln('');
         $output->writeln("<info>✓ Orden guardado en: {$mainFile}</info>");
         $output->writeln("<comment>📦 Backup: {$backupFile}</comment>");
+        $output->writeln('');
+        
+        // Preguntar si guardar en profile
+        $question = new ConfirmationQuestion('<fg=yellow>¿Guardar también en profile? [S/n]:</> ', true);
+        if ($helper->ask($input, $output, $question)) {
+            $this->saveToProfile($input, $output, $helper, $order);
+        }
+    }
+    
+    private function saveToProfile(InputInterface $input, OutputInterface $output, $helper, array $order): void
+    {
+        $contextDetector = new ContextDetector();
+        $profileService = new ProfileService();
+        $validator = new OrderValidator();
+        
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔍 Detectando contexto...</>');
+        
+        $profileName = null;
+        
+        if ($contextDetector->isBedrockProject()) {
+            $activeProfile = $contextDetector->getActiveProfile();
+            if ($activeProfile) {
+                $profileName = $activeProfile['name'];
+                $output->writeln("<info>✓ Proyecto Bedrock detectado</info>");
+                $output->writeln("<info>✓ Profile activo: {$profileName}</info>");
+            }
+        }
+        
+        if (!$profileName) {
+            $output->writeln('<comment>No hay profile activo. Selecciona uno:</comment>');
+            $output->writeln('');
+            
+            $profiles = $profileService->listProfiles();
+            if (empty($profiles)) {
+                $output->writeln('<error>No hay profiles disponibles</error>');
+                return;
+            }
+            
+            $choices = [];
+            foreach ($profiles as $name => $data) {
+                $choices[] = $name;
+            }
+            
+            $question = new ChoiceQuestion('Selecciona profile:', $choices);
+            $profileName = $helper->ask($input, $output, $question);
+        }
+        
+        // Cargar profile
+        $profile = $profileService->loadProfile($profileName);
+        
+        // Validar
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔍 Validando plugins...</>');
+        $validation = $validator->validateAgainstProfile($order, $profile);
+        
+        if (!$validation['valid']) {
+            $output->writeln('<fg=red>✗ Plugins faltantes en profile:</>');
+            foreach ($validation['missing'] as $plugin) {
+                $output->writeln("  • {$plugin}");
+            }
+            $output->writeln('');
+            $output->writeln('<fg=cyan>Opciones:</>');
+            $output->writeln('  <fg=cyan>[1]</> Remover plugins del orden');
+            $output->writeln('  <fg=cyan>[2]</> Cancelar');
+            $output->writeln('');
+            
+            $question = new Question('<fg=yellow>Opción [1-2]:</> ', '2');
+            $choice = $helper->ask($input, $output, $question);
+            
+            if ($choice === '1') {
+                foreach ($validation['missing'] as $plugin) {
+                    unset($order[$plugin]);
+                }
+                $output->writeln('<info>✓ Plugins removidos del orden</info>');
+            } else {
+                $output->writeln('<comment>Cancelado</comment>');
+                return;
+            }
+        } else {
+            $output->writeln('<info>✓ Todos los plugins existen en el profile</info>');
+        }
+        
+        // Guardar en profile
+        $profile['activation_order'] = [
+            'order' => $order,
+            'dependencies' => $this->dependencies,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+        
+        $profileService->saveProfile($profileName, $profile);
+        
+        $output->writeln('');
+        $output->writeln("<info>✓ Orden guardado en profile: {$profileName}</info>");
         $output->writeln('');
     }
 }
