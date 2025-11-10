@@ -293,9 +293,13 @@ class EditWizardCommand extends Command
             }
         }
         
-        // Plugins premium
+        // Plugins premium (excepto VCS - composer los resuelve)
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
+                if ($plugin['source'] === 'vcs') {
+                    // VCS: composer resuelve el package name desde composer.json del repo
+                    continue;
+                }
                 $vendor = $this->extractVendorFromPlugin($plugin);
                 $newRequire["{$vendor}/{$plugin['name']}"] = $plugin['version'];
             }

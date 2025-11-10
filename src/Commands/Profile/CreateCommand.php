@@ -274,8 +274,12 @@ class CreateCommand extends Command
             }
         }
         
-        // Agregar plugins premium a require
+        // Agregar plugins premium a require (excepto VCS - composer los resuelve)
         foreach ($premiumPlugins as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                // VCS: composer resuelve el package name desde composer.json del repo
+                continue;
+            }
             $vendor = $this->extractVendorFromPlugin($plugin);
             $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
         }

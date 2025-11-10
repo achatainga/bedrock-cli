@@ -82,9 +82,8 @@ class ComposerService
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
                     }
-                    $vendor = $this->extractVendorFromUrl($plugin['url']);
-                    $package = "{$vendor}/{$plugin['name']}";
-                    $composerData['require'][$package] = $plugin['version'];
+                    // NO construir package name desde URL - composer lo resuelve desde composer.json del repo
+                    // El profile debe tener el package name correcto en require
                 } elseif ($plugin['source'] === 'path') {
                     $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
@@ -139,10 +138,13 @@ class ComposerService
             }
         }
 
-        // Agregar dependencias del profile
+        // Agregar dependencias del profile (incluye VCS packages con nombre correcto)
         if (!empty($profile['require'])) {
             foreach ($profile['require'] as $package => $version) {
-                $composerData['require'][$package] = $version;
+                // Skip si ya fue agregado por plugins premium
+                if (!isset($composerData['require'][$package])) {
+                    $composerData['require'][$package] = $version;
+                }
             }
         }
 
