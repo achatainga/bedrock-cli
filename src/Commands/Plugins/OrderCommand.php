@@ -462,7 +462,8 @@ PHP;
         foreach ($orderData as $slug => $position) {
             $pluginPath = $pluginsDir . '/' . $slug;
             
-            if (is_dir($pluginPath)) {
+            // Soportar symlinks: file_exists() funciona con symlinks
+            if (file_exists($pluginPath) && (is_dir($pluginPath) || is_link($pluginPath))) {
                 $validated[$slug] = $position;
             } else {
                 $missing[] = $slug;
