@@ -4,6 +4,7 @@ namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\PremiumCacheService;
+use Roots\BedrockCli\Services\VcsValidator;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
@@ -24,12 +25,14 @@ class CreateCommand extends Command
     protected static $defaultName = 'profile:create';
     private ProfileService $profileService;
     private PremiumCacheService $cacheService;
+    private VcsValidator $vcsValidator;
 
     public function __construct()
     {
         parent::__construct();
         $this->profileService = new ProfileService();
         $this->cacheService = new PremiumCacheService();
+        $this->vcsValidator = new VcsValidator();
     }
 
     protected function configure(): void
@@ -274,10 +277,20 @@ class CreateCommand extends Command
             }
         }
         
-        // Agregar plugins premium a require (excepto VCS - composer los resuelve)
+        // Agregar plugins premium a require
         foreach ($premiumPlugins as $plugin) {
             if ($plugin['source'] === 'vcs') {
-                // VCS: composer resuelve el package name desde composer.json del repo
+                // VCS: validar y obtener package name real desde composer.json del repo
+                $output->writeln("<comment>🔍 Validando {$plugin['url']}...</comment>");
+                $packageInfo = $this->vcsValidator->getPackageInfo($plugin['url']);
+                
+                if ($packageInfo) {
+                    $profile['require'][$packageInfo['name']] = "dev-{$packageInfo['branch']}";                    
+                    $output->writeln("<info>✓ {$packageInfo['name']} (rama: {$packageInfo['branch']})</info>");
+                } else {
+                    $output->writeln("<error>✗ No se pudo validar {$plugin['url']}</error>");
+                    $output->writeln("<comment>  El plugin se agregará al repositorio pero NO a require</comment>");
+                }
                 continue;
             }
             $vendor = $this->extractVendorFromPlugin($plugin);

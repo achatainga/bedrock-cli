@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\VcsValidator;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\PluginManagementTrait;
@@ -26,11 +27,13 @@ class EditWizardCommand extends Command
     
     protected static $defaultName = 'profile:edit-wizard';
     private ProfileService $profileService;
+    private VcsValidator $vcsValidator;
 
     public function __construct()
     {
         parent::__construct();
         $this->profileService = new ProfileService();
+        $this->vcsValidator = new VcsValidator();
     }
 
     protected function configure(): void
@@ -293,11 +296,15 @@ class EditWizardCommand extends Command
             }
         }
         
-        // Plugins premium (excepto VCS - composer los resuelve)
+        // Plugins premium
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
                 if ($plugin['source'] === 'vcs') {
-                    // VCS: composer resuelve el package name desde composer.json del repo
+                    // VCS: validar y obtener package name real
+                    $packageInfo = $this->vcsValidator->getPackageInfo($plugin['url']);
+                    if ($packageInfo) {
+                        $newRequire[$packageInfo['name']] = "dev-{$packageInfo['branch']}";
+                    }
                     continue;
                 }
                 $vendor = $this->extractVendorFromPlugin($plugin);
