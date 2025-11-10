@@ -195,7 +195,11 @@ PHP;
         }
 
         $config = json_decode(file_get_contents($configFile), true);
-        $order = array_keys($config['activation_order'] ?? []);
+        $orderData = $config['activation_order'] ?? [];
+        
+        // Ordenar por posición
+        asort($orderData);
+        $order = array_keys($orderData);
 
         if (empty($order)) {
             $output->writeln('<comment>No hay plugins en el orden de activación</comment>');
@@ -210,65 +214,34 @@ PHP;
         $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
         $output->writeln('');
 
-        $orderJson = json_encode($order);
-        $php = <<<PHP
-\$order = json_decode('{$orderJson}', true);
-\$results = [];
-
-foreach (\$order as \$slug) {
-    \$pluginFile = \$slug . '/' . \$slug . '.php';
-    
-    if (is_plugin_active(\$pluginFile)) {
-        \$results[] = ['plugin' => \$slug, 'status' => 'already_active'];
-        continue;
-    }
-    
-    \$result = activate_plugin(\$pluginFile);
-    
-    if (is_wp_error(\$result)) {
-        \$results[] = ['plugin' => \$slug, 'status' => 'error', 'message' => \$result->get_error_message()];
-    } else {
-        \$results[] = ['plugin' => \$slug, 'status' => 'activated'];
-    }
-}
-
-echo json_encode(\$results);
-PHP;
-
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
-        $process->setTimeout(300);
-        $this->runWithLoader($process, $output, 'Activando plugins');
-        $output->writeln('');
-        
-        if (!$process->isSuccessful()) {
-            $output->writeln('<error>Error al activar plugins</error>');
-            return Command::FAILURE;
-        }
-
-        $results = json_decode($process->getOutput(), true);
-        
-        if (!is_array($results)) {
-            $output->writeln('<error>Error al procesar resultados</error>');
-            $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
-            return Command::FAILURE;
-        }
-        
         $activated = 0;
         $skipped = 0;
         $failed = 0;
         $errors = [];
-        
-        foreach ($results as $result) {
-            if ($result['status'] === 'already_active') {
-                $output->writeln("  <comment>⊘ {$result['plugin']} (ya activo)</comment>");
+
+        foreach ($order as $index => $slug) {
+            $position = $index + 1;
+            $output->write("  <fg=cyan>[{$position}/{$count}]</> <comment>Activando {$slug}...</comment>");
+            
+            // Activar UNO POR UNO usando wp plugin activate
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'activate', $slug]);
+            $process->setTimeout(60);
+            $process->run();
+            
+            $outputText = trim($process->getOutput());
+            
+            if (str_contains($outputText, 'already active')) {
+                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <comment>⊘ {$slug} (ya activo)</comment>" . str_repeat(' ', 20) . "\n");
                 $skipped++;
-            } elseif ($result['status'] === 'activated') {
-                $output->writeln("  <info>✓ {$result['plugin']}</info>");
+            } elseif ($process->isSuccessful() && str_contains($outputText, 'Success')) {
+                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <info>✓ {$slug}</info>" . str_repeat(' ', 20) . "\n");
                 $activated++;
-            } elseif ($result['status'] === 'error') {
-                $output->writeln("  <error>✗ {$result['plugin']}: {$result['message']}</error>");
+            } else {
+                $errorMsg = $process->getErrorOutput() ?: $outputText;
+                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <error>✗ {$slug}</error>" . str_repeat(' ', 20) . "\n");
+                $output->writeln("      <fg=red>└─</> {$errorMsg}");
                 $failed++;
-                $errors[] = ['plugin' => $result['plugin'], 'message' => $result['message']];
+                $errors[] = ['plugin' => $slug, 'message' => $errorMsg];
             }
         }
 

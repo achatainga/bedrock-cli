@@ -533,33 +533,28 @@ class OrderBuilderCommand extends Command
             $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
         }
 
-        $output->writeln('');
-        $defaultName = 'activation-order-' . date('Ymd-His') . '.json';
-        $filename = $helper->ask($input, $output, new Question(
-            "<fg=yellow>Nombre del archivo [{$defaultName}]:</> ",
-            $defaultName
-        ));
-
-        if (!str_ends_with($filename, '.json')) {
-            $filename .= '.json';
-        }
-
         $configDir = getcwd() . '/config/plugins';
         if (!is_dir($configDir)) {
             mkdir($configDir, 0755, true);
         }
 
-        $filepath = $configDir . '/' . $filename;
         $data = [
             'activation_order' => $order,
             'dependencies' => $this->dependencies,
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
-        file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        // Guardar archivo principal (sin timestamp)
+        $mainFile = $configDir . '/activation-order.json';
+        file_put_contents($mainFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        // Guardar backup con timestamp
+        $backupFile = $configDir . '/activation-order-' . date('Ymd-His') . '.json';
+        file_put_contents($backupFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $output->writeln('');
-        $output->writeln("<info>✓ Orden de activación guardado en: {$filepath}</info>");
+        $output->writeln("<info>✓ Orden guardado en: {$mainFile}</info>");
+        $output->writeln("<comment>📦 Backup: {$backupFile}</comment>");
         $output->writeln('');
     }
 }
