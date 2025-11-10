@@ -453,16 +453,16 @@ class PluginsManageCommand extends Command
 
         switch ($choice) {
             case '1':
-                $this->runOrderCommand('plugins:order:build', $output);
+                $this->runOrderCommand('plugins:order:build', $input, $output);
                 break;
             case '2':
-                $this->runOrderCommand('plugins:order save', $output);
+                $this->runOrderCommand('plugins:order save', $input, $output);
                 break;
             case '3':
-                $this->runOrderCommand('plugins:order list', $output);
+                $this->runOrderCommand('plugins:order list', $input, $output);
                 break;
             case '4':
-                $this->runOrderCommand('plugins:order activate', $output);
+                $this->runOrderCommand('plugins:order activate', $input, $output);
                 break;
             case '0':
                 return;
@@ -473,23 +473,28 @@ class PluginsManageCommand extends Command
         $this->waitForEnter($input, $output);
     }
 
-    private function runOrderCommand(string $command, OutputInterface $output): void
+    private function runOrderCommand(string $command, InputInterface $input, OutputInterface $output): void
     {
-        $output->writeln('');
-        $output->writeln("<info>➤ Ejecutando: bedrock {$command}</info>");
-        $output->writeln('');
+        $parts = explode(' ', $command);
+        $commandName = $parts[0];
+        $action = $parts[1] ?? null;
 
-        $process = new \Symfony\Component\Process\Process(
-            array_merge(['bedrock'], explode(' ', $command))
-        );
-        $process->setTimeout(null);
-        $process->run(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
+        $app = $this->getApplication();
+        if (!$app) {
+            $output->writeln('<error>No se pudo obtener la aplicación</error>');
+            return;
+        }
 
-        if (!$process->isSuccessful()) {
+        try {
+            $cmd = $app->find($commandName);
+            $cmdInput = new \Symfony\Component\Console\Input\ArrayInput(
+                $action ? ['command' => $commandName, 'action' => $action] : ['command' => $commandName]
+            );
+            $cmdInput->setInteractive(true);
+            $cmd->run($cmdInput, $output);
+        } catch (\Exception $e) {
             $output->writeln('');
-            $output->writeln('<error>✗ Error al ejecutar comando</error>');
+            $output->writeln("<error>Error: {$e->getMessage()}</error>");
         }
     }
 }
