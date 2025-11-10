@@ -81,6 +81,7 @@ use Roots\BedrockCli\Commands\AI\ChatCommand as AIChatCommand;
 use Roots\BedrockCli\Commands\AI\DiagnoseCommand as AIDiagnoseCommand;
 use Roots\BedrockCli\Commands\AI\SuggestCommand as AISuggestCommand;
 use Roots\BedrockCli\Commands\AI\ModelSelectorCommand as AIModelSelectorCommand;
+use Achatainga\BedrockCli\Commands\Install\InstallMuPluginCommand;
 
 class Application extends BaseApplication
 {
@@ -167,6 +168,7 @@ class Application extends BaseApplication
             new AIDiagnoseCommand(),
             new AISuggestCommand(),
             new AIModelSelectorCommand(),
+            new InstallMuPluginCommand(),
         ]);
     }
 
