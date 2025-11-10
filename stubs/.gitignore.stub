@@ -1,7 +1,13 @@
 # Bedrock
 /.env
 /vendor
+/web/app/mu-plugins/*
+/web/app/plugins/*
+/web/app/themes/*
 /web/app/uploads/*
+!/web/app/mu-plugins/.gitkeep
+!/web/app/plugins/.gitkeep
+!/web/app/themes/.gitkeep
 !/web/app/uploads/.gitkeep
 
 # WordPress

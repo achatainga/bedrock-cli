@@ -71,7 +71,6 @@ class NewCommand extends Command
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
         $profile = $this->applyProfile($name, $input, $output);
-        $this->installPremiumAssets($name, $profile, $input, $output);
         $this->generateBlueprints($name, $input, $output);
         $this->copySeeders($name, $output);
         $this->initGit($name, $output);
@@ -304,6 +303,7 @@ class NewCommand extends Command
         $process->run();
 
         $process = new Process(['git', 'add', '.'], $name);
+        $process->setTimeout(120);
         $process->run();
 
         $process = new Process(['git', 'commit', '-m', 'Initial commit'], $name);
