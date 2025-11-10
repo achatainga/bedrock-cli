@@ -91,11 +91,11 @@ class OrderBuilderCommand extends Command
     private function displayHeader(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Constructor de Orden de Activación de Plugins       </> <fg=cyan;options=bold>       ║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
+        $output->writeln('<fg=magenta;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
+        $output->writeln('<fg=magenta;options=bold>║</> <fg=yellow;options=bold>  🎯 Constructor de Orden de Activación          </> <fg=magenta;options=bold>       ║</>');
+        $output->writeln('<fg=magenta;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
         $output->writeln('');
-        $output->writeln('<fg=cyan>Plugins disponibles:</>');
+        $output->writeln('<fg=yellow>Plugins disponibles:</>');
         $output->writeln('');
     }
 
@@ -157,7 +157,7 @@ class OrderBuilderCommand extends Command
     private function displaySeparator(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan>' . str_repeat('━', 60) . '</>');
+        $output->writeln('<fg=gray>' . str_repeat('─', 60) . '</>');
     }
 
     private function displayCurrentOrder(OutputInterface $output): void
@@ -213,21 +213,14 @@ class OrderBuilderCommand extends Command
     private function displayHelp(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=yellow>Comandos:</>');
-        $output->writeln('  <fg=cyan><números></>');
-        $output->writeln('    <comment>Ej: 44,10,18 o 7-12 (agregar plugins)</comment>');
-        $output->writeln('  <fg=cyan>load</>');
-        $output->writeln('    <comment>Cargar orden guardado</comment>');
-        $output->writeln('  <fg=cyan>list</>');
-        $output->writeln('    <comment>Ver orden actual</comment>');
-        $output->writeln('  <fg=cyan>remove <pos></>');
-        $output->writeln('    <comment>Quitar posición del orden</comment>');
-        $output->writeln('  <fg=cyan>clear</>');
-        $output->writeln('    <comment>Limpiar todo el orden</comment>');
-        $output->writeln('  <fg=cyan>save</>');
-        $output->writeln('    <comment>Guardar y salir</comment>');
-        $output->writeln('  <fg=cyan>cancel</>');
-        $output->writeln('    <comment>Cancelar sin guardar</comment>');
+        $output->writeln('<fg=yellow>Comandos disponibles:</>');
+        $output->writeln('  <fg=cyan><números></> <comment>→ Ej: 1,2,3 o 7-12 (agregar plugins)</comment>');
+        $output->writeln('  <fg=cyan>load</>     <comment>→ Cargar orden guardado</comment>');
+        $output->writeln('  <fg=cyan>list</>     <comment>→ Ver orden actual</comment>');
+        $output->writeln('  <fg=cyan>remove</>   <comment>→ Quitar posición (ej: remove 5)</comment>');
+        $output->writeln('  <fg=cyan>clear</>    <comment>→ Limpiar todo el orden</comment>');
+        $output->writeln('  <fg=cyan>save</>     <comment>→ Guardar y salir</comment>');
+        $output->writeln('  <fg=cyan>cancel</>   <comment>→ Cancelar sin guardar</comment>');
     }
 
     private function loadCommand(OutputInterface $output): void
@@ -304,7 +297,7 @@ class OrderBuilderCommand extends Command
     private function displayCompactHelp(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=yellow>Comandos:</> <fg=cyan><nums></> | <fg=cyan>load</> | <fg=cyan>list</> | <fg=cyan>remove <pos></> | <fg=cyan>clear</> | <fg=cyan>save</> | <fg=cyan>cancel</>');
+        $output->writeln('<fg=gray>Comandos: <fg=cyan><nums></> | <fg=cyan>load</> | <fg=cyan>list</> | <fg=cyan>remove</> | <fg=cyan>clear</> | <fg=cyan>save</> | <fg=cyan>cancel</></>');
     }
 
     private function processCommand(string $command, OutputInterface $output): ?string
