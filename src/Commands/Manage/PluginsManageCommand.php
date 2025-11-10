@@ -482,9 +482,10 @@ class PluginsManageCommand extends Command
         $process = new \Symfony\Component\Process\Process(
             array_merge(['bedrock'], explode(' ', $command))
         );
-        $process->setTty(true);
         $process->setTimeout(null);
-        $process->run();
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
 
         if (!$process->isSuccessful()) {
             $output->writeln('');
