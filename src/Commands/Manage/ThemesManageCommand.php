@@ -364,7 +364,7 @@ class ThemesManageCommand extends Command
             if ($helper->ask($input, $output, $question)) {
                 $this->themeManager->add($name, 'cached', $version);
                 
-                $cachePath = $cacheService->getCachePath($name, $version);
+                $cachePath = $cacheService->getThemeCachePath($name, $version);
                 
                 $exitCode = $this->dependencyManager->requireWithRepository(
                     "cached/{$name}",

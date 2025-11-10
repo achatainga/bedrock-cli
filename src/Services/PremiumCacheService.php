@@ -148,14 +148,7 @@ class PremiumCacheService
 
     public function getCachePath(string $name, string $version): string
     {
-        $extractPath = $this->cachePath . "/{$name}/{$version}/extracted";
-        
-        // Si hay subdirectorio con el nombre del plugin, usar ese
-        if (is_dir($extractPath . '/' . $name)) {
-            return $extractPath . '/' . $name;
-        }
-        
-        return $extractPath;
+        return $this->cachePath . "/plugins/{$name}/{$version}/extracted";
     }
 
     public function pluginExists(string $name, string $version): bool
@@ -468,12 +461,6 @@ class PremiumCacheService
 
     public function getThemeCachePath(string $name, string $version): string
     {
-        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
-        
-        if (is_dir($extractPath . '/' . $name)) {
-            return $extractPath . '/' . $name;
-        }
-        
-        return $extractPath;
+        return $this->cachePath . "/themes/{$name}/{$version}/extracted";
     }
 }

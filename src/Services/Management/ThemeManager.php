@@ -71,6 +71,14 @@ class ThemeManager
                     'version' => $version,
                     'type' => 'public'
                 ];
+            } elseif (str_starts_with($package, 'cached/')) {
+                $slug = str_replace('cached/', '', $package);
+                $themes[$slug] = [
+                    'slug' => $slug,
+                    'package' => $package,
+                    'version' => $version,
+                    'type' => 'cached'
+                ];
             }
         }
 
@@ -101,6 +109,7 @@ class ThemeManager
 
         return match ($type) {
             'wpackagist-theme' => "wpackagist-theme/{$slug}",
+            'cached' => "cached/{$slug}",
             'custom' => $slug,
             default => throw new RuntimeException("Tipo de theme desconocido: {$type}")
         };
