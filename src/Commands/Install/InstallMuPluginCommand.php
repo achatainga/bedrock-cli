@@ -1,6 +1,6 @@
 <?php
 
-namespace Achatainga\BedrockCli\Commands\Install;
+namespace Roots\BedrockCli\Commands\Install;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
