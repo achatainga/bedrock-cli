@@ -181,14 +181,15 @@ class MenuCommand extends Command
         
         $output->writeln(' <fg=cyan>[5]</> 📤 Exportar a JSON');
         $output->writeln(' <fg=cyan>[6]</> 📋 Duplicar profile');
-        $output->writeln(' <fg=cyan>[7]</> 🗑️  Eliminar');
+        $output->writeln(' <fg=cyan>[7]</> 🔢 Orden de activación');
+        $output->writeln(' <fg=cyan>[8]</> 🗑️  Eliminar');
         $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
+        $question = new Question('<fg=yellow>Opción [0-8]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
         
-        if (!is_numeric($choice) || $choice < 0 || $choice > 7) {
+        if (!is_numeric($choice) || $choice < 0 || $choice > 8) {
             $output->writeln('<error>Opción inválida</error>');
             $this->waitForEnter($input, $output);
             return;
@@ -233,6 +234,9 @@ class MenuCommand extends Command
                 $this->waitForEnter($input, $output);
                 break;
             case '7':
+                $this->manageActivationOrder($profileName, $input, $output);
+                break;
+            case '8':
                 $this->runCommand('profile:delete', ['name' => $profileName], $input, $output);
                 $this->waitForEnter($input, $output);
                 break;
@@ -282,6 +286,71 @@ class MenuCommand extends Command
         $output->write('<comment>Presiona Enter para continuar...</comment>');
         if ($input->isInteractive()) {
             fgets(STDIN);
+        }
+    }
+    
+    private function manageActivationOrder(string $profileName, InputInterface $input, OutputInterface $output): void
+    {
+        $helper = $this->getHelper('question');
+        $profile = $this->profileService->loadProfile($profileName);
+        
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('<fg=magenta;options=bold>  🔢 ORDEN DE ACTIVACIÓN</>');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> 👁️  Ver orden guardado');
+        $output->writeln(' <fg=cyan>[2]</> ✏️  Editar orden (wizard)');
+        $output->writeln(' <fg=cyan>[3]</> 🗑️  Eliminar orden');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+        
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
+        $choice = $helper->ask($input, $output, $question);
+        
+        switch ($choice) {
+            case '1':
+                if (!isset($profile['activation_order'])) {
+                    $output->writeln('<comment>No hay orden guardado en este profile</comment>');
+                } else {
+                    $order = $profile['activation_order']['order'];
+                    $deps = $profile['activation_order']['dependencies'] ?? [];
+                    $updated = $profile['activation_order']['updated_at'] ?? 'N/A';
+                    
+                    $output->writeln('');
+                    $output->writeln('<fg=yellow;options=bold>Orden de activación:</>');
+                    $output->writeln('');
+                    
+                    asort($order);
+                    foreach ($order as $plugin => $position) {
+                        $depInfo = isset($deps[$plugin]) ? ' <fg=yellow>↳ ' . implode(', ', $deps[$plugin]) . '</>' : '';
+                        $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
+                    }
+                    
+                    $output->writeln('');
+                    $output->writeln("<fg=gray>Actualizado: {$updated}</>");
+                }
+                $this->waitForEnter($input, $output);
+                break;
+                
+            case '2':
+                $output->writeln('');
+                $output->writeln('<comment>Abriendo wizard de orden de activación...</comment>');
+                $output->writeln('<comment>Después de completar el wizard, guarda en este profile.</comment>');
+                $this->waitForEnter($input, $output);
+                $this->runCommand('plugins:order:build', [], $input, $output);
+                break;
+                
+            case '3':
+                if (!isset($profile['activation_order'])) {
+                    $output->writeln('<comment>No hay orden guardado</comment>');
+                } else {
+                    unset($profile['activation_order']);
+                    $this->profileService->saveProfile($profileName, $profile);
+                    $output->writeln('<info>✓ Orden eliminado del profile</info>');
+                }
+                $this->waitForEnter($input, $output);
+                break;
         }
     }
 }
