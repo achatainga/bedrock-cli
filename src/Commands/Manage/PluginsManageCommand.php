@@ -59,7 +59,7 @@ class PluginsManageCommand extends Command
         }
     }
 
-    private array $pendingPlugins = [];
+
 
     private function showMenu(InputInterface $input, OutputInterface $output): string
     {
@@ -67,81 +67,258 @@ class PluginsManageCommand extends Command
         $plugins = $this->pluginManager->list();
 
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  🔌 GESTIÓN DE PLUGINS          </> <fg=cyan;options=bold>    ║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('<fg=magenta;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>🔌 GESTIÓN DE PLUGINS</><fg=magenta;options=bold>             ║</>');
+        $output->writeln('<fg=magenta;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
         if (!empty($plugins)) {
-            $output->writeln("<fg=cyan>✓ Plugins instalados (" . count($plugins) . "):</>");
+            $output->writeln("<fg=cyan>Plugins instalados (" . count($plugins) . "):</>");
             $output->writeln('');
             
-            $table = new Table($output);
-            $table->setHeaders(['<fg=cyan>Slug</>', '<fg=cyan>Versión</>']);
+            $index = 1;
             foreach ($plugins as $plugin) {
-                $table->addRow([$plugin['slug'], $plugin['version']]);
-            }
-            $table->render();
-            $output->writeln('');
-        }
-
-        if (!empty($this->pendingPlugins)) {
-            $output->writeln("<fg=yellow>⏳ Plugins pendientes de instalar (" . count($this->pendingPlugins) . "):</>");
-            foreach ($this->pendingPlugins as $slug => $version) {
-                $output->writeln("  • {$slug} ({$version})");
+                $output->writeln(" <fg=cyan>[{$index}]</> {$plugin['slug']} <fg=gray>({$plugin['version']})</>");
+                $index++;
             }
             $output->writeln('');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar plugin');
+            $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
+            $output->writeln(' <fg=yellow>[O]</> 🔢 Orden de activación');
+            $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        } else {
+            $output->writeln('<comment>No hay plugins instalados</comment>');
+            $output->writeln('');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar plugin');
+            $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
+            $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         }
-
-        $output->writeln('<fg=yellow>¿Qué deseas hacer?</>');
-        $output->writeln('');
-        $output->writeln(' <fg=cyan>[1]</> 🔍 Buscar y agregar a cola');
-        $output->writeln(' <fg=cyan>[2]</> ⚡ Instalar plugins pendientes');
-        $output->writeln(' <fg=cyan>[3]</> 🗑️  Desinstalar plugin');
-        $output->writeln(' <fg=cyan>[4]</> 📊 Ver detalles de plugin');
-        $output->writeln(' <fg=cyan>[5]</> 🧹 Limpiar cola');
-        $output->writeln(' <fg=cyan>[6]</> 📦 Importar .zip local');
-        $output->writeln(' <fg=cyan>[7]</> 🔢 Orden de activación');
-        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
-        $choice = $helper->ask($input, $output, $question);
+        $question = new Question('<fg=yellow>Opción [0-' . count($plugins) . ', A, I, O]: </>', '0');
+        $choice = strtoupper($helper->ask($input, $output, $question));
 
-        switch ($choice) {
-            case '1':
-                $this->searchAndQueue($input, $output);
-                return 'continue';
-            case '2':
-                $this->installPending($input, $output);
-                return 'continue';
-            case '3':
-                $this->uninstall($input, $output, $plugins);
-                return 'continue';
-            case '4':
-                $this->showDetails($input, $output, $plugins);
-                return 'continue';
-            case '5':
-                $this->pendingPlugins = [];
-                $output->writeln('<info>✓ Cola limpiada</info>');
-                $this->waitForEnter($input, $output);
-                return 'continue';
-            case '6':
-                $this->importZipPlugin($input, $output);
-                return 'continue';
-            case '7':
-                $this->activationOrderMenu($input, $output);
-                return 'continue';
-            case '0':
-                return 'exit';
-            default:
-                $output->writeln('<error>Opción inválida</error>');
-                $this->waitForEnter($input, $output);
-                return 'continue';
+        if ($choice === '0') {
+            return 'exit';
+        } elseif ($choice === 'A') {
+            $this->searchAndInstall($input, $output);
+            return 'continue';
+        } elseif ($choice === 'I') {
+            $this->importZipPlugin($input, $output);
+            return 'continue';
+        } elseif ($choice === 'O') {
+            $this->activationOrderMenu($input, $output);
+            return 'continue';
+        } elseif (is_numeric($choice) && $choice > 0 && $choice <= count($plugins)) {
+            $pluginsList = array_values($plugins);
+            $selectedPlugin = $pluginsList[$choice - 1];
+            $this->managePlugin($input, $output, $selectedPlugin);
+            return 'continue';
+        } else {
+            $output->writeln('<error>Opción inválida</error>');
+            $this->waitForEnter($input, $output);
+            return 'continue';
         }
     }
 
-    private function searchAndQueue(InputInterface $input, OutputInterface $output): void
+    private function managePlugin(InputInterface $input, OutputInterface $output, array $plugin): void
+    {
+        $helper = $this->getHelper('question');
+        
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln("<fg=magenta;options=bold>  🔌 {$plugin['slug']}</>");
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('');
+        $output->writeln("<info>Versión:</info> {$plugin['version']}");
+        $output->writeln("<info>Tipo:</info> {$plugin['type']}");
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> ✅ Activar plugin');
+        $output->writeln(' <fg=cyan>[2]</> ❌ Desactivar plugin');
+        $output->writeln(' <fg=cyan>[3]</> 📊 Ver detalles');
+        $output->writeln(' <fg=cyan>[4]</> 🗑️  Desinstalar (composer)');
+        $output->writeln(' <fg=cyan>[5]</> 🗑️  Eliminar carpeta (filesystem)');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+        
+        $question = new Question('<fg=yellow>Opción [0-5]: </>', '0');
+        $choice = $helper->ask($input, $output, $question);
+        
+        switch ($choice) {
+            case '1':
+                $this->activatePlugin($output, $plugin['slug']);
+                $this->waitForEnter($input, $output);
+                break;
+            case '2':
+                $this->deactivatePlugin($output, $plugin['slug']);
+                $this->waitForEnter($input, $output);
+                break;
+            case '3':
+                $this->showPluginDetails($output, $plugin['slug']);
+                $this->waitForEnter($input, $output);
+                break;
+            case '4':
+                $this->uninstallPlugin($input, $output, $plugin);
+                break;
+            case '5':
+                $this->deletePluginFolder($input, $output, $plugin['slug']);
+                break;
+        }
+    }
+    
+    private function activatePlugin(OutputInterface $output, string $slug): void
+    {
+        $output->writeln('');
+        $output->writeln("<info>Activando plugin: {$slug}</info>");
+        
+        $process = new \Symfony\Component\Process\Process([
+            'docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'activate', $slug
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Plugin activado correctamente</info>');
+        } else {
+            $output->writeln('<error>✗ Error al activar plugin</error>');
+            $output->writeln('<comment>' . $process->getErrorOutput() . '</comment>');
+        }
+    }
+    
+    private function deactivatePlugin(OutputInterface $output, string $slug): void
+    {
+        $output->writeln('');
+        $output->writeln("<info>Desactivando plugin: {$slug}</info>");
+        
+        $process = new \Symfony\Component\Process\Process([
+            'docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'deactivate', $slug
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Plugin desactivado correctamente</info>');
+        } else {
+            $output->writeln('<error>✗ Error al desactivar plugin</error>');
+            $output->writeln('<comment>' . $process->getErrorOutput() . '</comment>');
+        }
+    }
+    
+    private function showPluginDetails(OutputInterface $output, string $slug): void
+    {
+        $info = $this->wpApi->getPluginInfo($slug);
+        
+        if (!$info) {
+            $output->writeln('<error>No se pudo obtener información del plugin</error>');
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<fg=yellow;options=bold>{$info['name']}</>");
+        $output->writeln('');
+        $output->writeln("<info>Slug:</info> {$info['slug']}");
+        $output->writeln("<info>Versión:</info> {$info['version']}");
+        $output->writeln("<info>Autor:</info> {$info['author']}");
+        $output->writeln("<info>Rating:</info> {$info['rating']}/100");
+        $output->writeln("<info>Instalaciones:</info> " . number_format($info['active_installs']) . "+");
+        $output->writeln('');
+        $output->writeln("<info>Descripción:</info>");
+        $output->writeln(wordwrap(strip_tags($info['short_description'] ?? 'Sin descripción'), 70));
+    }
+    
+    private function uninstallPlugin(InputInterface $input, OutputInterface $output, array $plugin): void
+    {
+        $helper = $this->getHelper('question');
+        
+        $question = new ConfirmationQuestion(
+            "<fg=yellow>⚠ ¿Seguro que deseas desinstalar {$plugin['slug']}? (y/N):</> ",
+            false
+        );
+        
+        if (!$helper->ask($input, $output, $question)) {
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<info>Desinstalando plugin: {$plugin['slug']}</info>");
+        
+        $this->pluginManager->remove($plugin['slug']);
+        
+        $exitCode = $this->dependencyManager->update(
+            [$plugin['package']],
+            function($buffer) use ($output) {
+                $output->write($buffer);
+            }
+        );
+        
+        if ($exitCode === 0) {
+            $output->writeln('');
+            $output->writeln('<info>✓ Plugin desinstalado correctamente</info>');
+        } else {
+            $output->writeln('');
+            $output->writeln('<error>✗ Error al desinstalar plugin</error>');
+        }
+        
+        $this->waitForEnter($input, $output);
+    }
+    
+    private function deletePluginFolder(InputInterface $input, OutputInterface $output, string $slug): void
+    {
+        $helper = $this->getHelper('question');
+        $pluginsDir = getcwd() . '/web/app/plugins';
+        $pluginPath = $pluginsDir . '/' . $slug;
+        
+        if (!is_dir($pluginPath)) {
+            $output->writeln('');
+            $output->writeln("<error>Carpeta no encontrada: {$pluginPath}</error>");
+            $this->waitForEnter($input, $output);
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln('<fg=red;options=bold>⚠️  ADVERTENCIA: Eliminación directa del filesystem</>');
+        $output->writeln('<fg=yellow>Esto eliminará la carpeta sin pasar por composer</>');
+        $output->writeln("<fg=yellow>Ruta: {$pluginPath}</>");
+        $output->writeln('');
+        
+        $question = new Question('<fg=red>Escribe "ELIMINAR" para confirmar:</> ');
+        $confirmation = $helper->ask($input, $output, $question);
+        
+        if ($confirmation !== 'ELIMINAR') {
+            $output->writeln('<comment>Operación cancelada</comment>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<info>Eliminando carpeta {$slug}...</info>");
+        
+        if ($this->removeDirectory($pluginPath)) {
+            $output->writeln("<info>✓ Carpeta eliminada: {$pluginPath}</info>");
+        } else {
+            $output->writeln('<error>✗ Error al eliminar la carpeta</error>');
+        }
+        
+        $this->waitForEnter($input, $output);
+    }
+    
+    private function removeDirectory(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+        
+        $files = array_diff(scandir($dir), ['.', '..']);
+        
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->removeDirectory($path) : unlink($path);
+        }
+        
+        return rmdir($dir);
+    }
+
+    private function searchAndInstall(InputInterface $input, OutputInterface $output): void
     {
         $helper = $this->getHelper('question');
         
@@ -187,54 +364,15 @@ class PluginsManageCommand extends Command
         $slug = $plugins[$index]['slug'];
         $version = $this->selectPluginVersion($slug, $helper, $input, $output);
         
-        $this->pendingPlugins[$slug] = $version;
-        
-        $output->writeln("<info>✓ Plugin '{$slug}' ({$version}) agregado a la cola</info>");
         $output->writeln('');
+        $output->writeln("<info>Instalando plugin: {$slug}</info>");
         
-        $question = new ConfirmationQuestion('<fg=yellow>¿Buscar otro plugin? (Y/n):</> ', true);
-        if (!$helper->ask($input, $output, $question)) {
-            return;
-        }
+        $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
         
-        $this->searchAndQueue($input, $output);
-    }
-
-    private function uninstall(InputInterface $input, OutputInterface $output, array $plugins): void
-    {
-        if (empty($plugins)) {
-            $output->writeln('<comment>No hay plugins para desinstalar</comment>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
-
-        $helper = $this->getHelper('question');
-        $choices = [];
-        
-        foreach ($plugins as $plugin) {
-            $choices[$plugin['slug']] = "{$plugin['slug']} ({$plugin['version']})";
-        }
-        $choices['cancel'] = 'Cancelar';
-
-        $question = new ChoiceQuestion('Selecciona plugin a desinstalar:', $choices, 'cancel');
-        $selected = $helper->ask($input, $output, $question);
-
-        if ($selected === 'Cancelar') {
-            return;
-        }
-
-        $slug = array_search($selected, $choices, true);
-        if ($slug === 'cancel' || $slug === false) {
-            return;
-        }
-        
-        $output->writeln('');
-        $output->writeln("<info>Desinstalando plugin: {$slug}</info>");
-        
-        $this->pluginManager->remove($slug);
-        
-        $exitCode = $this->dependencyManager->update(
-            ["wpackagist-plugin/{$slug}"],
+        $exitCode = $this->dependencyManager->require(
+            "wpackagist-plugin/{$slug}",
+            $version === '*' ? null : $version,
+            false,
             function($buffer) use ($output) {
                 $output->write($buffer);
             }
@@ -242,100 +380,16 @@ class PluginsManageCommand extends Command
 
         if ($exitCode === 0) {
             $output->writeln('');
-            $output->writeln('<info>✓ Plugin desinstalado correctamente</info>');
+            $output->writeln('<info>✓ Plugin instalado correctamente</info>');
         } else {
             $output->writeln('');
-            $output->writeln('<error>✗ Error al desinstalar plugin</error>');
+            $output->writeln('<error>✗ Error al instalar plugin</error>');
         }
 
         $this->waitForEnter($input, $output);
     }
 
-    private function showDetails(InputInterface $input, OutputInterface $output, array $plugins): void
-    {
-        if (empty($plugins)) {
-            $output->writeln('<comment>No hay plugins instalados</comment>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
 
-        $helper = $this->getHelper('question');
-        $choices = [];
-        
-        foreach ($plugins as $plugin) {
-            $choices[$plugin['slug']] = $plugin['slug'];
-        }
-        $choices['cancel'] = 'Cancelar';
-
-        $question = new ChoiceQuestion('Selecciona plugin:', $choices, 'cancel');
-        $selected = $helper->ask($input, $output, $question);
-
-        if ($selected === 'Cancelar') {
-            return;
-        }
-
-        $slug = array_search($selected, $choices);
-        $info = $this->wpApi->getPluginInfo($slug);
-
-        if (!$info) {
-            $output->writeln('<error>No se pudo obtener información del plugin</error>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
-
-        $output->writeln('');
-        $output->writeln("<fg=yellow;options=bold>{$info['name']}</>");
-        $output->writeln('');
-        $output->writeln("<info>Slug:</info> {$info['slug']}");
-        $output->writeln("<info>Versión:</info> {$info['version']}");
-        $output->writeln("<info>Autor:</info> {$info['author']}");
-        $output->writeln("<info>Rating:</info> {$info['rating']}/100");
-        $output->writeln("<info>Instalaciones:</info> " . number_format($info['active_installs']) . "+");
-        $output->writeln('');
-        $output->writeln("<info>Descripción:</info>");
-        $output->writeln(wordwrap(strip_tags($info['short_description'] ?? 'Sin descripción'), 70));
-
-        $this->waitForEnter($input, $output);
-    }
-
-    private function installPending(InputInterface $input, OutputInterface $output): void
-    {
-        if (empty($this->pendingPlugins)) {
-            $output->writeln('<comment>No hay plugins pendientes</comment>');
-            $this->waitForEnter($input, $output);
-            return;
-        }
-
-        $output->writeln('');
-        $output->writeln('<info>Instalando ' . count($this->pendingPlugins) . ' plugin(s)...</info>');
-        $output->writeln('');
-
-        foreach ($this->pendingPlugins as $slug => $version) {
-            $output->writeln("<fg=cyan>➤ Instalando {$slug} ({$version})...</>");
-            
-            $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
-            
-            $exitCode = $this->dependencyManager->require(
-                "wpackagist-plugin/{$slug}",
-                $version === '*' ? null : $version,
-                false,
-                function($buffer) use ($output) {
-                    $output->write($buffer);
-                }
-            );
-
-            if ($exitCode === 0) {
-                $output->writeln("<fg=green>✓ {$slug} instalado</>");
-            } else {
-                $output->writeln("<fg=red>✗ Error al instalar {$slug}</>");
-            }
-            $output->writeln('');
-        }
-
-        $this->pendingPlugins = [];
-        $output->writeln('<info>✓ Instalación completada</info>');
-        $this->waitForEnter($input, $output);
-    }
 
     private function waitForEnter(InputInterface $input, OutputInterface $output): void
     {
