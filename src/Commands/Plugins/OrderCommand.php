@@ -205,6 +205,31 @@ PHP;
             return Command::SUCCESS;
         }
 
+        // Validar que plugins existen
+        $output->writeln('');
+        $output->write('<comment>Validando plugins...</comment>');
+        
+        $validated = $this->validatePluginsExist($orderData, $output);
+        $orderData = $validated['order'];
+        $missing = $validated['missing'];
+        
+        if (!empty($missing)) {
+            $output->writeln(' <fg=yellow>⚠</>');
+            $output->writeln('');
+            $output->writeln('<fg=yellow>Plugins no encontrados (serán omitidos):</>'); 
+            foreach ($missing as $slug) {
+                $output->writeln("  • {$slug}");
+            }
+            $output->writeln('');
+        } else {
+            $output->writeln(' <info>✓</info>');
+        }
+        
+        if (empty($orderData)) {
+            $output->writeln('<comment>No hay plugins válidos para activar</comment>');
+            return Command::SUCCESS;
+        }
+
         // Calcular niveles de dependencias
         $levels = $this->calculateDependencyLevels($orderData, $dependencies);
         
@@ -236,33 +261,56 @@ PHP;
             
             // Activar todo el nivel en UN SOLO wp eval
             $pluginsJson = json_encode($levelPlugins);
-            $php = <<<PHP
-\$plugins = json_decode('{$pluginsJson}', true);
-\$results = [];
+            $php = <<<'PHP'
+$plugins = json_decode('{PLUGINS_JSON}', true);
+$results = [];
 
-foreach (\$plugins as \$slug) {
-    \$file = \$slug . '/' . \$slug . '.php';
+foreach ($plugins as $slug) {
+    // Buscar archivo principal del plugin
+    $pluginDir = WP_PLUGIN_DIR . '/' . $slug;
+    $pluginFile = null;
     
-    if (is_plugin_active(\$file)) {
-        \$results[] = ['plugin' => \$slug, 'status' => 'skip'];
+    // Intentar slug/slug.php primero
+    if (file_exists($pluginDir . '/' . $slug . '.php')) {
+        $pluginFile = $slug . '/' . $slug . '.php';
+    } else {
+        // Buscar cualquier .php con Plugin Name header
+        foreach (glob($pluginDir . '/*.php') as $file) {
+            $content = file_get_contents($file);
+            if (strpos($content, 'Plugin Name:') !== false) {
+                $pluginFile = $slug . '/' . basename($file);
+                break;
+            }
+        }
+    }
+    
+    if (!$pluginFile) {
+        $results[] = ['plugin' => $slug, 'status' => 'error', 'msg' => 'Plugin file not found'];
         continue;
     }
     
-    \$result = activate_plugin(\$file, '', false, true);
+    if (is_plugin_active($pluginFile)) {
+        $results[] = ['plugin' => $slug, 'status' => 'skip'];
+        continue;
+    }
     
-    if (is_wp_error(\$result)) {
-        \$results[] = [
-            'plugin' => \$slug, 
+    $result = activate_plugin($pluginFile, '', false, true);
+    
+    if (is_wp_error($result)) {
+        $results[] = [
+            'plugin' => $slug, 
             'status' => 'error', 
-            'msg' => \$result->get_error_message()
+            'msg' => $result->get_error_message()
         ];
     } else {
-        \$results[] = ['plugin' => \$slug, 'status' => 'ok'];
+        $results[] = ['plugin' => $slug, 'status' => 'ok'];
     }
 }
 
-echo json_encode(\$results);
+echo json_encode($results);
 PHP;
+            
+            $php = str_replace('{PLUGINS_JSON}', $pluginsJson, $php);
 
             $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
             $process->setTimeout(120);
@@ -389,6 +437,30 @@ PHP;
         }
         
         return $levels;
+    }
+
+    protected function validatePluginsExist(array $orderData, OutputInterface $output): array
+    {
+        $pluginsDir = getcwd() . '/web/app/plugins';
+        
+        if (!is_dir($pluginsDir)) {
+            return ['order' => $orderData, 'missing' => []];
+        }
+        
+        $validated = [];
+        $missing = [];
+        
+        foreach ($orderData as $slug => $position) {
+            $pluginPath = $pluginsDir . '/' . $slug;
+            
+            if (is_dir($pluginPath)) {
+                $validated[$slug] = $position;
+            } else {
+                $missing[] = $slug;
+            }
+        }
+        
+        return ['order' => $validated, 'missing' => $missing];
     }
 
     protected function detectDependencies(array $plugins): array
