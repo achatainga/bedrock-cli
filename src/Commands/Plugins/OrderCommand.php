@@ -196,53 +196,119 @@ PHP;
 
         $config = json_decode(file_get_contents($configFile), true);
         $orderData = $config['activation_order'] ?? [];
+        $dependencies = $config['dependencies'] ?? [];
         
-        // Ordenar por posición
         asort($orderData);
-        $order = array_keys($orderData);
 
-        if (empty($order)) {
+        if (empty($orderData)) {
             $output->writeln('<comment>No hay plugins en el orden de activación</comment>');
             return Command::SUCCESS;
         }
 
-        $count = count($order);
+        // Calcular niveles de dependencias
+        $levels = $this->calculateDependencyLevels($orderData, $dependencies);
+        
+        $totalPlugins = count($orderData);
         $output->writeln('');
-        $output->writeln('<fg=yellow;options=bold>Aplicando Orden de Activación:</>');
+        $output->writeln('<fg=yellow;options=bold>Aplicando Orden de Activación por Niveles:</>');
         $output->writeln('');
-        $output->writeln("<info>🚀 Se activarán {$count} plugins en secuencia...</info>");
-        $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
+        $output->writeln("<info>🚀 {$totalPlugins} plugins en " . count($levels) . " nivel(es)</info>");
+        $output->writeln('<comment>Estrategia: Activar plugins sin dependencias primero</comment>');
         $output->writeln('');
-
+        
         $activated = 0;
         $skipped = 0;
         $failed = 0;
         $errors = [];
-
-        foreach ($order as $index => $slug) {
-            $position = $index + 1;
-            $output->write("  <fg=cyan>[{$position}/{$count}]</> <comment>Activando {$slug}...</comment>");
+        
+        foreach ($levels as $levelNum => $levelPlugins) {
+            $count = count($levelPlugins);
+            $output->writeln("<fg=cyan>Nivel {$levelNum}:</> {$count} plugin(s)");
             
-            // Activar UNO POR UNO usando wp plugin activate
-            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'activate', $slug]);
-            $process->setTimeout(60);
+            // Mostrar plugins del nivel
+            foreach ($levelPlugins as $plugin) {
+                $deps = $dependencies[$plugin] ?? [];
+                $depInfo = !empty($deps) ? ' <fg=gray>← ' . implode(', ', $deps) . '</>' : '';
+                $output->writeln("  • {$plugin}{$depInfo}");
+            }
+            
+            $output->write("  <comment>Activando nivel {$levelNum}...</comment>");
+            
+            // Activar todo el nivel en UN SOLO wp eval
+            $pluginsJson = json_encode($levelPlugins);
+            $php = <<<PHP
+\$plugins = json_decode('{$pluginsJson}', true);
+\$results = [];
+
+foreach (\$plugins as \$slug) {
+    \$file = \$slug . '/' . \$slug . '.php';
+    
+    if (is_plugin_active(\$file)) {
+        \$results[] = ['plugin' => \$slug, 'status' => 'skip'];
+        continue;
+    }
+    
+    \$result = activate_plugin(\$file, '', false, true);
+    
+    if (is_wp_error(\$result)) {
+        \$results[] = [
+            'plugin' => \$slug, 
+            'status' => 'error', 
+            'msg' => \$result->get_error_message()
+        ];
+    } else {
+        \$results[] = ['plugin' => \$slug, 'status' => 'ok'];
+    }
+}
+
+echo json_encode(\$results);
+PHP;
+
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+            $process->setTimeout(120);
             $process->run();
             
-            $outputText = trim($process->getOutput());
-            
-            if (str_contains($outputText, 'already active')) {
-                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <comment>⊘ {$slug} (ya activo)</comment>" . str_repeat(' ', 20) . "\n");
-                $skipped++;
-            } elseif ($process->isSuccessful() && str_contains($outputText, 'Success')) {
-                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <info>✓ {$slug}</info>" . str_repeat(' ', 20) . "\n");
-                $activated++;
-            } else {
-                $errorMsg = $process->getErrorOutput() ?: $outputText;
-                $output->write("\r  <fg=cyan>[{$position}/{$count}]</> <error>✗ {$slug}</error>" . str_repeat(' ', 20) . "\n");
-                $output->writeln("      <fg=red>└─</> {$errorMsg}");
-                $failed++;
-                $errors[] = ['plugin' => $slug, 'message' => $errorMsg];
+            if (!$process->isSuccessful()) {
+                $output->writeln(" <error>✗</error>");
+                $output->writeln("<error>Error al ejecutar nivel {$levelNum}</error>");
+                return Command::FAILURE;
             }
+            
+            $results = json_decode($process->getOutput(), true);
+            
+            if (!is_array($results)) {
+                $output->writeln(" <error>✗</error>");
+                $output->writeln('<error>Error al procesar resultados</error>');
+                $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
+                return Command::FAILURE;
+            }
+            
+            $output->writeln(" <info>✓</info>");
+            
+            // Procesar resultados del nivel
+            foreach ($results as $result) {
+                if ($result['status'] === 'skip') {
+                    $output->writeln("    <comment>⊘ {$result['plugin']} (ya activo)</comment>");
+                    $skipped++;
+                } elseif ($result['status'] === 'ok') {
+                    $output->writeln("    <info>✓ {$result['plugin']}</info>");
+                    $activated++;
+                } elseif ($result['status'] === 'error') {
+                    $output->writeln("    <error>✗ {$result['plugin']}</error>");
+                    $output->writeln("      <fg=red>└─</> {$result['msg']}");
+                    $failed++;
+                    $errors[] = ['plugin' => $result['plugin'], 'message' => $result['msg']];
+                }
+            }
+            
+            // Si hay errores en este nivel, DETENER
+            if ($failed > 0) {
+                $output->writeln('');
+                $output->writeln("<error>⚠️  Activación detenida por errores en nivel {$levelNum}</error>");
+                break;
+            }
+            
+            $output->writeln('');
         }
 
         $output->writeln('');
@@ -277,6 +343,52 @@ PHP;
     {
         $output->writeln("<error>{$message}</error>");
         return Command::FAILURE;
+    }
+
+    protected function calculateDependencyLevels(array $order, array $dependencies): array
+    {
+        $levels = [];
+        $processed = [];
+        $currentLevel = 0;
+        
+        while (count($processed) < count($order)) {
+            $levelPlugins = [];
+            
+            foreach ($order as $plugin => $position) {
+                if (isset($processed[$plugin])) {
+                    continue;
+                }
+                
+                $deps = $dependencies[$plugin] ?? [];
+                
+                $allDepsProcessed = true;
+                foreach ($deps as $dep) {
+                    if (!isset($processed[$dep])) {
+                        $allDepsProcessed = false;
+                        break;
+                    }
+                }
+                
+                if ($allDepsProcessed) {
+                    $levelPlugins[] = $plugin;
+                    $processed[$plugin] = true;
+                }
+            }
+            
+            if (empty($levelPlugins)) {
+                foreach ($order as $plugin => $position) {
+                    if (!isset($processed[$plugin])) {
+                        $levelPlugins[] = $plugin;
+                        $processed[$plugin] = true;
+                    }
+                }
+            }
+            
+            $levels[$currentLevel] = $levelPlugins;
+            $currentLevel++;
+        }
+        
+        return $levels;
     }
 
     protected function detectDependencies(array $plugins): array
