@@ -207,14 +207,27 @@ PHP;
 
         // Validar que plugins existen
         $output->writeln('');
-        $output->write('<comment>Validando plugins...</comment>');
         
-        $validated = $this->validatePluginsExist($orderData, $output);
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        $validated = null;
+        
+        for ($i = 0; $i < 10; $i++) {
+            $output->write("\r<comment>Validando plugins...</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            
+            if ($i === 0) {
+                $validated = $this->validatePluginsExist($orderData, $output);
+            }
+            
+            usleep(50000);
+        }
+        
         $orderData = $validated['order'];
         $missing = $validated['missing'];
         
         if (!empty($missing)) {
-            $output->writeln(' <fg=yellow>⚠</>');
+            $output->write("\r<comment>Validando plugins...</comment> <fg=yellow>⚠</> " . str_repeat(' ', 10) . "\n");
             $output->writeln('');
             $output->writeln('<fg=yellow>Plugins no encontrados (serán omitidos):</>'); 
             foreach ($missing as $slug) {
@@ -222,7 +235,7 @@ PHP;
             }
             $output->writeln('');
         } else {
-            $output->writeln(' <info>✓</info>');
+            $output->write("\r<comment>Validando plugins...</comment> <info>✓</info>" . str_repeat(' ', 10) . "\n");
         }
         
         if (empty($orderData)) {
@@ -256,8 +269,6 @@ PHP;
                 $depInfo = !empty($deps) ? ' <fg=gray>← ' . implode(', ', $deps) . '</>' : '';
                 $output->writeln("  • {$plugin}{$depInfo}");
             }
-            
-            $output->write("  <comment>Activando nivel {$levelNum}...</comment>");
             
             // Activar todo el nivel en UN SOLO wp eval
             $pluginsJson = json_encode($levelPlugins);
@@ -314,10 +325,11 @@ PHP;
 
             $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
             $process->setTimeout(120);
-            $process->run();
+            
+            // Ejecutar con feedback en tiempo real
+            $this->runWithSpinner($process, $output, "Activando nivel {$levelNum}");
             
             if (!$process->isSuccessful()) {
-                $output->writeln(" <error>✗</error>");
                 $output->writeln("<error>Error al ejecutar nivel {$levelNum}</error>");
                 return Command::FAILURE;
             }
@@ -325,13 +337,10 @@ PHP;
             $results = json_decode($process->getOutput(), true);
             
             if (!is_array($results)) {
-                $output->writeln(" <error>✗</error>");
                 $output->writeln('<error>Error al procesar resultados</error>');
                 $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
                 return Command::FAILURE;
             }
-            
-            $output->writeln(" <info>✓</info>");
             
             // Procesar resultados del nivel
             foreach ($results as $result) {
@@ -482,22 +491,43 @@ PHP;
         return $deps;
     }
 
+    protected function runWithSpinner(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        $startTime = microtime(true);
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $elapsed = round(microtime(true) - $startTime, 1);
+            $output->write("\r  <comment>{$message}...</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=gray>({$elapsed}s)</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(100000); // 100ms
+        }
+        
+        $elapsed = round(microtime(true) - $startTime, 1);
+        
+        if ($process->isSuccessful()) {
+            $output->write("\r  <comment>{$message}...</comment> <info>✓</info> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
+        } else {
+            $output->write("\r  <comment>{$message}...</comment> <error>✗</error> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
+        }
+    }
+
     protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
         
-        // Iniciar proceso asíncrono
         $process->start();
         
-        // Animar mientras el proceso corre
         while ($process->isRunning()) {
             $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
             $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000); // 80ms por frame
+            usleep(80000);
         }
         
-        // Mostrar resultado final
         if ($process->isSuccessful()) {
             $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
         } else {
