@@ -101,6 +101,7 @@ class PluginsManageCommand extends Command
         $output->writeln(' <fg=cyan>[4]</> 📊 Ver detalles de plugin');
         $output->writeln(' <fg=cyan>[5]</> 🧹 Limpiar cola');
         $output->writeln(' <fg=cyan>[6]</> 📦 Importar .zip local');
+        $output->writeln(' <fg=cyan>[7]</> 🔢 Orden de activación');
         $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
@@ -127,6 +128,9 @@ class PluginsManageCommand extends Command
                 return 'continue';
             case '6':
                 $this->importZipPlugin($input, $output);
+                return 'continue';
+            case '7':
+                $this->activationOrderMenu($input, $output);
                 return 'continue';
             case '0':
                 return 'exit';
@@ -424,6 +428,68 @@ class PluginsManageCommand extends Command
         }
         
         $this->waitForEnter($input, $output);
+    }
+
+    private function activationOrderMenu(InputInterface $input, OutputInterface $output): void
+    {
+        $helper = $this->getHelper('question');
+
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=magenta;options=bold>║</> <fg=yellow;options=bold>🔢 ORDEN DE ACTIVACIÓN</><fg=magenta;options=bold>              ║</>');
+        $output->writeln('<fg=magenta;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        $output->writeln('<fg=cyan>¿Qué deseas hacer?</>');
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> 🎯 Wizard interactivo (build)');
+        $output->writeln(' <fg=cyan>[2]</> 💾 Guardar orden actual (save)');
+        $output->writeln(' <fg=cyan>[3]</> 📊 Ver orden guardado (list)');
+        $output->writeln(' <fg=cyan>[4]</> ⚡ Aplicar orden (activate)');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+
+        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $choice = $helper->ask($input, $output, $question);
+
+        switch ($choice) {
+            case '1':
+                $this->runOrderCommand('plugins:order:build', $output);
+                break;
+            case '2':
+                $this->runOrderCommand('plugins:order save', $output);
+                break;
+            case '3':
+                $this->runOrderCommand('plugins:order list', $output);
+                break;
+            case '4':
+                $this->runOrderCommand('plugins:order activate', $output);
+                break;
+            case '0':
+                return;
+            default:
+                $output->writeln('<error>Opción inválida</error>');
+        }
+
+        $this->waitForEnter($input, $output);
+    }
+
+    private function runOrderCommand(string $command, OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln("<info>➤ Ejecutando: bedrock {$command}</info>");
+        $output->writeln('');
+
+        $process = new \Symfony\Component\Process\Process(
+            array_merge(['bedrock'], explode(' ', $command))
+        );
+        $process->setTty(true);
+        $process->setTimeout(null);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $output->writeln('');
+            $output->writeln('<error>✗ Error al ejecutar comando</error>');
+        }
     }
 }
 
