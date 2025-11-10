@@ -70,49 +70,44 @@ class ThemesManageCommand extends Command
             $output->writeln("<fg=cyan>Themes instalados (" . count($themes) . "):</>");
             $output->writeln('');
             
-            $table = new Table($output);
-            $table->setHeaders(['<fg=cyan>Slug</>', '<fg=cyan>Versión</>']);
+            $index = 1;
             foreach ($themes as $theme) {
-                $table->addRow([$theme['slug'], $theme['version']]);
+                $output->writeln(" <fg=cyan>[{$index}]</> {$theme['slug']} <fg=gray>({$theme['version']})</>");
+                $index++;
             }
-            $table->render();
             $output->writeln('');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar theme');
+            $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
+            $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         } else {
             $output->writeln('<comment>No hay themes instalados</comment>');
             $output->writeln('');
+            $output->writeln(' <fg=yellow>[A]</> 🔍 Buscar e instalar theme');
+            $output->writeln(' <fg=yellow>[I]</> 📦 Importar .zip local');
+            $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         }
-
-        $output->writeln('<fg=cyan>¿Qué deseas hacer?</>');
-        $output->writeln('');
-        $output->writeln(' <fg=cyan>[1]</> 🔍 Buscar e instalar theme');
-        $output->writeln(' <fg=cyan>[2]</> 🗑️  Desinstalar theme');
-        $output->writeln(' <fg=cyan>[3]</> 📊 Ver detalles de theme');
-        $output->writeln(' <fg=cyan>[4]</> 📦 Importar .zip local');
-        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
-        $choice = $helper->ask($input, $output, $question);
+        $question = new Question('<fg=yellow>Opción [0-' . count($themes) . ', A, I]: </>', '0');
+        $choice = strtoupper($helper->ask($input, $output, $question));
 
-        switch ($choice) {
-            case '1':
-                $this->searchAndInstall($input, $output);
-                return 'continue';
-            case '2':
-                $this->uninstall($input, $output, $themes);
-                return 'continue';
-            case '3':
-                $this->showDetails($input, $output, $themes);
-                return 'continue';
-            case '4':
-                $this->importZipTheme($input, $output);
-                return 'continue';
-            case '0':
-                return 'exit';
-            default:
-                $output->writeln('<error>Opción inválida</error>');
-                $this->waitForEnter($input, $output);
-                return 'continue';
+        if ($choice === '0') {
+            return 'exit';
+        } elseif ($choice === 'A') {
+            $this->searchAndInstall($input, $output);
+            return 'continue';
+        } elseif ($choice === 'I') {
+            $this->importZipTheme($input, $output);
+            return 'continue';
+        } elseif (is_numeric($choice) && $choice > 0 && $choice <= count($themes)) {
+            $themesList = array_values($themes);
+            $selectedTheme = $themesList[$choice - 1];
+            $this->manageTheme($input, $output, $selectedTheme);
+            return 'continue';
+        } else {
+            $output->writeln('<error>Opción inválida</error>');
+            $this->waitForEnter($input, $output);
+            return 'continue';
         }
     }
 
@@ -301,6 +296,118 @@ class ThemesManageCommand extends Command
         $output->writeln("<info>Descripción:</info>");
         $output->writeln(wordwrap(strip_tags($info['description']), 70));
 
+        $this->waitForEnter($input, $output);
+    }
+
+    private function manageTheme(InputInterface $input, OutputInterface $output, array $theme): void
+    {
+        $helper = $this->getHelper('question');
+        
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln("<fg=magenta;options=bold>  🎨 {$theme['slug']}</>");
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('');
+        $output->writeln("<info>Versión:</info> {$theme['version']}");
+        $output->writeln("<info>Tipo:</info> {$theme['type']}");
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> ✅ Activar theme');
+        $output->writeln(' <fg=cyan>[2]</> 📊 Ver detalles');
+        $output->writeln(' <fg=cyan>[3]</> 🗑️  Desinstalar');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+        
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
+        $choice = $helper->ask($input, $output, $question);
+        
+        switch ($choice) {
+            case '1':
+                $this->activateTheme($output, $theme['slug']);
+                $this->waitForEnter($input, $output);
+                break;
+            case '2':
+                $this->showThemeDetails($output, $theme['slug']);
+                $this->waitForEnter($input, $output);
+                break;
+            case '3':
+                $this->uninstallTheme($input, $output, $theme);
+                break;
+        }
+    }
+    
+    private function activateTheme(OutputInterface $output, string $slug): void
+    {
+        $output->writeln('');
+        $output->writeln("<info>Activando theme: {$slug}</info>");
+        
+        $process = new \Symfony\Component\Process\Process([
+            'docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'activate', $slug
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>✓ Theme activado correctamente</info>');
+        } else {
+            $output->writeln('<error>✗ Error al activar theme</error>');
+            $output->writeln('<comment>' . $process->getErrorOutput() . '</comment>');
+        }
+    }
+    
+    private function showThemeDetails(OutputInterface $output, string $slug): void
+    {
+        $info = $this->wpApi->getThemeInfo($slug);
+        
+        if (!$info) {
+            $output->writeln('<error>No se pudo obtener información del theme</error>');
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<fg=yellow;options=bold>{$info['name']}</>");
+        $output->writeln('');
+        $output->writeln("<info>Slug:</info> {$info['slug']}");
+        $output->writeln("<info>Versión:</info> {$info['version']}");
+        $output->writeln("<info>Autor:</info> {$info['author']}");
+        $output->writeln("<info>Rating:</info> {$info['rating']}/100");
+        $output->writeln('');
+        $output->writeln("<info>Descripción:</info>");
+        $output->writeln(wordwrap(strip_tags($info['description']), 70));
+    }
+    
+    private function uninstallTheme(InputInterface $input, OutputInterface $output, array $theme): void
+    {
+        $helper = $this->getHelper('question');
+        
+        $question = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+            "<fg=yellow>⚠ ¿Seguro que deseas desinstalar {$theme['slug']}? (y/N):</> ",
+            false
+        );
+        
+        if (!$helper->ask($input, $output, $question)) {
+            return;
+        }
+        
+        $output->writeln('');
+        $output->writeln("<info>Desinstalando theme: {$theme['slug']}</info>");
+        
+        $this->themeManager->remove($theme['slug']);
+        
+        $exitCode = $this->dependencyManager->update(
+            [$theme['package']],
+            function($buffer) use ($output) {
+                $output->write($buffer);
+            }
+        );
+        
+        if ($exitCode === 0) {
+            $output->writeln('');
+            $output->writeln('<info>✓ Theme desinstalado correctamente</info>');
+        } else {
+            $output->writeln('');
+            $output->writeln('<error>✗ Error al desinstalar theme</error>');
+        }
+        
         $this->waitForEnter($input, $output);
     }
 

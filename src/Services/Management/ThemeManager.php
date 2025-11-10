@@ -62,22 +62,37 @@ class ThemeManager
             return $themes;
         }
 
+        // Obtener lista de themes reales desde el directorio
+        $themesDir = getcwd() . '/web/app/themes';
+        $installedThemes = [];
+        
+        if (is_dir($themesDir)) {
+            foreach (scandir($themesDir) as $dir) {
+                if ($dir !== '.' && $dir !== '..' && is_dir($themesDir . '/' . $dir)) {
+                    $installedThemes[] = $dir;
+                }
+            }
+        }
+
         foreach ($composer['require'] as $package => $version) {
+            $slug = null;
+            $type = null;
+            
             if (str_starts_with($package, 'wpackagist-theme/')) {
                 $slug = str_replace('wpackagist-theme/', '', $package);
-                $themes[$slug] = [
-                    'slug' => $slug,
-                    'package' => $package,
-                    'version' => $version,
-                    'type' => 'public'
-                ];
+                $type = 'public';
             } elseif (str_starts_with($package, 'cached/')) {
                 $slug = str_replace('cached/', '', $package);
+                $type = 'cached';
+            }
+            
+            // Solo agregar si realmente existe en web/app/themes
+            if ($slug && in_array($slug, $installedThemes)) {
                 $themes[$slug] = [
                     'slug' => $slug,
                     'package' => $package,
                     'version' => $version,
-                    'type' => 'cached'
+                    'type' => $type
                 ];
             }
         }
