@@ -83,6 +83,7 @@ use Roots\BedrockCli\Commands\AI\DiagnoseCommand as AIDiagnoseCommand;
 use Roots\BedrockCli\Commands\AI\SuggestCommand as AISuggestCommand;
 use Roots\BedrockCli\Commands\AI\ModelSelectorCommand as AIModelSelectorCommand;
 use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
+use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
 
@@ -173,6 +174,7 @@ class Application extends BaseApplication
             new AISuggestCommand(),
             new AIModelSelectorCommand(),
             new InstallMuPluginCommand(),
+            new UpdateMuPluginCommand(),
             new CacheImportCommand(),
             new CacheUpdateVersionCommand(),
         ]);

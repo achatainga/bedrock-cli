@@ -20,38 +20,66 @@ class InstallMuPluginCommand extends Command
         $output->writeln("<fg=magenta>  BEDROCK CLI - INSTALL MU-PLUGIN</>");
         $output->writeln("<fg=magenta>═══════════════════════════════════════════════════════════════</>\n");
 
-        // Verify we're in a Bedrock project
         if (!file_exists('web/app/mu-plugins')) {
-            $output->writeln("<fg=red>✗ Error: Not a Bedrock project (web/app/mu-plugins not found)</>");
+            $output->writeln("<fg=red>✗ Error: Not a Bedrock project</>");
             return Command::FAILURE;
         }
 
-        $targetPath = 'web/app/mu-plugins/bedrock-cli-api.php';
+        $targetDir = 'web/app/mu-plugins/bedrock-cli-plugin';
 
-        // Check if already installed
-        if (file_exists($targetPath)) {
-            $output->writeln("<fg=yellow>⚠ MU-Plugin already installed at:</>");
-            $output->writeln("<fg=gray>  {$targetPath}</>\n");
+        if (file_exists($targetDir)) {
+            $output->writeln("<fg=yellow>⚠ MU-Plugin already installed</>");
+            $output->writeln("<fg=gray>  Use 'install:update-mu-plugin' to update</>\n");
             return Command::SUCCESS;
         }
 
-        // Copy stub to target
-        $stubPath = __DIR__ . '/../../../stubs/mu-plugins/bedrock-cli-api.php';
+        $sourcePath = __DIR__ . '/../../../mu-plugin';
         
-        if (!file_exists($stubPath)) {
-            $output->writeln("<fg=red>✗ Error: Stub file not found</>");
+        if (!file_exists($sourcePath)) {
+            $output->writeln("<fg=red>✗ Error: Plugin source not found</>");
             return Command::FAILURE;
         }
 
-        if (!copy($stubPath, $targetPath)) {
-            $output->writeln("<fg=red>✗ Error: Failed to copy MU-Plugin</>");
-            return Command::FAILURE;
+        $this->recursiveCopy($sourcePath, $targetDir);
+        $output->writeln("<fg=green>✓ Plugin installed</>");
+
+        // Run composer install
+        $output->writeln("<fg=cyan>→ Installing dependencies...</>");
+        $process = new \Symfony\Component\Process\Process(['composer', 'install', '--no-dev', '--quiet'], $targetDir);
+        $process->setTimeout(120);
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            $output->writeln("<fg=green>✓ Dependencies installed</>");
         }
 
-        $output->writeln("<fg=green>✓ MU-Plugin installed successfully</>");
-        $output->writeln("<fg=gray>  Location: {$targetPath}</>");
-        $output->writeln("\n<fg=cyan>The plugin will auto-generate a security token on first use.</>\n");
+        // Create logs directory
+        $logsDir = $targetDir . '/logs';
+        if (!file_exists($logsDir)) {
+            mkdir($logsDir, 0755, true);
+        }
+
+        $output->writeln("\n<fg=green>✓ Installation complete!</>");
+        $output->writeln("<fg=gray>  Location: {$targetDir}</>\n");
 
         return Command::SUCCESS;
+    }
+
+    private function recursiveCopy(string $src, string $dst): void
+    {
+        $dir = opendir($src);
+        @mkdir($dst, 0755, true);
+        
+        while (($file = readdir($dir)) !== false) {
+            if ($file === '.' || $file === '..' || $file === 'vendor') continue;
+            
+            if (is_dir($src . '/' . $file)) {
+                $this->recursiveCopy($src . '/' . $file, $dst . '/' . $file);
+            } else {
+                copy($src . '/' . $file, $dst . '/' . $file);
+            }
+        }
+        
+        closedir($dir);
     }
 }
