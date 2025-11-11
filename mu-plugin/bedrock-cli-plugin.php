@@ -47,16 +47,9 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     });
 }
 
-// Inicializar componentes
-use BedrockCli\Plugin\API\RestController;
-use BedrockCli\Plugin\Admin\LogViewer;
+// Inicializar plugin
+use BedrockCli\Plugin\Core\Plugin;
 
-// REST API
-if (class_exists('BedrockCli\\Plugin\\API\\RestController')) {
-    new RestController();
-}
-
-// Admin Log Viewer
-if (is_admin() && class_exists('BedrockCli\\Plugin\\Admin\\LogViewer')) {
-    new LogViewer();
+if (class_exists('BedrockCli\\Plugin\\Core\\Plugin')) {
+    new Plugin();
 }
