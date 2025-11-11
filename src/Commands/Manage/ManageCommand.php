@@ -135,7 +135,16 @@ class ManageCommand extends Command
 
         switch ($choice) {
             case '1':
-                $this->runCommand('install:mu-plugin', [], $input, $output);
+                // Auto-detect: si existe plugin antiguo, usar update en lugar de install
+                $oldPlugin = getcwd() . '/web/app/mu-plugins/bedrock-cli-api.php';
+                if (file_exists($oldPlugin)) {
+                    $output->writeln('');
+                    $output->writeln('<fg=yellow>⚠ Detectado plugin antiguo. Ejecutando actualización...</>');
+                    $output->writeln('');
+                    $this->runCommand('install:update-mu-plugin', [], $input, $output);
+                } else {
+                    $this->runCommand('install:mu-plugin', [], $input, $output);
+                }
                 $this->waitForEnter($input, $output);
                 break;
             case '2':
