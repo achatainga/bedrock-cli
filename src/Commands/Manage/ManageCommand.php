@@ -124,12 +124,13 @@ class ManageCommand extends Command
         $output->writeln('<fg=magenta;options=bold>  🔧 MU-PLUGINS MANAGER</>');
         $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
         $output->writeln('');
-        $output->writeln(' <fg=cyan>[1]</> 📥 Instalar Bedrock CLI API');
-        $output->writeln(' <fg=cyan>[2]</> ✅ Verificar instalación');
+        $output->writeln(' <fg=cyan>[1]</> 📥 Instalar Bedrock CLI Plugin');
+        $output->writeln(' <fg=cyan>[2]</> 🔄 Actualizar desde versión antigua');
+        $output->writeln(' <fg=cyan>[3]</> ✅ Verificar instalación');
         $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción [0-2]: </>', '0');
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
 
         switch ($choice) {
@@ -138,6 +139,10 @@ class ManageCommand extends Command
                 $this->waitForEnter($input, $output);
                 break;
             case '2':
+                $this->runCommand('install:update-mu-plugin', [], $input, $output);
+                $this->waitForEnter($input, $output);
+                break;
+            case '3':
                 $this->verifyMuPlugin($output);
                 $this->waitForEnter($input, $output);
                 break;
@@ -146,23 +151,32 @@ class ManageCommand extends Command
 
     private function verifyMuPlugin(OutputInterface $output): void
     {
-        $muPluginPath = getcwd() . '/web/app/mu-plugins/bedrock-cli-api.php';
+        $oldPlugin = getcwd() . '/web/app/mu-plugins/bedrock-cli-api.php';
+        $newPlugin = getcwd() . '/web/app/mu-plugins/bedrock-cli-plugin';
 
         $output->writeln('');
         $output->writeln('<fg=yellow;options=bold>🔍 Verificando instalación...</>');
         $output->writeln('');
 
-        if (!file_exists($muPluginPath)) {
-            $output->writeln('<fg=red>✗ MU-Plugin NO instalado</>');
+        // Check old plugin
+        if (file_exists($oldPlugin)) {
+            $output->writeln('<fg=yellow>⚠ Plugin antiguo detectado: bedrock-cli-api.php</>');
+            $output->writeln('<comment>  Usa opción [2] para actualizar a la nueva versión</comment>');
+            $output->writeln('');
+        }
+
+        // Check new plugin
+        if (!file_exists($newPlugin)) {
+            $output->writeln('<fg=red>✗ Bedrock CLI Plugin NO instalado</>');
             $output->writeln('<comment>Ejecuta la opción [1] para instalarlo</comment>');
             return;
         }
 
-        $output->writeln('<fg=green>✓ MU-Plugin instalado</>');
-        $output->writeln("<fg=gray>  Ubicación: {$muPluginPath}</>");
+        $output->writeln('<fg=green>✓ Bedrock CLI Plugin instalado</>');
+        $output->writeln("<fg=gray>  Ubicación: {$newPlugin}</>");
         $output->writeln('');
 
-        // Verificar token (opcional)
+        // Verificar token
         $output->writeln('<fg=cyan>Verificando token...</>');
         
         $process = new \Symfony\Component\Process\Process([
