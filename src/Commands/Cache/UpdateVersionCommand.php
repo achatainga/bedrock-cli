@@ -17,6 +17,7 @@ class UpdateVersionCommand extends Command
     protected function configure(): void
     {
         $this
+            ->setName('cache:update-version')
             ->setDescription('Update version of cached plugin/theme')
             ->addArgument('name', InputArgument::REQUIRED, 'Plugin/theme name')
             ->addArgument('old-version', InputArgument::REQUIRED, 'Current version')

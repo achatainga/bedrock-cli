@@ -18,6 +18,7 @@ class ImportCommand extends Command
     protected function configure(): void
     {
         $this
+            ->setName('cache:import')
             ->setDescription('Import a local .zip file to cache')
             ->addArgument('type', InputArgument::REQUIRED, 'Type: plugin or theme')
             ->addArgument('path', InputArgument::REQUIRED, 'Path to .zip file');
