@@ -1,0 +1,32 @@
+.bedrock-cli-logs .log-controls {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.bedrock-cli-logs .log-stats {
+    margin-left: auto;
+    color: #666;
+    font-size: 13px;
+}
+
+.bedrock-cli-logs .log-content {
+    background: #1e1e1e;
+    border: 1px solid #ccd0d4;
+    padding: 15px;
+    max-height: 600px;
+    overflow: auto;
+}
+
+.bedrock-cli-logs .log-content pre {
+    margin: 0;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
