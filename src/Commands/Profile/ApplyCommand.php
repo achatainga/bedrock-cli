@@ -4,6 +4,7 @@ namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
+use Roots\BedrockCli\Services\VcsValidator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,12 +18,14 @@ class ApplyCommand extends Command
     
     private ProfileService $profileService;
     private ComposerService $composerService;
+    private VcsValidator $vcsValidator;
 
     public function __construct()
     {
         parent::__construct();
         $this->profileService = new ProfileService();
         $this->composerService = new ComposerService();
+        $this->vcsValidator = new VcsValidator();
     }
 
     protected function configure(): void
@@ -63,6 +66,14 @@ class ApplyCommand extends Command
         }
 
         $profile = $this->profileService->loadProfile($name);
+        
+        // Validar VCS plugins si existen
+        if ($this->hasVcsPlugins($profile)) {
+            $output->writeln('');
+            $output->writeln('<info>🔍 Validando VCS plugins...</info>');
+            $profile = $this->validateVcsPlugins($profile, $output);
+            $this->profileService->saveProfile($name, $profile);
+        }
         
         $output->writeln('');
         $output->writeln('<info>Aplicando profile...</info>');
@@ -154,6 +165,43 @@ class ApplyCommand extends Command
                 }
             }
         }
+    }
+    
+    private function hasVcsPlugins(array $profile): bool
+    {
+        if (empty($profile['plugins']['premium'])) {
+            return false;
+        }
+        
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private function validateVcsPlugins(array $profile, OutputInterface $output): array
+    {
+        $updated = 0;
+        
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                $info = $this->vcsValidator->getPackageInfo($plugin['url']);
+                
+                if ($info) {
+                    $profile['require'][$info['name']] = "dev-{$info['branch']}";
+                    $updated++;
+                }
+            }
+        }
+        
+        if ($updated > 0) {
+            $output->writeln("  ✓ {$updated} VCS plugins validados");
+        }
+        
+        return $profile;
     }
 
 
