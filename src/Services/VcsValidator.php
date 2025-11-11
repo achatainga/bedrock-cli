@@ -12,14 +12,17 @@ class VcsValidator
         $this->authService = new AuthService();
     }
 
-    public function getPackageInfo(string $url): ?array
+    public function getPackageInfo(string $url, ?string $specifiedBranch = null): ?array
     {
         $parsed = $this->parseVcsUrl($url);
         if (!$parsed) {
             return null;
         }
 
-        foreach (self::BRANCHES as $branch) {
+        // Si se especifica rama, solo intentar esa
+        $branches = $specifiedBranch ? [$specifiedBranch] : self::BRANCHES;
+
+        foreach ($branches as $branch) {
             $composerUrl = $this->buildRawUrl($parsed, $branch);
             $content = $this->fetchUrl($composerUrl, $parsed['host']);
             
