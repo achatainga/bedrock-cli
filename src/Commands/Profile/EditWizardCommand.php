@@ -319,10 +319,14 @@ class EditWizardCommand extends Command
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
                 if ($plugin['source'] === 'vcs') {
-                    // VCS: validar y obtener package name real
-                    $packageInfo = $this->vcsValidator->getPackageInfo($plugin['url']);
+                    // VCS: validar y obtener package name real con la rama del plugin
+                    $branch = $plugin['version'];
+                    if (str_starts_with($branch, 'dev-')) {
+                        $branch = substr($branch, 4);
+                    }
+                    $packageInfo = $this->vcsValidator->getPackageInfo($plugin['url'], $branch);
                     if ($packageInfo) {
-                        $newRequire[$packageInfo['name']] = "dev-{$packageInfo['branch']}";
+                        $newRequire[$packageInfo['name']] = "dev-{$branch}";
                     }
                     continue;
                 }
