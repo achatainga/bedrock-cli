@@ -299,7 +299,7 @@ class EditWizardCommand extends Command
         }
     }
     
-    private function regenerateRequire(array &$profile): void
+    protected function regenerateRequire(array &$profile): void
     {
         // Limpiar require completamente
         $newRequire = [];
