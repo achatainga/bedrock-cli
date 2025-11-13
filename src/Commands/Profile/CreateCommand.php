@@ -171,6 +171,7 @@ class CreateCommand extends Command
         $themeLicenseEnv = null;
         $themeName = null;
         $isPremiumTheme = false;
+        $premiumThemes = [];
         
         if ($usePremiumTheme) {
             $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
@@ -178,6 +179,7 @@ class CreateCommand extends Command
                 $themeData = $premiumTheme;
                 $themeName = $premiumTheme['name'];
                 $isPremiumTheme = true;
+                $premiumThemes[] = $premiumTheme;
                 $question = new Question('Variable de licencia en .env (opcional, ej: MOTTA_LICENSE): ');
                 $themeLicenseEnv = $helper->ask($input, $output, $question);
             }
@@ -204,6 +206,9 @@ class CreateCommand extends Command
                 'public' => $publicPlugins,
                 'premium' => $premiumPlugins,
                 'custom' => $customPluginsList
+            ],
+            'themes' => [
+                'premium' => $premiumThemes
             ],
             'theme' => [
                 'name' => $themeName,
@@ -300,6 +305,12 @@ class CreateCommand extends Command
             }
             $vendor = $this->extractVendorFromPlugin($plugin);
             $profile['require']["{$vendor}/{$plugin['name']}"] = $plugin['version'];
+        }
+        
+        // Agregar themes premium a require
+        foreach ($premiumThemes as $theme) {
+            $vendor = $theme['source'] === 'cache' ? 'cached' : 'wpackagist-theme';
+            $profile['require']["{$vendor}/{$theme['name']}"] = $theme['version'];
         }
 
         // Guardar profile
