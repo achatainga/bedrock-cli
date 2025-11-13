@@ -130,12 +130,20 @@ trait PluginManagementTrait
         
         if ($choice === '1') {
             $this->changePluginVersion($profile, $num, $input, $output, $helper);
+            // Regenerar require inmediatamente para reflejar cambio de versión
+            if (method_exists($this, 'regenerateRequire')) {
+                $this->regenerateRequire($profile);
+            }
         } elseif ($choice === '2' && $plugin['type'] !== 'custom') {
             $this->toggleMUPlugin($profile, $num);
             $status = $isMU ? 'desmarcado' : 'marcado';
             $output->writeln("<info>✓ Plugin {$status} como MU-Plugin</info>");
         } elseif ($choice === '3') {
             $this->deletePluginByNumber($profile, $num, $output);
+            // Regenerar require después de eliminar plugin
+            if (method_exists($this, 'regenerateRequire')) {
+                $this->regenerateRequire($profile);
+            }
         }
     }
     
@@ -201,6 +209,7 @@ trait PluginManagementTrait
         $newVersion = $helper->ask($input, $output, $question);
         
         $index = 1;
+        $updated = false;
         
         foreach ($profile['plugins']['public'] as &$p) {
             if ($index === $num) {
@@ -209,19 +218,25 @@ trait PluginManagementTrait
                 } else {
                     $p = ['slug' => $p, 'version' => $newVersion];
                 }
-                $output->writeln('<info>✓ Versión actualizada</info>');
-                return;
+                $updated = true;
+                break;
             }
             $index++;
         }
         
-        foreach ($profile['plugins']['premium'] as &$p) {
-            if ($index === $num) {
-                $p['version'] = $newVersion;
-                $output->writeln('<info>✓ Versión actualizada</info>');
-                return;
+        if (!$updated) {
+            foreach ($profile['plugins']['premium'] as &$p) {
+                if ($index === $num) {
+                    $p['version'] = $newVersion;
+                    $updated = true;
+                    break;
+                }
+                $index++;
             }
-            $index++;
+        }
+        
+        if ($updated) {
+            $output->writeln('<info>✓ Versión actualizada</info>');
         }
     }
     
