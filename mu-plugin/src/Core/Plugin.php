@@ -3,20 +3,20 @@
 namespace BedrockCli\Plugin\Core;
 
 use BedrockCli\Plugin\API\RestController;
-use BedrockCli\Plugin\Admin\LogViewer;
+use BedrockCli\Plugin\Admin\AdminMenu;
 use BedrockCli\Plugin\Utils\Logger;
 
 class Plugin
 {
     private Logger $logger;
     private RestController $restController;
-    private LogViewer $logViewer;
+    private AdminMenu $adminMenu;
 
     public function __construct()
     {
         $this->logger = new Logger();
         $this->restController = new RestController($this->logger);
-        $this->logViewer = new LogViewer($this->logger);
+        $this->adminMenu = new AdminMenu();
 
         add_action('rest_api_init', [$this->restController, 'registerRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
@@ -26,7 +26,7 @@ class Plugin
 
     public function enqueueAssets(string $hook): void
     {
-        if ($hook !== 'tools_page_bedrock-cli-logs') {
+        if (!in_array($hook, ['toplevel_page_bedrock-cli', 'bedrock-cli_page_bedrock-cli-logs'])) {
             return;
         }
 

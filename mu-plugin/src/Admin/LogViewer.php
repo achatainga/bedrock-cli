@@ -11,20 +11,7 @@ class LogViewer
     public function __construct(Logger $logger)
     {
         $this->logger = $logger;
-        add_action('admin_menu', [$this, 'addMenuPage']);
         add_action('wp_ajax_bedrock_cli_get_logs', [$this, 'ajaxGetLogs']);
-    }
-
-    public function addMenuPage(): void
-    {
-        add_submenu_page(
-            'tools.php',
-            'Bedrock CLI Logs',
-            'Bedrock CLI Logs',
-            'manage_options',
-            'bedrock-cli-logs',
-            [$this, 'renderPage']
-        );
     }
 
     public function renderPage(): void
