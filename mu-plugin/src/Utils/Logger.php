@@ -14,7 +14,13 @@ class Logger
         $this->logFile = $this->logDir . '/bedrock-cli.log';
         
         if (!is_dir($this->logDir)) {
-            mkdir($this->logDir, 0755, true);
+            @mkdir($this->logDir, 0777, true);
+        }
+        
+        // Fallback a /tmp si no se puede escribir en logs/
+        if (!is_writable($this->logDir)) {
+            $this->logDir = sys_get_temp_dir();
+            $this->logFile = $this->logDir . '/bedrock-cli.log';
         }
     }
 
@@ -46,7 +52,7 @@ class Logger
         $contextStr = !empty($context) ? ' ' . json_encode($context) : '';
         $line = "[{$timestamp}] [{$level}] {$message}{$contextStr}\n";
         
-        file_put_contents($this->logFile, $line, FILE_APPEND | LOCK_EX);
+        @file_put_contents($this->logFile, $line, FILE_APPEND | LOCK_EX);
     }
 
     private function rotateIfNeeded(): void
