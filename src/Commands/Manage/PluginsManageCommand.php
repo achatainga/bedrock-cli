@@ -8,6 +8,7 @@ use Roots\BedrockCli\Services\Management\PluginManager;
 use Roots\BedrockCli\Services\Management\DependencyManager;
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\CachedPackageInstallTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -19,6 +20,7 @@ use Symfony\Component\Console\Helper\Table;
 class PluginsManageCommand extends Command
 {
     use InteractiveSearchTrait;
+    use CachedPackageInstallTrait;
 
     private ContextDetector $contextDetector;
     private ManagementService $management;
@@ -498,18 +500,11 @@ class PluginsManageCommand extends Command
                 
                 $cachePath = $cacheService->getCachePath($name, $version);
                 
-                $exitCode = $this->dependencyManager->requireWithRepository(
+                $exitCode = $this->installCachedPackage(
                     "cached/{$name}",
                     $version,
-                    [
-                        'type' => 'path',
-                        'url' => $cachePath,
-                        'options' => ['symlink' => true]
-                    ],
-                    false,
-                    function($buffer) use ($output) {
-                        $output->write($buffer);
-                    }
+                    $cachePath,
+                    $output
                 );
                 
                 if ($exitCode === 0) {

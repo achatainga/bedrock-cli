@@ -7,6 +7,7 @@ use Roots\BedrockCli\Services\Management\ManagementService;
 use Roots\BedrockCli\Services\Management\ThemeManager;
 use Roots\BedrockCli\Services\Management\DependencyManager;
 use Roots\BedrockCli\Services\WordPressApiService;
+use Roots\BedrockCli\Traits\CachedPackageInstallTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,6 +17,7 @@ use Symfony\Component\Console\Helper\Table;
 
 class ThemesManageCommand extends Command
 {
+    use CachedPackageInstallTrait;
     private ContextDetector $contextDetector;
     private ManagementService $management;
     private ThemeManager $themeManager;
@@ -517,18 +519,11 @@ class ThemesManageCommand extends Command
                 
                 $cachePath = $cacheService->getThemeCachePath($name, $version);
                 
-                $exitCode = $this->dependencyManager->requireWithRepository(
+                $exitCode = $this->installCachedPackage(
                     "cached/{$name}",
                     $version,
-                    [
-                        'type' => 'path',
-                        'url' => $cachePath,
-                        'options' => ['symlink' => true]
-                    ],
-                    false,
-                    function($buffer) use ($output) {
-                        $output->write($buffer);
-                    }
+                    $cachePath,
+                    $output
                 );
                 
                 if ($exitCode === 0) {
