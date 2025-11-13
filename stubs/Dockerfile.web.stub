@@ -65,6 +65,10 @@ RUN echo "pm.max_children = 50" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "pm.max_spare_servers = 20" >> /usr/local/etc/php-fpm.d/www.conf
 
+RUN mkdir -p /var/www/html/storage/framework/{cache,views,sessions,testing} && \
+    chown -R www-data:www-data /var/www/html/storage && \
+    chmod -R 775 /var/www/html/storage
+
 ENTRYPOINT ["docker-php-entrypoint"]
 
 CMD ["php-fpm"]
