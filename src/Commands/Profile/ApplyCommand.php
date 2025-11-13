@@ -197,16 +197,17 @@ class ApplyCommand extends Command
         
         foreach ($profile['plugins']['premium'] as $plugin) {
             if ($plugin['source'] === 'vcs') {
-                // Extraer rama del version (dev-branch)
-                $branch = null;
-                if (isset($plugin['version']) && str_starts_with($plugin['version'], 'dev-')) {
-                    $branch = substr($plugin['version'], 4); // Remover "dev-"
+                // Extraer rama del version (dev-branch o branch directa)
+                $branch = $plugin['version'];
+                if (str_starts_with($branch, 'dev-')) {
+                    $branch = substr($branch, 4); // Remover "dev-"
                 }
                 
                 $info = $this->vcsValidator->getPackageInfo($plugin['url'], $branch);
                 
                 if ($info) {
-                    $profile['require'][$info['name']] = "dev-{$info['branch']}";
+                    // Usar la rama del plugin, no la del validator
+                    $profile['require'][$info['name']] = "dev-{$branch}";
                     $updated++;
                 }
             }
