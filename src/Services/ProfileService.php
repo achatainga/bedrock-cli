@@ -28,6 +28,11 @@ class ProfileService
 
     private function getHomeDirectory(): string
     {
+        // Detectar WSL: PHP_OS_FAMILY es Linux pero existe /mnt/c/
+        if (PHP_OS_FAMILY === 'Linux' || is_dir('/proc/version')) {
+            return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
+        }
+        
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('USERPROFILE') ?: getenv('HOMEDRIVE') . getenv('HOMEPATH');
         }
