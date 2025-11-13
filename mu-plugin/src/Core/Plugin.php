@@ -1,32 +1,52 @@
 <?php
+
 namespace BedrockCli\Plugin\Core;
 
 use BedrockCli\Plugin\API\RestController;
 use BedrockCli\Plugin\Admin\LogViewer;
+use BedrockCli\Plugin\Utils\Logger;
 
 class Plugin
 {
+    private Logger $logger;
+    private RestController $restController;
+    private LogViewer $logViewer;
+
     public function __construct()
     {
-        $this->initHooks();
+        $this->logger = new Logger();
+        $this->restController = new RestController($this->logger);
+        $this->logViewer = new LogViewer($this->logger);
+
+        add_action('rest_api_init', [$this->restController, 'registerRoutes']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
+
+        $this->logger->info('Bedrock CLI Plugin initialized');
     }
 
-    private function initHooks(): void
+    public function enqueueAssets(string $hook): void
     {
-        add_action('rest_api_init', [$this, 'initRestApi']);
-        
-        if (is_admin()) {
-            add_action('admin_menu', [$this, 'initAdmin'], 5);
+        if ($hook !== 'tools_page_bedrock-cli-logs') {
+            return;
         }
-    }
 
-    public function initRestApi(): void
-    {
-        new RestController();
-    }
+        wp_enqueue_style(
+            'bedrock-cli-logs',
+            plugins_url('assets/css/admin-logs.css', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+            [],
+            '1.0.0'
+        );
 
-    public function initAdmin(): void
-    {
-        new LogViewer();
+        wp_enqueue_script(
+            'bedrock-cli-logs',
+            plugins_url('assets/js/admin-logs.js', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+            ['jquery'],
+            '1.0.0',
+            true
+        );
+
+        wp_localize_script('bedrock-cli-logs', 'bedrockCliLogs', [
+            'nonce' => wp_create_nonce('bedrock_cli_logs')
+        ]);
     }
 }

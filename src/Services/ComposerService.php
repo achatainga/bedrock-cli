@@ -20,6 +20,9 @@ class ComposerService
 
         $composerData = json_decode(file_get_contents($composerJsonPath), true);
         
+        // Determinar si usar symlink o copiar
+        $useSymlink = !($profile['docker_mode'] ?? false);
+        
         // Guardar paquetes core de Bedrock
         $corePackages = [
             'php', 'composer/installers', 'vlucas/phpdotenv', 'oscarotero/env',
@@ -69,7 +72,7 @@ class ComposerService
                     $this->cacheService->ensureComposerJson($plugin['name'], $plugin['version'], $vendor);
                     
                     $cachePath = $this->cacheService->getCachePath($plugin['name'], $plugin['version']);
-                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => true]];
+                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => $useSymlink]];
                     
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
@@ -85,7 +88,7 @@ class ComposerService
                     // NO construir package name desde URL - composer lo resuelve desde composer.json del repo
                     // El profile debe tener el package name correcto en require
                 } elseif ($plugin['source'] === 'path') {
-                    $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+                    $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => $useSymlink]];
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
                     }
@@ -105,7 +108,7 @@ class ComposerService
                     $this->cacheService->ensureThemeComposerJson($theme['name'], $theme['version'], $vendor);
                     
                     $cachePath = $this->cacheService->getThemeCachePath($theme['name'], $theme['version']);
-                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => true]];
+                    $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => $useSymlink]];
                     
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;

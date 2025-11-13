@@ -62,6 +62,10 @@ class CreateCommand extends Command
         // Descripción
         $question = new Question("📝 Descripción del profile: ");
         $description = $helper->ask($input, $output, $question) ?: 'Sin descripción';
+        
+        // Docker mode
+        $question = new ConfirmationQuestion('🐳 ¿Este profile será usado en Docker? (Y/n): ', false);
+        $dockerMode = $helper->ask($input, $output, $question);
 
         $output->writeln('');
         $output->writeln('<comment>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</comment>');
@@ -193,6 +197,7 @@ class CreateCommand extends Command
         $profile = [
             'name' => $name,
             'description' => $description,
+            'docker_mode' => $dockerMode,
             'repositories' => [],
             'require' => [],
             'plugins' => [

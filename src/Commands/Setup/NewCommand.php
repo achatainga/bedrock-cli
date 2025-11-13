@@ -394,6 +394,15 @@ class NewCommand extends Command
         try {
             $profile = $profileService->loadProfile($profileName);
             
+            // Detectar Docker y actualizar profile si no está definido
+            if (!isset($profile['docker_mode'])) {
+                $dockerMode = !$input->getOption('no-docker');
+                if ($dockerMode) {
+                    $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados.</>');                    $profile['docker_mode'] = true;
+                    $profileService->saveProfile($profileName, $profile);
+                }
+            }
+            
             $composerService->generateFromProfile($profile, $name);
             $composerService->copyProfileToProject($profile, $name);
             

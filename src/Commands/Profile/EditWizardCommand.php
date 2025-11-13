@@ -72,6 +72,8 @@ class EditWizardCommand extends Command
                 $this->managePluginsInteractive($profile, $input, $output, $helper);
             } elseif ($action === '3') {
                 $this->manageThemesInteractive($profile, $input, $output, $helper);
+            } elseif ($action === '4') {
+                $this->editDockerMode($profile, $input, $output, $helper);
             }
             
             $output->writeln('');
@@ -96,10 +98,13 @@ class EditWizardCommand extends Command
         $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         $output->writeln("<comment>Profile: {$profile['name']}</comment>");
+        $dockerStatus = ($profile['docker_mode'] ?? false) ? '<fg=green>SÍ</>' : '<fg=red>NO</>';
+        $output->writeln("<comment>Docker Mode: {$dockerStatus}</comment>");
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 📝 Descripción');
         $output->writeln('  <fg=cyan>[2]</> 📦 Plugins');
         $output->writeln('  <fg=cyan>[3]</> 🎨 Themes');
+        $output->writeln('  <fg=cyan>[4]</> 🐳 Docker Mode');
         $output->writeln('  <fg=cyan>[0]</> ⬅️  Guardar y salir');
         $output->writeln('');
     }
@@ -114,6 +119,20 @@ class EditWizardCommand extends Command
         $question = new Question('Nueva descripción [Enter para mantener]: ', $current);
         $profile['description'] = $helper->ask($input, $output, $question);
         $output->writeln('<info>✓ Descripción actualizada</info>');
+    }
+    
+    private function editDockerMode(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    {
+        $output->writeln('');
+        $current = $profile['docker_mode'] ?? false;
+        $currentText = $current ? 'SÍ' : 'NO';
+        $output->writeln("<comment>Docker Mode actual: {$currentText}</comment>");
+        $output->writeln('');
+        $output->writeln('<fg=yellow>Docker Mode controla si los assets premium se copian o usan symlinks.</>');        $output->writeln('<fg=yellow>• SÍ (Docker): Copia archivos (compatible con contenedores)</>');        $output->writeln('<fg=yellow>• NO (Nativo): Usa symlinks (más rápido en desarrollo local)</>');        $output->writeln('');
+        
+        $question = new ConfirmationQuestion('¿Habilitar Docker Mode? (Y/n): ', $current);
+        $profile['docker_mode'] = $helper->ask($input, $output, $question);
+        $output->writeln('<info>✓ Docker Mode actualizado</info>');
     }
 
     protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void

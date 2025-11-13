@@ -372,4 +372,12 @@ class ProfileService
 
         return $headers;
     }
+    
+    public function detectDockerMode(string $projectPath = null): bool
+    {
+        $path = $projectPath ?: getcwd();
+        return file_exists($path . '/docker-compose.yml') || 
+               file_exists($path . '/docker-compose.yaml') ||
+               file_exists($path . '/Dockerfile');
+    }
 }

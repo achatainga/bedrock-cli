@@ -1,119 +1,87 @@
 <?php
+
 namespace BedrockCli\Plugin\Utils;
 
 class Logger
 {
-    private static $log_file;
-    private static $debug_mode;
-    private static $max_file_size = 10485760; // 10MB
+    private string $logDir;
+    private string $logFile;
+    private int $maxSize = 10485760; // 10MB
 
-    public static function init()
+    public function __construct()
     {
-        if (self::$log_file) return;
-
-        $log_dir = dirname(dirname(dirname(__FILE__))) . '/logs';
-        self::$log_file = $log_dir . '/bedrock-cli-plugin.log';
-        self::$debug_mode = get_option('bedrock_cli_debug_mode', false);
+        $this->logDir = dirname(__DIR__, 2) . '/logs';
+        $this->logFile = $this->logDir . '/bedrock-cli.log';
+        
+        if (!is_dir($this->logDir)) {
+            mkdir($this->logDir, 0755, true);
+        }
     }
 
-    public static function log($message, $type = 'info', $context = [])
+    public function debug(string $message, array $context = []): void
     {
-        self::init();
+        $this->log('DEBUG', $message, $context);
+    }
 
-        if (!self::$debug_mode && !in_array($type, ['error', 'critical'])) {
+    public function info(string $message, array $context = []): void
+    {
+        $this->log('INFO', $message, $context);
+    }
+
+    public function warning(string $message, array $context = []): void
+    {
+        $this->log('WARNING', $message, $context);
+    }
+
+    public function error(string $message, array $context = []): void
+    {
+        $this->log('ERROR', $message, $context);
+    }
+
+    private function log(string $level, string $message, array $context = []): void
+    {
+        $this->rotateIfNeeded();
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $contextStr = !empty($context) ? ' ' . json_encode($context) : '';
+        $line = "[{$timestamp}] [{$level}] {$message}{$contextStr}\n";
+        
+        file_put_contents($this->logFile, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    private function rotateIfNeeded(): void
+    {
+        if (!file_exists($this->logFile)) {
             return;
         }
 
-        self::rotate_log_if_needed();
-
-        $timestamp = current_time('mysql');
-        $user_id = get_current_user_id();
-        $user_info = $user_id ? " [User: $user_id]" : " [User: Guest]";
-
-        $context_str = !empty($context) ? "\n" . json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : '';
-
-        $log_message = sprintf(
-            "[%s] %s%s: %s%s\n",
-            $timestamp,
-            strtoupper($type),
-            $user_info,
-            $message,
-            $context_str
-        );
-
-        error_log($log_message, 3, self::$log_file);
-    }
-
-    private static function rotate_log_if_needed()
-    {
-        if (!file_exists(self::$log_file)) return;
-
-        if (filesize(self::$log_file) > self::$max_file_size) {
-            $backup = self::$log_file . '.old';
-            if (file_exists($backup)) unlink($backup);
-            rename(self::$log_file, $backup);
+        if (filesize($this->logFile) >= $this->maxSize) {
+            $backup = $this->logFile . '.' . date('YmdHis');
+            rename($this->logFile, $backup);
+            
+            // Mantener solo últimos 5 backups
+            $backups = glob($this->logDir . '/bedrock-cli.log.*');
+            if (count($backups) > 5) {
+                usort($backups, fn($a, $b) => filemtime($a) <=> filemtime($b));
+                foreach (array_slice($backups, 0, -5) as $old) {
+                    unlink($old);
+                }
+            }
         }
     }
 
-    public static function info($message, $context = []) { self::log($message, 'info', $context); }
-    public static function error($message, $context = []) { self::log($message, 'error', $context); }
-    public static function warning($message, $context = []) { self::log($message, 'warning', $context); }
-    public static function debug($message, $context = []) { self::log($message, 'debug', $context); }
-    public static function api($message, $context = []) { self::log($message, 'api', $context); }
-    public static function critical($message, $context = []) { self::log($message, 'critical', $context); }
-
-    public static function get_logs($lines = 1000)
+    public function getLogFile(): string
     {
-        self::init();
-        if (!file_exists(self::$log_file)) return '';
+        return $this->logFile;
+    }
 
-        if ($lines <= 0) return file_get_contents(self::$log_file);
-
-        $file = new \SplFileObject(self::$log_file, 'r');
-        $file->seek(PHP_INT_MAX);
-        $total_lines = $file->key() + 1;
-
-        $offset = max(0, $total_lines - $lines);
-        $file->seek($offset);
-        $content = '';
-
-        while ($lines-- > 0 && !$file->eof()) {
-            $content .= $file->current();
-            $file->next();
+    public function getLogs(int $lines = 100): array
+    {
+        if (!file_exists($this->logFile)) {
+            return [];
         }
 
-        return $content;
-    }
-
-    public static function clear_logs()
-    {
-        self::init();
-        return file_exists(self::$log_file) ? file_put_contents(self::$log_file, '') !== false : true;
-    }
-
-    public static function get_log_stats()
-    {
-        self::init();
-        if (!file_exists(self::$log_file)) {
-            return ['size' => 0, 'lines' => 0, 'last_modified' => null];
-        }
-
-        $file = new \SplFileObject(self::$log_file, 'r');
-        $file->seek(PHP_INT_MAX);
-
-        return [
-            'size' => filesize(self::$log_file),
-            'lines' => $file->key() + 1,
-            'last_modified' => filemtime(self::$log_file)
-        ];
-    }
-
-    public static function is_debug_mode() { self::init(); return self::$debug_mode; }
-
-    public static function set_debug_mode($enabled)
-    {
-        self::init();
-        self::$debug_mode = $enabled;
-        update_option('bedrock_cli_debug_mode', $enabled);
+        $content = file($this->logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        return array_slice($content, -$lines);
     }
 }

@@ -1,110 +1,77 @@
 <?php
+
 namespace BedrockCli\Plugin\Admin;
 
 use BedrockCli\Plugin\Utils\Logger;
 
 class LogViewer
 {
-    public function __construct()
+    private Logger $logger;
+
+    public function __construct(Logger $logger)
     {
-        add_action('admin_menu', [$this, 'add_menu']);
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
-        add_action('wp_ajax_bedrock_cli_get_logs', [$this, 'ajax_get_logs']);
-        add_action('wp_ajax_bedrock_cli_clear_logs', [$this, 'ajax_clear_logs']);
-        add_action('wp_ajax_bedrock_cli_toggle_debug', [$this, 'ajax_toggle_debug']);
+        $this->logger = $logger;
+        add_action('admin_menu', [$this, 'addMenuPage']);
+        add_action('wp_ajax_bedrock_cli_get_logs', [$this, 'ajaxGetLogs']);
     }
 
-    public function add_menu()
+    public function addMenuPage(): void
     {
-        add_management_page(
+        add_submenu_page(
+            'tools.php',
             'Bedrock CLI Logs',
             'Bedrock CLI Logs',
             'manage_options',
             'bedrock-cli-logs',
-            [$this, 'render_page']
+            [$this, 'renderPage']
         );
     }
 
-    public function enqueue_assets($hook)
+    public function renderPage(): void
     {
-        if ($hook !== 'tools_page_bedrock-cli-logs') return;
-
-        wp_enqueue_style(
-            'bedrock-cli-logs',
-            plugins_url('../../assets/css/admin-logs.css', __FILE__),
-            [],
-            '1.0.0'
-        );
-
-        wp_enqueue_script(
-            'bedrock-cli-logs',
-            plugins_url('../../assets/js/admin-logs.js', __FILE__),
-            ['jquery'],
-            '1.0.0',
-            true
-        );
-
-        wp_localize_script('bedrock-cli-logs', 'bedrockCliLogs', [
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('bedrock_cli_logs')
-        ]);
-    }
-
-    public function render_page()
-    {
-        $stats = Logger::get_log_stats();
-        $debug_mode = Logger::is_debug_mode();
         ?>
-        <div class="wrap bedrock-cli-logs">
-            <h1>Bedrock CLI Plugin - Logs</h1>
+        <div class="wrap">
+            <h1>Bedrock CLI Logs</h1>
             
-            <div class="log-controls">
+            <div class="bedrock-cli-logs-controls">
                 <button id="refresh-logs" class="button">Refresh</button>
-                <button id="clear-logs" class="button">Clear Logs</button>
                 <label>
-                    <input type="checkbox" id="debug-mode" <?php checked($debug_mode); ?>>
-                    Debug Mode
+                    <input type="checkbox" id="auto-refresh"> Auto-refresh (5s)
                 </label>
-                <span class="log-stats">
-                    Size: <?php echo size_format($stats['size']); ?> | 
-                    Lines: <?php echo number_format($stats['lines']); ?>
-                </span>
+                <select id="log-level">
+                    <option value="">All Levels</option>
+                    <option value="DEBUG">Debug</option>
+                    <option value="INFO">Info</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="ERROR">Error</option>
+                </select>
             </div>
 
-            <div id="log-content" class="log-content">
-                <pre><?php echo esc_html(Logger::get_logs(500)); ?></pre>
+            <div id="logs-container" class="bedrock-cli-logs">
+                <p>Loading logs...</p>
             </div>
         </div>
         <?php
     }
 
-    public function ajax_get_logs()
+    public function ajaxGetLogs(): void
     {
         check_ajax_referer('bedrock_cli_logs', 'nonce');
-        if (!current_user_can('manage_options')) wp_die('Unauthorized');
 
-        wp_send_json_success([
-            'logs' => Logger::get_logs(500),
-            'stats' => Logger::get_log_stats()
-        ]);
-    }
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
 
-    public function ajax_clear_logs()
-    {
-        check_ajax_referer('bedrock_cli_logs', 'nonce');
-        if (!current_user_can('manage_options')) wp_die('Unauthorized');
+        $lines = isset($_POST['lines']) ? intval($_POST['lines']) : 100;
+        $level = isset($_POST['level']) ? sanitize_text_field($_POST['level']) : '';
 
-        Logger::clear_logs();
-        wp_send_json_success(['message' => 'Logs cleared']);
-    }
+        $logs = $this->logger->getLogs($lines);
 
-    public function ajax_toggle_debug()
-    {
-        check_ajax_referer('bedrock_cli_logs', 'nonce');
-        if (!current_user_can('manage_options')) wp_die('Unauthorized');
+        if ($level) {
+            $logs = array_filter($logs, fn($log) => strpos($log, "[{$level}]") !== false);
+        }
 
-        $enabled = isset($_POST['enabled']) && $_POST['enabled'] === 'true';
-        Logger::set_debug_mode($enabled);
-        wp_send_json_success(['debug_mode' => $enabled]);
+        wp_send_json_success(['logs' => $logs]);
     }
 }

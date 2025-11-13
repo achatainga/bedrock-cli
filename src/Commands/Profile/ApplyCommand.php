@@ -67,6 +67,15 @@ class ApplyCommand extends Command
 
         $profile = $this->profileService->loadProfile($name);
         
+        // Detectar Docker mode si no está definido
+        if (!isset($profile['docker_mode'])) {
+            $dockerDetected = $this->profileService->detectDockerMode($projectRoot);
+            if ($dockerDetected) {
+                $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados en lugar de symlinks.</>');                $profile['docker_mode'] = true;
+                $this->profileService->saveProfile($name, $profile);
+            }
+        }
+        
         // Validar VCS plugins si existen
         if ($this->hasVcsPlugins($profile)) {
             $output->writeln('');
