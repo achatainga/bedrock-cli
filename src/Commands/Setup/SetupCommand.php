@@ -11,7 +11,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
-use Roots\BedrockCli\Services\StateDetectorService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Services\StateService;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
@@ -58,8 +58,43 @@ class SetupCommand extends Command
         $output->writeln('<info>Detectando estado del proyecto...</info>');
         $output->writeln('');
         
-        $stateDetector = new StateDetectorService();
-        $state = $stateDetector->detectProjectState();
+        $stateService = new StateService();
+        $validationService = new ProjectValidationService();
+        
+        // Use unified validation logic
+        $projectPath = getcwd();
+        $dockerValidation = $validationService->validateDocker($projectPath);
+        $dbValidation = $validationService->validateDatabase($projectPath);
+        $wpValidation = $validationService->validateWordPress($projectPath);
+        $acornValidation = $validationService->validateAcorn($projectPath);
+        $inconsistencies = $validationService->detectInconsistencies($projectPath);
+        
+        $state = [
+            'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
+            'env_exists' => file_exists($projectPath . '/.env'),
+            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_running' => $dockerValidation->isValid,
+            'containers_running' => $dockerValidation->isValid,
+            'db_exists' => $dbValidation->isValid,
+            'db_has_tables' => $wpValidation->isValid, // WordPress tables exist means DB has tables
+            'wp_installed' => $wpValidation->isValid,
+            'acorn_installed' => file_exists($projectPath . '/composer.json') && strpos(file_get_contents($projectPath . '/composer.json'), 'roots/acorn') !== false,
+            'acorn_configured' => $acornValidation->isValid,
+            'is_local_install' => true,
+            'inconsistencies' => array_map(function($inc) {
+                return [
+                    'message' => $inc['message'],
+                    'severity' => 'warning',
+                    'files' => ['.env', 'docker-compose.yml']
+                ];
+            }, $inconsistencies),
+            'pending_tasks' => $wpValidation->isValid ? [] : [[
+                'name' => 'Instalar WordPress',
+                'command' => 'bedrock setup',
+                'severity' => 'critical'
+            ]],
+            'config' => $validationService->getProjectConfiguration($projectPath)
+        ];
         
         // Mostrar estado
         $this->displayState($output, $state);
@@ -355,9 +390,9 @@ class SetupCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Configurando usuario admin...</comment>');
             
-            // Obtener prefijo de tabla
-            $stateDetector = new StateDetectorService();
-            $prefix = $stateDetector->getTablePrefix();
+            // Get table prefix from env
+            $env = $validationService->readEnvFile($projectPath);
+            $prefix = $env['DB_PREFIX'] ?? 'wp_';
             
             // Verificar si usuario existe
             $checkUser = $wpcli->custom("user get {$config['adminUser']} --field=ID 2>/dev/null");
