@@ -80,7 +80,7 @@ class InfoCommand extends Command
         $output->writeln('');
         
         // Estado de Acorn (granular)
-        if ($state['acorn_installed']) {
+        if ($acornValidation->isPackageInstalled) {
             $output->writeln('<fg=cyan;options=bold>Estado de Acorn:</>');
             $output->writeln($this->formatStatus($acornValidation->isPackageInstalled, 'Paquete Composer'));
             $output->writeln($this->formatStatus($acornValidation->isStorageInitialized, 'Storage inicializado'));
