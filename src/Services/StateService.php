@@ -504,7 +504,6 @@ class StateService
         // Verificar .env existe
         $envFile = "{$projectPath}/.env";
         if (!file_exists($envFile)) {
-            echo "DEBUG: .env no existe\n";
             return false;
         }
 
@@ -514,17 +513,9 @@ class StateService
         
         $dbName = trim($dbMatches[1] ?? 'wordpress', "'\"\r\n");
         $dbPass = trim($passMatches[1] ?? 'root', "'\"\r\n");
-        
-        echo "DEBUG: dbName='{$dbName}', dbPass='{$dbPass}'\n";
-        
-        $command = "cd {$projectPath} && docker-compose exec -T mysql mysql -u root -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null";
-        echo "DEBUG: command={$command}\n";
 
         // Verificar DB existe y es accesible con password del .env
-        $dbCheck = shell_exec($command);
-        
-        echo "DEBUG: dbCheck='{$dbCheck}'\n";
-        echo "DEBUG: strpos result=" . (strpos($dbCheck, $dbName) !== false ? 'true' : 'false') . "\n";
+        $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
         
         return $dbCheck && strpos($dbCheck, $dbName) !== false;
     }
