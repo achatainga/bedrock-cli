@@ -249,12 +249,22 @@ class NewCommand extends Command
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
         
+        // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
+        $wpPortLine = '';
+        $wpHomeUrl = 'http://localhost';
+        if ($httpPort != 80) {
+            $wpPortLine = "\nWP_PORT={$httpPort}";
+            $wpHomeUrl = "http://localhost:\${WP_PORT}";
+        }
+        
         $vars = [
             '{{PROJECT_NAME}}' => $name,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
             '{{HTTP_PORT}}' => $httpPort,
+            '{{WP_PORT_LINE}}' => $wpPortLine,
+            '{{WP_HOME_URL}}' => $wpHomeUrl,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),

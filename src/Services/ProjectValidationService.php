@@ -109,60 +109,143 @@ class ProjectValidationService
         $env = $this->readEnvFile($projectPath);
         $dockerCompose = $this->readDockerCompose($projectPath);
 
-        // HTTP Port inconsistency detection (FIX: Only alert when port != 80)
-        if (isset($env['WP_HOME'])) {
-            $envUrl = parse_url($env['WP_HOME']);
-            $envPort = $envUrl['port'] ?? 80; // Default to 80 if not specified
+        // HTTP Port inconsistency detection
+        $dockerHttpPort = $this->getDockerHttpPort($dockerCompose);
+        
+        if ($dockerHttpPort) {
+            $hasWpPort = isset($env['WP_PORT']);
+            $envPort = $hasWpPort ? (int) $env['WP_PORT'] : 80;
             
-            if (isset($dockerCompose['services']['wordpress']['ports'])) {
-                foreach ($dockerCompose['services']['wordpress']['ports'] as $portMapping) {
-                    if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
-                        $dockerPort = (int) explode(':', $portMapping)[0];
-                        
-                        // Only report inconsistency if env port is not 80 or docker port is not 80
-                        if ($envPort !== 80 && $dockerPort !== 80 && $envPort !== $dockerPort) {
-                            $inconsistencies[] = [
-                                'type' => 'http_port',
-                                'message' => "HTTP port mismatch: .env has port {$envPort}, docker-compose.yml maps to port {$dockerPort}",
-                                'env_value' => $envPort,
-                                'docker_value' => $dockerPort
-                            ];
-                        } elseif ($envPort === 80 && $dockerPort !== 80) {
-                            $inconsistencies[] = [
-                                'type' => 'http_port',
-                                'message' => "HTTP port mismatch: .env expects default port 80, but docker-compose.yml maps to port {$dockerPort}",
-                                'env_value' => 80,
-                                'docker_value' => $dockerPort
-                            ];
-                        }
-                    }
-                }
+            // Case 1: Docker uses port != 80 but .env lacks WP_PORT
+            if ($dockerHttpPort !== 80 && !$hasWpPort) {
+                $inconsistencies[] = [
+                    'type' => 'wp_port_missing',
+                    'message' => "WP_PORT missing: Docker uses port {$dockerHttpPort} but .env lacks WP_PORT. Add: WP_PORT={$dockerHttpPort} and WP_HOME=\"http://localhost:\${WP_PORT}\"",
+                    'env_value' => 'missing',
+                    'docker_value' => $dockerHttpPort,
+                    'suggested_fix' => "WP_PORT={$dockerHttpPort}\nWP_HOME=\"http://localhost:\${WP_PORT}\""
+                ];
+            }
+            // Case 2: Both have ports but they don't match
+            elseif ($hasWpPort && $envPort !== $dockerHttpPort) {
+                $inconsistencies[] = [
+                    'type' => 'http_port_mismatch',
+                    'message' => "HTTP port mismatch: .env has WP_PORT={$envPort}, docker-compose.yml maps to port {$dockerHttpPort}",
+                    'env_value' => $envPort,
+                    'docker_value' => $dockerHttpPort
+                ];
+            }
+            // Case 3: Docker uses port 80 but .env has WP_PORT (causes issues)
+            elseif ($dockerHttpPort === 80 && $hasWpPort) {
+                $inconsistencies[] = [
+                    'type' => 'wp_port_unnecessary',
+                    'message' => "WP_PORT unnecessary: Docker uses default port 80, remove WP_PORT from .env and use WP_HOME='http://localhost'",
+                    'env_value' => $envPort,
+                    'docker_value' => 80,
+                    'suggested_fix' => "Remove WP_PORT line and set WP_HOME='http://localhost'"
+                ];
             }
         }
 
-        // Redis Port inconsistency detection (NEW)
-        if (isset($env['REDIS_PORT'])) {
+        // Redis Port inconsistency detection
+        $dockerRedisPort = $this->getDockerRedisPort($dockerCompose);
+        if ($dockerRedisPort && isset($env['REDIS_PORT'])) {
             $envRedisPort = (int) $env['REDIS_PORT'];
             
-            if (isset($dockerCompose['services']['redis']['ports'])) {
-                foreach ($dockerCompose['services']['redis']['ports'] as $portMapping) {
-                    if (is_string($portMapping) && strpos($portMapping, ':6379') !== false) {
-                        $dockerRedisPort = (int) explode(':', $portMapping)[0];
-                        
-                        if ($envRedisPort !== $dockerRedisPort) {
-                            $inconsistencies[] = [
-                                'type' => 'redis_port',
-                                'message' => "Redis port mismatch: .env has REDIS_PORT={$envRedisPort}, docker-compose.yml maps to port {$dockerRedisPort}",
-                                'env_value' => $envRedisPort,
-                                'docker_value' => $dockerRedisPort
-                            ];
-                        }
-                    }
-                }
+            if ($envRedisPort !== $dockerRedisPort) {
+                $inconsistencies[] = [
+                    'type' => 'redis_port_mismatch',
+                    'message' => "Redis port mismatch: .env has REDIS_PORT={$envRedisPort}, docker-compose.yml maps to port {$dockerRedisPort}",
+                    'env_value' => $envRedisPort,
+                    'docker_value' => $dockerRedisPort
+                ];
+            }
+        }
+
+        // MySQL Port inconsistency detection
+        $dockerMysqlPort = $this->getDockerMysqlPort($dockerCompose);
+        if ($dockerMysqlPort && $dockerMysqlPort !== 3306) {
+            // Check if .env has DB_PORT or if it should
+            $hasDbPort = isset($env['DB_PORT']);
+            
+            if (!$hasDbPort) {
+                $inconsistencies[] = [
+                    'type' => 'mysql_port_missing',
+                    'message' => "DB_PORT missing: Docker MySQL uses port {$dockerMysqlPort} but .env lacks DB_PORT. Add: DB_PORT={$dockerMysqlPort}",
+                    'env_value' => 'missing',
+                    'docker_value' => $dockerMysqlPort,
+                    'suggested_fix' => "DB_PORT={$dockerMysqlPort}"
+                ];
+            } elseif ((int) $env['DB_PORT'] !== $dockerMysqlPort) {
+                $inconsistencies[] = [
+                    'type' => 'mysql_port_mismatch',
+                    'message' => "MySQL port mismatch: .env has DB_PORT={$env['DB_PORT']}, docker-compose.yml maps to port {$dockerMysqlPort}",
+                    'env_value' => (int) $env['DB_PORT'],
+                    'docker_value' => $dockerMysqlPort
+                ];
             }
         }
 
         return $inconsistencies;
+    }
+
+    private function getDockerHttpPort(array $dockerCompose): ?int
+    {
+        // Check web service first (most common)
+        if (isset($dockerCompose['services']['web']['ports'])) {
+            foreach ($dockerCompose['services']['web']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
+                    return (int) explode(':', $portMapping)[0];
+                }
+            }
+        }
+        
+        // Check wordpress service as fallback
+        if (isset($dockerCompose['services']['wordpress']['ports'])) {
+            foreach ($dockerCompose['services']['wordpress']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
+                    return (int) explode(':', $portMapping)[0];
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private function getDockerRedisPort(array $dockerCompose): ?int
+    {
+        if (isset($dockerCompose['services']['redis']['ports'])) {
+            foreach ($dockerCompose['services']['redis']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':6379') !== false) {
+                    return (int) explode(':', $portMapping)[0];
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private function getDockerMysqlPort(array $dockerCompose): ?int
+    {
+        // Check mysql service
+        if (isset($dockerCompose['services']['mysql']['ports'])) {
+            foreach ($dockerCompose['services']['mysql']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
+                    return (int) explode(':', $portMapping)[0];
+                }
+            }
+        }
+        
+        // Check db service as fallback
+        if (isset($dockerCompose['services']['db']['ports'])) {
+            foreach ($dockerCompose['services']['db']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
+                    return (int) explode(':', $portMapping)[0];
+                }
+            }
+        }
+        
+        return null;
     }
 
     public function getProjectConfiguration(string $projectPath): array
