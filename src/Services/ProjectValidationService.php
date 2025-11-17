@@ -1,11 +1,11 @@
 <?php
 
-namespace Achatainga\BedrockCli\Services;
+namespace Roots\BedrockCli\Services;
 
-use Achatainga\BedrockCli\ValueObjects\DockerValidation;
-use Achatainga\BedrockCli\ValueObjects\DatabaseValidation;
-use Achatainga\BedrockCli\ValueObjects\WordPressValidation;
-use Achatainga\BedrockCli\ValueObjects\AcornValidation;
+use Roots\BedrockCli\ValueObjects\DockerValidation;
+use Roots\BedrockCli\ValueObjects\DatabaseValidation;
+use Roots\BedrockCli\ValueObjects\WordPressValidation;
+use Roots\BedrockCli\ValueObjects\AcornValidation;
 
 class ProjectValidationService
 {

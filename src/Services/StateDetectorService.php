@@ -2,7 +2,7 @@
 
 namespace Roots\BedrockCli\Services;
 
-use Achatainga\BedrockCli\Services\ProjectValidationService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Process\Process;
 
 class StateDetectorService

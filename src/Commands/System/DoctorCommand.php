@@ -2,7 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
-use Achatainga\BedrockCli\Services\ProjectValidationService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;

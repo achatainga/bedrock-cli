@@ -1,6 +1,6 @@
 <?php
 
-namespace Achatainga\BedrockCli\ValueObjects;
+namespace Roots\BedrockCli\ValueObjects;
 
 class AcornValidation
 {
