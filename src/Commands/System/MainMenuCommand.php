@@ -9,13 +9,15 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
+use Symfony\Component\Console\Input\InputOption;
 
 class MainMenuCommand extends Command
 {
     protected function configure(): void
     {
         $this->setName('menu')
-             ->setDescription('Abre el menú interactivo');
+             ->setDescription('Abre el menú interactivo')
+             ->addOption('guia', 'g', InputOption::VALUE_NONE, 'Modo guía simplificado para principiantes');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -35,11 +37,17 @@ class MainMenuCommand extends Command
         
         $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
         
+        // FASE 2: Verificar si está en modo guía
+        $isGuidedMode = $input->getOption('guia');
+        
         // Verificar acceso a repo premium
         $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
         $needsAuth = $this->checkPremiumRepoAccess($repoUrl);
         
         while (true) {
+            if ($isGuidedMode && $currentStep) {
+                return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth);
+            }
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
             $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ║</>');
@@ -162,5 +170,155 @@ class MainMenuCommand extends Command
         } else {
             $output->writeln(" <fg=cyan>[{$key}]</> {$label}");
         }
+    }
+
+    // ===== FASE 2: MODO GUÍA SIMPLIFICADO =====
+
+    private function showGuidedMenu(InputInterface $input, OutputInterface $output, $helper, array $currentStep, bool $needsAuth): int
+    {
+        while (true) {
+            $output->writeln('');
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            $output->writeln('');
+            
+            // Mostrar progreso
+            $this->showProgressIndicator($output, $currentStep);
+            $output->writeln('');
+            
+            // Mostrar paso actual destacado
+            $output->writeln('<fg=yellow;options=bold>📝 PASO ACTUAL: ' . $currentStep['title'] . '</>');
+            $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+            $output->writeln('');
+            
+            // Comando copy-paste destacado
+            if (isset($currentStep['command'])) {
+                $output->writeln('<fg=green;options=bold>📝 COMANDO PARA EJECUTAR:</>');
+                $output->writeln('<info>' . $currentStep['command'] . '</info>');
+                $output->writeln('');
+            }
+            
+            // Opciones simplificadas
+            $output->writeln('<fg=cyan>🎯 OPCIONES:</>');
+            
+            // Opción principal del paso actual
+            $mainOption = $this->getMainOptionForStep($currentStep);
+            if ($mainOption) {
+                $output->writeln(" <fg=green;options=bold>[{$mainOption['key']}]</> {$mainOption['label']}");
+            }
+            
+            // Opciones esenciales
+            $output->writeln(' <fg=cyan>[8]</> ℹ️  Info     - Estado del proyecto');
+            $output->writeln(' <fg=cyan>[M]</> 📝 Menú    - Ver menú completo');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Salir');
+            $output->writeln('');
+
+            $question = new Question('<fg=yellow>Opción [' . ($mainOption ? $mainOption['key'] . ', ' : '') . '8, M, 0]:</> ', '0');
+            $selectedIndex = $helper->ask($input, $output, $question);
+            
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+            
+            $selectedIndex = strtoupper($selectedIndex);
+            
+            if ($selectedIndex === '0') {
+                $output->writeln('');
+                $output->writeln('<info>Hasta luego!</info>');
+                return Command::SUCCESS;
+            }
+            
+            if ($selectedIndex === 'M') {
+                // Cambiar a menú completo
+                return $this->showFullMenu($input, $output, $helper, $needsAuth);
+            }
+            
+            // Ejecutar comando seleccionado
+            $commandMap = [
+                '1' => 'doctor',
+                '2' => 'setup', 
+                '4' => 'docker',
+                '8' => 'info',
+                'D' => 'docker',
+                'P' => 'plugins:menu',
+                'T' => 'themes:menu',
+                'A' => 'acorn',
+                'S' => 'seed'
+            ];
+
+            $commandName = $commandMap[$selectedIndex] ?? null;
+            if ($commandName) {
+                $output->writeln('');
+                $command = $this->getApplication()->find($commandName);
+                $command->run($input, $output);
+                
+                // Recargar estado después de ejecutar comando
+                $stateService = new StateService();
+                $stateService->updateStepValidations(getcwd());
+                $state = $stateService->loadState(getcwd());
+                $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+                
+                if (!$currentStep) {
+                    $output->writeln('<info>🎉 ¡Todos los pasos completados! El proyecto está listo.</info>');
+                    return Command::SUCCESS;
+                }
+            } else {
+                $output->writeln('<error>Opción inválida.</error>');
+                sleep(1);
+            }
+        }
+    }
+    
+    private function showProgressIndicator(OutputInterface $output, array $currentStep): void
+    {
+        // Obtener estado completo para calcular progreso
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
+        
+        if (!$state || !isset($state['steps'])) {
+            return;
+        }
+        
+        $totalSteps = count($state['steps']);
+        $completedSteps = 0;
+        
+        foreach ($state['steps'] as $step) {
+            if ($step['completed'] ?? false) {
+                $completedSteps++;
+            }
+        }
+        
+        $progress = $totalSteps > 0 ? ($completedSteps / $totalSteps) * 100 : 0;
+        $progressBar = str_repeat('█', (int)($progress / 10)) . str_repeat('░', 10 - (int)($progress / 10));
+        
+        $output->writeln('<fg=cyan>📈 PROGRESO:</> [' . $progressBar . '] ' . round($progress) . '% (' . $completedSteps . '/' . $totalSteps . ')');
+    }
+    
+    private function getMainOptionForStep(array $step): ?array
+    {
+        $stepOptions = [
+            1 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores'],
+            2 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
+            3 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
+            4 => ['key' => 'T', 'label' => '🎨 Themes   - Activar tema'],
+            5 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
+            6 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
+        ];
+        
+        return $stepOptions[$step['id']] ?? null;
+    }
+    
+    private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int
+    {
+        // Redirigir al menú completo original (sin --guia)
+        $output->writeln('<info>Cambiando a menú completo...</info>');
+        $output->writeln('');
+        
+        // Crear nueva instancia sin la opción --guia
+        $newInput = clone $input;
+        $newInput->setOption('guia', false);
+        
+        return $this->execute($newInput, $output);
     }
 }
