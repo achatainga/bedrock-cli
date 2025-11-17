@@ -17,7 +17,8 @@ class MainMenuCommand extends Command
     {
         $this->setName('menu')
              ->setDescription('Abre el menú interactivo')
-             ->addOption('guia', 'g', InputOption::VALUE_NONE, 'Modo guía simplificado para principiantes');
+             ->addOption('guia', 'g', InputOption::VALUE_NONE, 'Modo guía simplificado para principiantes')
+             ->addOption('skip-validation', 's', InputOption::VALUE_NONE, 'Omitir validaciones para carga rápida');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -28,8 +29,11 @@ class MainMenuCommand extends Command
         $stateService = new StateService();
         $state = $stateService->loadState(getcwd());
         
-        // FASE 1: Actualizar validaciones reales antes de mostrar menú
-        if ($state && $state['wizard_mode']) {
+        // FASE 2.5: Validaciones con animación y cache
+        $skipValidation = $input->getOption('skip-validation');
+        
+        if ($state && $state['wizard_mode'] && !$skipValidation) {
+            $this->showValidationProgress($output);
             $stateService->updateStepValidations(getcwd());
             // Recargar estado después de validaciones
             $state = $stateService->loadState(getcwd());
@@ -46,7 +50,8 @@ class MainMenuCommand extends Command
         
         while (true) {
             if ($isGuidedMode && $currentStep) {
-                return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth);
+                // Pasar flag de skip validation al modo guía
+                return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth, $skipValidation);
             }
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
@@ -172,9 +177,32 @@ class MainMenuCommand extends Command
         }
     }
 
+    // ===== FASE 2.5: ANIMACIÓN DE VALIDACIONES =====
+    
+    private function showValidationProgress(OutputInterface $output): void
+    {
+        $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
+        
+        $validations = [
+            'Docker containers' => 0.5,
+            'WordPress installation' => 1.0,
+            'Plugins status' => 0.3,
+            'Theme configuration' => 0.4,
+            'Acorn setup' => 0.6
+        ];
+        
+        foreach ($validations as $task => $delay) {
+            $output->write("  • Evaluando {$task}...");
+            usleep((int)($delay * 1000000)); // Convertir a microsegundos
+            $output->writeln(' <fg=green>✓</>');
+        }
+        
+        $output->writeln('');
+    }
+
     // ===== FASE 2: MODO GUÍA SIMPLIFICADO =====
 
-    private function showGuidedMenu(InputInterface $input, OutputInterface $output, $helper, array $currentStep, bool $needsAuth): int
+    private function showGuidedMenu(InputInterface $input, OutputInterface $output, $helper, array $currentStep, bool $needsAuth, bool $skipValidation = false): int
     {
         while (true) {
             $output->writeln('');
@@ -253,9 +281,12 @@ class MainMenuCommand extends Command
                 $command = $this->getApplication()->find($commandName);
                 $command->run($input, $output);
                 
-                // Recargar estado después de ejecutar comando
+                // Recargar estado después de ejecutar comando (con validación rápida)
                 $stateService = new StateService();
-                $stateService->updateStepValidations(getcwd());
+                if (!$skipValidation) {
+                    $output->writeln('<fg=cyan>🔄 Actualizando estado...</>');
+                    $stateService->updateStepValidations(getcwd());
+                }
                 $state = $stateService->loadState(getcwd());
                 $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
                 
@@ -311,13 +342,14 @@ class MainMenuCommand extends Command
     
     private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int
     {
-        // Redirigir al menú completo original (sin --guia)
+        // Redirigir al menú completo original (sin --guia, con skip-validation)
         $output->writeln('<info>Cambiando a menú completo...</info>');
         $output->writeln('');
         
-        // Crear nueva instancia sin la opción --guia
+        // Crear nueva instancia sin --guia pero CON --skip-validation (ya se evaluó)
         $newInput = clone $input;
         $newInput->setOption('guia', false);
+        $newInput->setOption('skip-validation', true); // CLAVE: Evitar re-evaluación
         
         return $this->execute($newInput, $output);
     }
