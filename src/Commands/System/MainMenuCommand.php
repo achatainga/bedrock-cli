@@ -261,6 +261,9 @@ class MainMenuCommand extends Command
             $this->showProgressIndicator($output, $currentStep);
             $output->writeln('');
             
+            // Mostrar inconsistencias si existen
+            $this->showInconsistencies($output);
+            
             // Mostrar paso actual destacado
             $output->writeln('<fg=yellow;options=bold>📝 PASO ACTUAL: ' . $currentStep['title'] . '</>');
             $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
@@ -282,13 +285,20 @@ class MainMenuCommand extends Command
                 $output->writeln(" <fg=green;options=bold>[{$mainOption['key']}]</> {$mainOption['label']}");
             }
             
+            // Opción de reparación si hay inconsistencias
+            $hasInconsistencies = $this->hasInconsistencies();
+            if ($hasInconsistencies) {
+                $output->writeln(' <fg=yellow;options=bold>[F]</> 🔧 Fix      - Reparar inconsistencias automáticamente');
+            }
+            
             // Opciones esenciales
             $output->writeln(' <fg=cyan>[8]</> ℹ️  Info     - Estado del proyecto');
             $output->writeln(' <fg=cyan>[M]</> 📝 Menú    - Ver menú completo');
             $output->writeln(' <fg=cyan>[0]</> ❌ Salir');
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [' . ($mainOption ? $mainOption['key'] . ', ' : '') . '8, M, 0]:</> ', '0');
+            $options = ($mainOption ? $mainOption['key'] . ', ' : '') . ($hasInconsistencies ? 'F, ' : '') . '8, M, 0';
+            $question = new Question('<fg=yellow>Opción [' . $options . ']:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -306,6 +316,12 @@ class MainMenuCommand extends Command
             if ($selectedIndex === 'M') {
                 // Cambiar a menú completo
                 return $this->showFullMenu($input, $output, $helper, $needsAuth);
+            }
+            
+            if ($selectedIndex === 'F' && $hasInconsistencies) {
+                // Reparar inconsistencias
+                $this->fixInconsistencies($output);
+                continue;
             }
             
             // Ejecutar comando seleccionado
@@ -404,5 +420,130 @@ class MainMenuCommand extends Command
         $newInput->setOption('skip-validation', true); // CLAVE: Evitar re-evaluación
         
         return $this->execute($newInput, $output);
+    }
+    
+    private function showInconsistencies(OutputInterface $output): void
+    {
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        
+        if (!empty($inconsistencies)) {
+            $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias Detectadas (' . count($inconsistencies) . '):</>');
+            $output->writeln('');
+            
+            foreach ($inconsistencies as $inconsistency) {
+                $output->writeln('  <fg=yellow>⚠</> ' . $inconsistency['message']);
+            }
+            $output->writeln('');
+        }
+    }
+    
+    private function hasInconsistencies(): bool
+    {
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        return !empty($inconsistencies);
+    }
+    
+    private function fixInconsistencies(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔧 Reparando inconsistencias...</>');
+        
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        
+        if (empty($inconsistencies)) {
+            $output->writeln('<info>✓ No hay inconsistencias que reparar</info>');
+            return;
+        }
+        
+        $envPath = getcwd() . '/.env';
+        $envContent = file_get_contents($envPath);
+        $envLines = explode("\n", $envContent);
+        $modified = false;
+        
+        foreach ($inconsistencies as $inconsistency) {
+            if (isset($inconsistency['suggested_fix'])) {
+                $output->writeln('<comment>Aplicando fix: ' . $inconsistency['type'] . '</comment>');
+                
+                switch ($inconsistency['type']) {
+                    case 'wp_port_missing':
+                        // Agregar WP_PORT y actualizar WP_HOME
+                        $wpPort = $inconsistency['docker_value'];
+                        $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_PORT', $wpPort);
+                        $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_HOME', '"http://localhost:${WP_PORT}"');
+                        $modified = true;
+                        break;
+                        
+                    case 'mysql_port_missing':
+                        // Agregar DB_PORT
+                        $dbPort = $inconsistency['docker_value'];
+                        $envLines = $this->addOrUpdateEnvLine($envLines, 'DB_PORT', $dbPort);
+                        $modified = true;
+                        break;
+                        
+                    case 'redis_port_mismatch':
+                        // Actualizar REDIS_PORT
+                        $redisPort = $inconsistency['docker_value'];
+                        $envLines = $this->addOrUpdateEnvLine($envLines, 'REDIS_PORT', $redisPort);
+                        $modified = true;
+                        break;
+                }
+                
+                $output->writeln('<info>✓ ' . $inconsistency['type'] . ' reparado</info>');
+            }
+        }
+        
+        if ($modified) {
+            file_put_contents($envPath, implode("\n", $envLines));
+            $output->writeln('');
+            $output->writeln('<info>✅ Archivo .env actualizado exitosamente</info>');
+            $output->writeln('<comment>Reinicia los contenedores Docker para aplicar los cambios:</comment>');
+            $output->writeln('<comment>  docker-compose down && docker-compose up -d</comment>');
+        } else {
+            $output->writeln('<comment>No se pudieron reparar automáticamente todas las inconsistencias</comment>');
+        }
+        
+        $output->writeln('');
+        $output->writeln('<comment>Presiona Enter para continuar...</comment>');
+        fgets(STDIN);
+    }
+    
+    private function addOrUpdateEnvLine(array $envLines, string $key, $value): array
+    {
+        $found = false;
+        
+        // Buscar línea existente
+        foreach ($envLines as $index => $line) {
+            if (strpos($line, $key . '=') === 0) {
+                $envLines[$index] = $key . '=' . $value;
+                $found = true;
+                break;
+            }
+        }
+        
+        // Si no existe, agregar después de WP_ENV o al final de la sección WP
+        if (!$found) {
+            $insertIndex = count($envLines);
+            
+            // Buscar mejor posición para insertar
+            foreach ($envLines as $index => $line) {
+                if ($key === 'WP_PORT' && strpos($line, 'WP_ENV=') === 0) {
+                    $insertIndex = $index + 1;
+                    break;
+                } elseif ($key === 'DB_PORT' && strpos($line, 'DB_HOST=') === 0) {
+                    $insertIndex = $index + 1;
+                    break;
+                } elseif ($key === 'REDIS_PORT' && strpos($line, 'REDIS_HOST=') === 0) {
+                    $insertIndex = $index + 1;
+                    break;
+                }
+            }
+            
+            array_splice($envLines, $insertIndex, 0, $key . '=' . $value);
+        }
+        
+        return $envLines;
     }
 }

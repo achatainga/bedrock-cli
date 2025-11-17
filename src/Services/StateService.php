@@ -457,6 +457,14 @@ class StateService
     }
 
     /**
+     * Detecta inconsistencias en la configuración del proyecto
+     */
+    public function detectInconsistencies(string $projectPath): array
+    {
+        return $this->validationService->detectInconsistencies($projectPath);
+    }
+
+    /**
      * Actualiza el estado de los pasos basado en validaciones reales
      */
     public function updateStepValidations(string $projectPath): void
