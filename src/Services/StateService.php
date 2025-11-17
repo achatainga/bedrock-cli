@@ -25,6 +25,7 @@ class StateService
                 '{{PROJECT_NAME}}' => basename($projectPath),
                 '{{CREATED_AT}}' => date('Y-m-d H:i:s'),
                 '{{HTTP_PORT}}' => $config['http_port'] ?? '80',
+                '{{DB_NAME}}' => $config['db_name'] ?? basename($projectPath),
                 '{{HAS_PLUGINS}}' => $config['has_plugins'] ? 'true' : 'false',
                 '{{HAS_THEME}}' => $config['has_theme'] ? 'true' : 'false',
                 '{{HAS_ACORN}}' => $config['has_acorn'] ? 'true' : 'false',
@@ -60,6 +61,7 @@ class StateService
         if (!file_exists($file) && $this->isBedrockProject($projectPath)) {
             $this->generateInitialState($projectPath, [
                 'http_port' => $this->detectHttpPort($projectPath),
+                'db_name' => $this->detectDbName($projectPath),
                 'has_acorn' => $this->hasAcorn($projectPath),
                 'has_plugins' => true,
                 'has_theme' => true
@@ -203,11 +205,38 @@ class StateService
         $envFile = "{$path}/.env";
         if (file_exists($envFile)) {
             $content = file_get_contents($envFile);
+            // Buscar WP_HOME con puerto
             if (preg_match('/WP_HOME=.*:(\d+)/', $content, $matches)) {
                 return $matches[1];
             }
+            // Buscar HTTP_PORT directamente
+            if (preg_match('/HTTP_PORT=(\d+)/', $content, $matches)) {
+                return $matches[1];
+            }
         }
+        
+        // Verificar docker-compose.yml
+        $dockerFile = "{$path}/docker-compose.yml";
+        if (file_exists($dockerFile)) {
+            $content = file_get_contents($dockerFile);
+            if (preg_match('/(\d+):80/', $content, $matches)) {
+                return $matches[1];
+            }
+        }
+        
         return '80';
+    }
+    
+    private function detectDbName(string $path): string
+    {
+        $envFile = "{$path}/.env";
+        if (file_exists($envFile)) {
+            $content = file_get_contents($envFile);
+            if (preg_match('/DB_NAME=(.+)/', $content, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+        return basename($path);
     }
 
     private function hasAcorn(string $path): bool
