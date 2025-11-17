@@ -489,16 +489,19 @@ class StateService
     }
 
     /**
-     * Verifica Docker + Base de datos
+     * Verifica Docker + Base de datos (mantener para compatibilidad)
      */
     public function validateDockerAndDatabase(string $projectPath): bool
     {
-        // Verificar Docker corriendo
-        if (!$this->validateDockerRunning($projectPath)) {
-            return false;
-        }
+        return $this->validateDockerRunning($projectPath) && $this->validateDatabaseAccess($projectPath);
+    }
 
-        // Verificar base de datos existe y es accesible
+    /**
+     * Verifica solo acceso a base de datos
+     */
+    public function validateDatabaseAccess(string $projectPath): bool
+    {
+        // Verificar .env existe
         $envFile = "{$projectPath}/.env";
         if (!file_exists($envFile)) {
             return false;
@@ -508,8 +511,7 @@ class StateService
         preg_match('/DB_NAME=(.+)/', $envContent, $dbMatches);
         $dbName = trim($dbMatches[1] ?? 'wordpress');
 
-        // Verificar DB existe
-        $projectName = basename($projectPath);
+        // Verificar DB existe y es accesible
         $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -proot -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
         
         return $dbCheck && strpos($dbCheck, $dbName) !== false;
@@ -540,7 +542,15 @@ class StateService
                     $step['completed'] = $this->validateVcsAccess($projectPath);
                     break;
                     
-                case 'docker_db':
+                case 'docker':
+                    $step['completed'] = $this->validateDockerRunning($projectPath);
+                    break;
+                    
+                case 'database':
+                    $step['completed'] = $this->validateDatabaseAccess($projectPath);
+                    break;
+                    
+                case 'docker_db': // Mantener compatibilidad
                     $step['completed'] = $this->validateDockerAndDatabase($projectPath);
                     break;
                     

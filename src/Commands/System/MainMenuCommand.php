@@ -195,12 +195,12 @@ class MainMenuCommand extends Command
         $validations = [
             'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
             'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
-            'Docker + Database' => ['delay' => 0.6, 'method' => 'validateDockerAndDatabase'],
+            'Docker containers' => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
+            'Database connection' => ['delay' => 0.4, 'method' => 'validateDatabaseAccess'],
             'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
             'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
             'Plugins status' => ['delay' => 0.2, 'method' => 'validatePluginsActive'],
-            'Acorn setup' => ['delay' => 0.3, 'method' => 'validateAcornConfigured'],
-            'External services' => ['delay' => 0.4, 'method' => 'validateExternalServices']
+            'Acorn setup' => ['delay' => 0.3, 'method' => 'validateAcornConfigured']
         ];
         
         foreach ($validations as $task => $config) {
@@ -216,8 +216,11 @@ class MainMenuCommand extends Command
                 case 'validateVcsAccess':
                     $result = $stateService->validateVcsAccess($projectPath);
                     break;
-                case 'validateDockerAndDatabase':
-                    $result = $stateService->validateDockerAndDatabase($projectPath);
+                case 'validateDockerRunning':
+                    $result = $stateService->validateDockerRunning($projectPath);
+                    break;
+                case 'validateDatabaseAccess':
+                    $result = $stateService->validateDatabaseAccess($projectPath);
                     break;
                 case 'validateWordPressInstalled':
                     $result = $stateService->validateWordPressInstalled($projectPath);
@@ -230,10 +233,6 @@ class MainMenuCommand extends Command
                     break;
                 case 'validateAcornConfigured':
                     $result = $stateService->validateAcornConfigured($projectPath);
-                    break;
-                case 'validateExternalServices':
-                    $services = $stateService->validateExternalServices();
-                    $result = $services['premium_repo'] || $services['github'] || $services['gitlab'];
                     break;
             }
             
