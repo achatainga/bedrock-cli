@@ -86,12 +86,13 @@ use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
+use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
 {
     public function __construct()
     {
-        parent::__construct('bedrock', '2.0.0');
+        parent::__construct('bedrock', $this->getVersion());
 
         $this->addCommands([
             new AcornCommand(),
@@ -183,5 +184,37 @@ class Application extends BaseApplication
     public function getHelp(): string
     {
         return parent::getHelp() . "\n\n<comment>Abrir menu interactivo</comment>\n\n  <info>menu</info>           Abre el menú interactivo";
+    }
+
+    public function getVersion(): string
+    {
+        // Estrategia híbrida: Git tag > Composer > Git commits > Fallback
+        
+        // 1. Intentar git tag (releases oficiales)
+        $process = new Process(['git', 'describe', '--tags', '--exact-match', 'HEAD']);
+        $process->setWorkingDirectory(__DIR__ . '/..');
+        if ($process->run() === 0) {
+            return trim($process->getOutput());
+        }
+        
+        // 2. Composer.json version
+        $composerPath = __DIR__ . '/../composer.json';
+        if (file_exists($composerPath)) {
+            $composer = json_decode(file_get_contents($composerPath), true);
+            if (isset($composer['version'])) {
+                return $composer['version'];
+            }
+        }
+        
+        // 3. Git commits count (desarrollo)
+        $process = new Process(['git', 'rev-list', '--count', 'HEAD']);
+        $process->setWorkingDirectory(__DIR__ . '/..');
+        if ($process->run() === 0) {
+            $commits = trim($process->getOutput());
+            return "2.{$commits}.0-dev";
+        }
+        
+        // 4. Fallback
+        return '2.0.0-unknown';
     }
 }
