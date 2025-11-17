@@ -2,11 +2,12 @@
 
 namespace Roots\BedrockCli\Commands\AI;
 
+use Roots\BedrockCli\Services\AIContextBuilder;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\Question;
-use Roots\BedrockCli\Services\AIService;
+use Symfony\Component\Process\Process;
 
 class AICommand extends Command
 {
@@ -14,77 +15,50 @@ class AICommand extends Command
     {
         $this
             ->setName('ai')
-            ->setDescription('Menú principal de IA Copilot');
+            ->setDescription('Interactúa con gemini-cli usando el contexto del proyecto.')
+            ->addArgument('prompt', InputArgument::IS_ARRAY, 'El prompt para enviar a la IA.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $helper = $this->getHelper('question');
-        $aiService = new AIService();
+        $promptParts = $input->getArgument('prompt');
+        if (empty($promptParts)) {
+            $output->writeln('<error>Debes proporcionar un prompt. Ejemplo: bedrock ai "analiza este código"</error>');
+            return Command::FAILURE;
+        }
+        $prompt = implode(' ', $promptParts);
 
-        while (true) {
+        $output->writeln('<info>🤖 Inicializando Bedrock AI Copilot (wrapper para gemini-cli)...</info>');
+
+        $contextBuilder = new AIContextBuilder();
+        $context = $contextBuilder->buildContext();
+        $contextFile = tempnam(sys_get_temp_dir(), 'GEMINI_CONTEXT') . '.md';
+        $contextString = "## Contexto del Proyecto Bedrock\n\n```json\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n```";
+        file_put_contents($contextFile, $contextString);
+
+        $projectName = basename(getcwd());
+        $containerName = "{$projectName}_web";
+        
+        $command = [
+            'docker', 'exec', '-i', $containerName,
+            'gemini', '--context', $contextFile, $prompt,
+        ];
+        
+        $output->writeln('<comment>  -> Ejecutando gemini-cli en Docker...</comment>');
+
+        $process = new Process($command);
+        $process->setTimeout(3600);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+
+        unlink($contextFile);
+
+        if (!$process->isSuccessful()) {
             $output->writeln('');
-            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    🤖 BEDROCK AI COPILOT          </> <fg=cyan;options=bold>║</>');
-            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
-            $output->writeln('');
-
-            if (!$aiService->isConfigured()) {
-                $output->writeln('<fg=yellow>⚠️  IA no configurada</>');
-                $output->writeln('');
-            }
-
-            $options = [
-                '1' => '💬 Chat - Conversación interactiva',
-                '2' => '❓ Ask - Pregunta rápida',
-                '3' => '🔍 Diagnose - Diagnosticar proyecto',
-                '4' => '💡 Suggest - Sugerencias contextuales',
-                '5' => '⚙️  Config - Configurar API keys',
-                '6' => '🎯 Model - Seleccionar modelo',
-                '0' => '❌ Salir'
-            ];
-
-            foreach ($options as $key => $label) {
-                $output->writeln("  <fg=cyan>[{$key}]</> {$label}");
-            }
-
-            $output->writeln('');
-
-            $question = new Question('Selecciona una opción: ');
-            $choice = $helper->ask($input, $output, $question);
-
-            $output->writeln('');
-
-            switch ($choice) {
-                case '1':
-                    $this->getApplication()->find('ai:chat')->run($input, $output);
-                    break;
-                case '2':
-                    $questionText = new Question('Pregunta: ');
-                    $userQuestion = $helper->ask($input, $output, $questionText);
-                    if ($userQuestion) {
-                        $newInput = clone $input;
-                        $newInput->setArgument('question', $userQuestion);
-                        $this->getApplication()->find('ai:ask')->run($newInput, $output);
-                    }
-                    break;
-                case '3':
-                    $this->getApplication()->find('ai:diagnose')->run($input, $output);
-                    break;
-                case '4':
-                    $this->getApplication()->find('ai:suggest')->run($input, $output);
-                    break;
-                case '5':
-                    $this->getApplication()->find('ai:config')->run($input, $output);
-                    break;
-                case '6':
-                    $this->getApplication()->find('ai:model')->run($input, $output);
-                    break;
-                case '0':
-                    return Command::SUCCESS;
-                default:
-                    $output->writeln('<error>Opción inválida</error>');
-            }
+            $output->writeln('<error>Error ejecutando gemini-cli.</error>');
+            $output->writeln('Asegúrate de que `gemini-cli` esté instalado en tu contenedor `web`.');
+            return Command::FAILURE;
         }
 
         return Command::SUCCESS;
