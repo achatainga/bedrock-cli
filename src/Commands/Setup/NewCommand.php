@@ -377,15 +377,43 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Instalando Bedrock CLI MU-Plugin...</info>');
 
-        $stubsDir = $this->getStubsDir();
-        $source = "{$stubsDir}/mu-plugins/bedrock-cli-api.php";
-        $destination = "{$name}/web/app/mu-plugins/bedrock-cli-api.php";
-
-        if (file_exists($source)) {
-            copy($source, $destination);
-            $output->writeln('<info>✓ MU-Plugin instalado (REST API habilitada)</info>');
+        // Usar el MU plugin actualizado en lugar del stub obsoleto
+        $reflection = new \ReflectionClass(self::class);
+        $classFile = $reflection->getFileName();
+        $muPluginDir = dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'mu-plugin';
+        
+        $destination = "{$name}/web/app/mu-plugins/bedrock-cli-plugin";
+        
+        if (is_dir($muPluginDir)) {
+            // Copiar todo el directorio del MU plugin actualizado
+            $this->recursiveCopy($muPluginDir, $destination);
+            $output->writeln('<info>✓ MU-Plugin actualizado instalado</info>');
         } else {
-            $output->writeln('<comment>⚠ MU-Plugin stub no encontrado, omitiendo...</comment>');
+            $output->writeln('<comment>⚠ MU-Plugin no encontrado, omitiendo...</comment>');
+        }
+    }
+    
+    private function recursiveCopy(string $source, string $destination): void
+    {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+        
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($iterator as $item) {
+            $target = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+            
+            if ($item->isDir()) {
+                if (!is_dir($target)) {
+                    mkdir($target, 0755, true);
+                }
+            } else {
+                copy($item, $target);
+            }
         }
     }
 
