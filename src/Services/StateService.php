@@ -509,10 +509,13 @@ class StateService
 
         $envContent = file_get_contents($envFile);
         preg_match('/DB_NAME=(.+)/', $envContent, $dbMatches);
+        preg_match('/DB_PASSWORD=(.+)/', $envContent, $passMatches);
+        
         $dbName = trim($dbMatches[1] ?? 'wordpress');
+        $dbPass = trim($passMatches[1] ?? 'root');
 
-        // Verificar DB existe y es accesible
-        $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -proot -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
+        // Verificar DB existe y es accesible con password del .env
+        $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
         
         return $dbCheck && strpos($dbCheck, $dbName) !== false;
     }
