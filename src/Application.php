@@ -188,16 +188,41 @@ class Application extends BaseApplication
 
     public function getVersion(): string
     {
-        // Estrategia híbrida: Git tag > Composer > Git commits > Fallback
+        // Estrategia híbrida: Composer InstalledVersions > Git tag > Git commits > Fallback
         
-        // 1. Intentar git tag (releases oficiales)
+        // 1. Composer InstalledVersions (instalación global)
+        if (class_exists('\Composer\InstalledVersions')) {
+            try {
+                $version = \Composer\InstalledVersions::getVersion('achatainga/bedrock-cli');
+                if ($version && $version !== 'dev-feature/unified-management-system') {
+                    return $version;
+                }
+                // Si es dev branch, obtener referencia
+                $reference = \Composer\InstalledVersions::getReference('achatainga/bedrock-cli');
+                if ($reference) {
+                    return 'dev-' . substr($reference, 0, 7);
+                }
+            } catch (\Exception $e) {
+                // Continuar con otros métodos
+            }
+        }
+        
+        // 2. Intentar git tag (desarrollo local)
         $process = new Process(['git', 'describe', '--tags', '--exact-match', 'HEAD']);
         $process->setWorkingDirectory(__DIR__ . '/..');
         if ($process->run() === 0) {
             return trim($process->getOutput());
         }
         
-        // 2. Composer.json version
+        // 3. Git commits count (desarrollo local)
+        $process = new Process(['git', 'rev-list', '--count', 'HEAD']);
+        $process->setWorkingDirectory(__DIR__ . '/..');
+        if ($process->run() === 0) {
+            $commits = trim($process->getOutput());
+            return "2.{$commits}.0-dev";
+        }
+        
+        // 4. Composer.json version
         $composerPath = __DIR__ . '/../composer.json';
         if (file_exists($composerPath)) {
             $composer = json_decode(file_get_contents($composerPath), true);
@@ -206,15 +231,7 @@ class Application extends BaseApplication
             }
         }
         
-        // 3. Git commits count (desarrollo)
-        $process = new Process(['git', 'rev-list', '--count', 'HEAD']);
-        $process->setWorkingDirectory(__DIR__ . '/..');
-        if ($process->run() === 0) {
-            $commits = trim($process->getOutput());
-            return "2.{$commits}.0-dev";
-        }
-        
-        // 4. Fallback
+        // 5. Fallback
         return '2.0.0-unknown';
     }
 }
