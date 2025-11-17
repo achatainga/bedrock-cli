@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Docker;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -16,6 +17,7 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class DockerCommand extends Command
 {
     use ProjectSelectorTrait;
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this
@@ -305,21 +307,7 @@ class DockerCommand extends Command
         return false;
     }
 
-    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
+
 
     private function markStepCompleted(int $stepId): void
     {
