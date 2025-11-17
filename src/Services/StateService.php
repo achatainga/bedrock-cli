@@ -431,7 +431,7 @@ class StateService
      */
     public function validateProfileExists(string $projectPath): bool
     {
-        $profileFile = "{$projectPath}/bedrock_profile.json";
+        $profileFile = "{$projectPath}/.bedrock/profile.json";
         return file_exists($profileFile);
     }
 
@@ -440,7 +440,7 @@ class StateService
      */
     public function validateVcsAccess(string $projectPath): bool
     {
-        $profileFile = "{$projectPath}/bedrock_profile.json";
+        $profileFile = "{$projectPath}/.bedrock/profile.json";
         if (!file_exists($profileFile)) {
             return true; // Sin profile, no necesita VCS
         }
@@ -468,9 +468,24 @@ class StateService
             return true; // Solo repos públicos
         }
 
-        // Verificar acceso a servicios externos
-        $externalServices = $this->validateExternalServices();
-        return $externalServices['github'] || $externalServices['gitlab'] || $externalServices['premium_repo'];
+        // Si hay repos privados, verificar que auth.json existe y tiene credenciales
+        $authFile = "{$projectPath}/auth.json";
+        if (!file_exists($authFile)) {
+            return false;
+        }
+
+        $auth = json_decode(file_get_contents($authFile), true);
+        $hasAuth = false;
+
+        // Verificar credenciales para repos privados conocidos
+        if (isset($auth['gitlab-token']['gitlab.com']) || 
+            isset($auth['github-oauth']['github.com']) ||
+            isset($auth['http-basic']['gitlab.com']) ||
+            isset($auth['bearer']['gitlab.com'])) {
+            $hasAuth = true;
+        }
+
+        return $hasAuth;
     }
 
     /**
