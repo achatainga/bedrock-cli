@@ -219,4 +219,181 @@ class StateService
         }
         return false;
     }
+
+    // ===== FASE 1: VALIDACIONES REALES =====
+
+    /**
+     * Verifica si Docker está corriendo y los contenedores del proyecto están activos
+     */
+    public function validateDockerRunning(string $projectPath): bool
+    {
+        // Verificar que Docker esté disponible
+        $dockerCheck = shell_exec('docker --version 2>/dev/null');
+        if (!$dockerCheck) {
+            return false;
+        }
+
+        // Verificar contenedores del proyecto específico
+        $projectName = basename($projectPath);
+        $containers = shell_exec("docker ps --filter \"name={$projectName}\" --format \"{{.Names}}\" 2>/dev/null");
+        
+        if (!$containers) {
+            return false;
+        }
+
+        // Verificar que al menos web y db estén corriendo
+        $containerList = explode("\n", trim($containers));
+        $hasWeb = false;
+        $hasDb = false;
+
+        foreach ($containerList as $container) {
+            if (strpos($container, 'web') !== false) $hasWeb = true;
+            if (strpos($container, 'mysql') !== false || strpos($container, 'db') !== false) $hasDb = true;
+        }
+
+        return $hasWeb && $hasDb;
+    }
+
+    /**
+     * Verifica si WordPress está instalado verificando la base de datos
+     */
+    public function validateWordPressInstalled(string $projectPath): bool
+    {
+        // Verificar que wp-config.php existe
+        $wpConfigPath = "{$projectPath}/web/wp-config.php";
+        if (!file_exists($wpConfigPath)) {
+            return false;
+        }
+
+        // Intentar verificar via WP-CLI si está disponible
+        $projectName = basename($projectPath);
+        $wpCheck = shell_exec("cd {$projectPath} && docker-compose exec -T web wp core is-installed 2>/dev/null");
+        
+        return $wpCheck !== null && trim($wpCheck) === '';
+    }
+
+    /**
+     * Verifica si el tema especificado está activo
+     */
+    public function validateThemeActive(string $projectPath, string $themeName): bool
+    {
+        $projectName = basename($projectPath);
+        $activeTheme = shell_exec("cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null");
+        
+        return $activeTheme && strpos($activeTheme, 'Active') !== false;
+    }
+
+    /**
+     * Verifica si los plugins están activados
+     */
+    public function validatePluginsActive(string $projectPath): bool
+    {
+        $projectName = basename($projectPath);
+        $plugins = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null");
+        
+        return $plugins && (int)trim($plugins) > 0;
+    }
+
+    /**
+     * Verifica si Acorn está configurado correctamente
+     */
+    public function validateAcornConfigured(string $projectPath): bool
+    {
+        // Verificar que Acorn esté instalado
+        if (!$this->hasAcorn($projectPath)) {
+            return false;
+        }
+
+        // Verificar directorios de storage
+        $storageDirs = [
+            "{$projectPath}/storage/framework/cache",
+            "{$projectPath}/storage/framework/views",
+            "{$projectPath}/storage/logs"
+        ];
+
+        foreach ($storageDirs as $dir) {
+            if (!is_dir($dir)) {
+                return false;
+            }
+        }
+
+        // Verificar que el plugin esté activo
+        $projectName = basename($projectPath);
+        $acornStatus = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin status acorn 2>/dev/null");
+        
+        return $acornStatus && strpos($acornStatus, 'Active') !== false;
+    }
+
+    /**
+     * Actualiza el estado de los pasos basado en validaciones reales
+     */
+    public function updateStepValidations(string $projectPath): void
+    {
+        $state = $this->loadState($projectPath);
+        if (!$state || !isset($state['steps'])) {
+            return;
+        }
+
+        $updated = false;
+
+        foreach ($state['steps'] as &$step) {
+            $wasCompleted = $step['completed'] ?? false;
+            
+            switch ($step['id']) {
+                case 1: // Docker
+                    $step['completed'] = $this->validateDockerRunning($projectPath);
+                    break;
+                    
+                case 2: // WordPress
+                    $step['completed'] = $this->validateWordPressInstalled($projectPath);
+                    break;
+                    
+                case 3: // Plugins
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validatePluginsActive($projectPath);
+                    }
+                    break;
+                    
+                case 4: // Theme
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        // Extraer nombre del tema del comando
+                        if (preg_match('/wp theme activate (\w+)/', $step['command'] ?? '', $matches)) {
+                            $step['completed'] = $this->validateThemeActive($projectPath, $matches[1]);
+                        }
+                    }
+                    break;
+                    
+                case 5: // Acorn
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validateAcornConfigured($projectPath);
+                    }
+                    break;
+            }
+            
+            if ($step['completed'] !== $wasCompleted) {
+                $updated = true;
+            }
+        }
+
+        // Actualizar current_step al primer paso no completado
+        if ($updated) {
+            foreach ($state['steps'] as $step) {
+                if (!$step['completed'] && !$step['skippable']) {
+                    $state['current_step'] = $step['id'];
+                    break;
+                }
+            }
+
+            // Si todos los pasos obligatorios están completados, desactivar wizard
+            if ($this->allCompleted($state['steps'])) {
+                $state['wizard_mode'] = false;
+            }
+
+            // Guardar estado actualizado
+            file_put_contents(
+                "{$projectPath}/bedrock_state.json",
+                json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            );
+        }
+    }
 }

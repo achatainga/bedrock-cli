@@ -25,6 +25,14 @@ class MainMenuCommand extends Command
         // Cargar wizard state si existe
         $stateService = new StateService();
         $state = $stateService->loadState(getcwd());
+        
+        // FASE 1: Actualizar validaciones reales antes de mostrar menú
+        if ($state && $state['wizard_mode']) {
+            $stateService->updateStepValidations(getcwd());
+            // Recargar estado después de validaciones
+            $state = $stateService->loadState(getcwd());
+        }
+        
         $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
         
         // Verificar acceso a repo premium
