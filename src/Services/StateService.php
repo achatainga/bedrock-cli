@@ -511,8 +511,8 @@ class StateService
         preg_match('/DB_NAME=(.+)/', $envContent, $dbMatches);
         preg_match('/DB_PASSWORD=(.+)/', $envContent, $passMatches);
         
-        $dbName = trim($dbMatches[1] ?? 'wordpress');
-        $dbPass = trim($passMatches[1] ?? 'root');
+        $dbName = trim($dbMatches[1] ?? 'wordpress', "'\"\r\n");
+        $dbPass = trim($passMatches[1] ?? 'root', "'\"\r\n");
 
         // Verificar DB existe y es accesible con password del .env
         $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
