@@ -394,12 +394,21 @@ class MainMenuCommand extends Command
     
     private function getMainOptionForStep(array $step): ?array
     {
+        // Dynamic step options based on actual validation state
+        $stateService = new StateService();
+        $projectPath = getcwd();
+        
+        // Check actual WordPress installation status
+        $wordpressInstalled = $stateService->validateWordPressInstalled($projectPath);
+        
         $stepOptions = [
             1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
             2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
             3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
             4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
-            5 => ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'],
+            5 => $wordpressInstalled ? 
+                ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'] :
+                ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress (CRÍTICO)'],
             6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
             7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
             8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
@@ -464,34 +473,38 @@ class MainMenuCommand extends Command
         $modified = false;
         
         foreach ($inconsistencies as $inconsistency) {
-            if (isset($inconsistency['suggested_fix'])) {
-                $output->writeln('<comment>Aplicando fix: ' . $inconsistency['type'] . '</comment>');
-                
-                switch ($inconsistency['type']) {
-                    case 'wp_port_missing':
-                        // Agregar WP_PORT y actualizar WP_HOME
-                        $wpPort = $inconsistency['docker_value'];
-                        $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_PORT', $wpPort);
-                        $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_HOME', '"http://localhost:${WP_PORT}"');
-                        $modified = true;
-                        break;
-                        
-                    case 'mysql_port_missing':
-                        // Agregar DB_PORT
-                        $dbPort = $inconsistency['docker_value'];
-                        $envLines = $this->addOrUpdateEnvLine($envLines, 'DB_PORT', $dbPort);
-                        $modified = true;
-                        break;
-                        
-                    case 'redis_port_mismatch':
-                        // Actualizar REDIS_PORT
-                        $redisPort = $inconsistency['docker_value'];
-                        $envLines = $this->addOrUpdateEnvLine($envLines, 'REDIS_PORT', $redisPort);
-                        $modified = true;
-                        break;
-                }
-                
-                $output->writeln('<info>✓ ' . $inconsistency['type'] . ' reparado</info>');
+            $output->writeln('<comment>Procesando: ' . $inconsistency['type'] . '</comment>');
+            
+            switch ($inconsistency['type']) {
+                case 'wp_port_missing':
+                    // Agregar WP_PORT y actualizar WP_HOME
+                    $wpPort = $inconsistency['docker_value'];
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_PORT', $wpPort);
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_HOME', '"http://localhost:${WP_PORT}"');
+                    $modified = true;
+                    $output->writeln('<info>✓ WP_PORT agregado: ' . $wpPort . '</info>');
+                    break;
+                    
+                case 'mysql_port_missing':
+                    // Agregar DB_PORT
+                    $dbPort = $inconsistency['docker_value'];
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'DB_PORT', $dbPort);
+                    $modified = true;
+                    $output->writeln('<info>✓ DB_PORT agregado: ' . $dbPort . '</info>');
+                    break;
+                    
+                case 'redis_port_mismatch':
+                    // Actualizar REDIS_PORT
+                    $redisPort = $inconsistency['docker_value'];
+                    $output->writeln('<comment>Actualizando REDIS_PORT de ' . $inconsistency['env_value'] . ' a ' . $redisPort . '</comment>');
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'REDIS_PORT', $redisPort);
+                    $modified = true;
+                    $output->writeln('<info>✓ REDIS_PORT actualizado: ' . $redisPort . '</info>');
+                    break;
+                    
+                default:
+                    $output->writeln('<comment>Tipo no manejado: ' . $inconsistency['type'] . '</comment>');
+                    break;
             }
         }
         
@@ -514,28 +527,30 @@ class MainMenuCommand extends Command
     {
         $found = false;
         
-        // Buscar línea existente
+        // Buscar línea existente (más robusto)
         foreach ($envLines as $index => $line) {
-            if (strpos($line, $key . '=') === 0) {
+            $trimmedLine = trim($line);
+            if (strpos($trimmedLine, $key . '=') === 0) {
                 $envLines[$index] = $key . '=' . $value;
                 $found = true;
                 break;
             }
         }
         
-        // Si no existe, agregar después de WP_ENV o al final de la sección WP
+        // Si no existe, agregar en posición apropiada
         if (!$found) {
             $insertIndex = count($envLines);
             
             // Buscar mejor posición para insertar
             foreach ($envLines as $index => $line) {
-                if ($key === 'WP_PORT' && strpos($line, 'WP_ENV=') === 0) {
+                $trimmedLine = trim($line);
+                if ($key === 'WP_PORT' && strpos($trimmedLine, 'WP_ENV=') === 0) {
                     $insertIndex = $index + 1;
                     break;
-                } elseif ($key === 'DB_PORT' && strpos($line, 'DB_HOST=') === 0) {
+                } elseif ($key === 'DB_PORT' && strpos($trimmedLine, 'DB_HOST=') === 0) {
                     $insertIndex = $index + 1;
                     break;
-                } elseif ($key === 'REDIS_PORT' && strpos($line, 'REDIS_HOST=') === 0) {
+                } elseif ($key === 'REDIS_PORT' && (strpos($trimmedLine, 'REDIS_HOST=') === 0 || strpos($trimmedLine, 'REDIS_URL=') === 0)) {
                     $insertIndex = $index + 1;
                     break;
                 }
