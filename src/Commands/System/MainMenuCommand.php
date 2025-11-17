@@ -359,16 +359,14 @@ class MainMenuCommand extends Command
             return;
         }
         
-        // Contar solo pasos obligatorios (no skippable)
+        // Contar TODOS los pasos para mejor UX y consistencia visual
         $totalSteps = 0;
         $completedSteps = 0;
         
         foreach ($state['steps'] as $step) {
-            if (!($step['skippable'] ?? false)) {
-                $totalSteps++;
-                if ($step['completed'] ?? false) {
-                    $completedSteps++;
-                }
+            $totalSteps++;
+            if ($step['completed'] ?? false) {
+                $completedSteps++;
             }
         }
         
