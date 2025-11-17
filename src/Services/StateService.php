@@ -325,6 +325,79 @@ class StateService
     }
 
     /**
+     * Verifica acceso a repositorios premium (GitLab, GitHub, etc.)
+     */
+    public function validatePremiumRepoAccess(): bool
+    {
+        try {
+            $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
+            $service = new \Roots\BedrockCli\Services\PremiumRepoService();
+            $result = $service->checkAccess($repoUrl);
+            return !($result['needs_auth'] ?? false);
+        } catch (\Exception $e) {
+            return true; // Asumir acceso OK si hay error
+        }
+    }
+
+    /**
+     * Verifica si hay API keys configuradas (OpenAI, Gemini, etc.)
+     */
+    public function validateApiKeysConfigured(): bool
+    {
+        $hasOpenAI = !empty(getenv('OPENAI_API_KEY'));
+        $hasGemini = !empty(getenv('GEMINI_API_KEY'));
+        $hasAnthropic = !empty(getenv('ANTHROPIC_API_KEY'));
+        
+        return $hasOpenAI || $hasGemini || $hasAnthropic;
+    }
+
+    /**
+     * Verifica acceso a GitHub (token o CLI)
+     */
+    public function validateGitHubAccess(): bool
+    {
+        $hasGitHubToken = !empty(getenv('GITHUB_TOKEN'));
+        $hasGitHubCLI = shell_exec('which gh 2>/dev/null') !== null;
+        
+        return $hasGitHubToken || $hasGitHubCLI;
+    }
+
+    /**
+     * Verifica acceso a GitLab (token o CLI)
+     */
+    public function validateGitLabAccess(): bool
+    {
+        $hasGitLabToken = !empty(getenv('GITLAB_TOKEN'));
+        $hasGitLabCLI = shell_exec('which glab 2>/dev/null') !== null;
+        
+        return $hasGitLabToken || $hasGitLabCLI;
+    }
+
+    /**
+     * Cache para validaciones de servicios externos (evitar múltiples llamadas)
+     */
+    private static $externalValidationsCache = [];
+
+    /**
+     * Ejecuta validaciones de servicios externos con cache
+     */
+    public function validateExternalServices(): array
+    {
+        if (!empty(self::$externalValidationsCache)) {
+            return self::$externalValidationsCache;
+        }
+
+        self::$externalValidationsCache = [
+            'premium_repo' => $this->validatePremiumRepoAccess(),
+            'api_keys' => $this->validateApiKeysConfigured(),
+            'github' => $this->validateGitHubAccess(),
+            'gitlab' => $this->validateGitLabAccess()
+        ];
+
+        return self::$externalValidationsCache;
+    }
+
+    /**
      * Actualiza el estado de los pasos basado en validaciones reales
      */
     public function updateStepValidations(string $projectPath): void

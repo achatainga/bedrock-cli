@@ -44,9 +44,12 @@ class MainMenuCommand extends Command
         // FASE 2: Verificar si está en modo guía
         $isGuidedMode = $input->getOption('guia');
         
-        // Verificar acceso a repo premium
-        $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
-        $needsAuth = $this->checkPremiumRepoAccess($repoUrl);
+        // FASE 2.6: Verificar acceso a repo premium (con skip-validation)
+        $needsAuth = false;
+        if (!$skipValidation) {
+            $externalServices = $stateService->validateExternalServices();
+            $needsAuth = !$externalServices['premium_repo'];
+        }
         
         while (true) {
             if ($isGuidedMode && $currentStep) {
@@ -184,11 +187,14 @@ class MainMenuCommand extends Command
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
         $validations = [
-            'Docker containers' => 0.5,
-            'WordPress installation' => 1.0,
-            'Plugins status' => 0.3,
-            'Theme configuration' => 0.4,
-            'Acorn setup' => 0.6
+            'Docker containers' => 0.3,
+            'WordPress installation' => 0.5,
+            'Plugins status' => 0.2,
+            'Theme configuration' => 0.2,
+            'Acorn setup' => 0.3,
+            'Premium repositories' => 0.8,
+            'API keys configuration' => 0.2,
+            'GitHub/GitLab access' => 0.4
         ];
         
         foreach ($validations as $task => $delay) {
