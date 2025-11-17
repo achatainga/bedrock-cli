@@ -37,17 +37,23 @@ class ProjectValidationService
             return new DatabaseValidation(false, 'Database configuration incomplete');
         }
 
-        // Test database connection
-        try {
-            $pdo = new \PDO(
-                "mysql:host={$env['DB_HOST']};port=" . ($env['DB_PORT'] ?? 3306) . ";dbname={$env['DB_NAME']}",
-                $env['DB_USER'],
-                $env['DB_PASSWORD']
-            );
-            return new DatabaseValidation(true, 'Database connection successful');
-        } catch (\PDOException $e) {
-            return new DatabaseValidation(false, 'Database connection failed: ' . $e->getMessage());
+        // Check if containers are running first
+        if (!$this->areContainersRunning($projectPath)) {
+            return new DatabaseValidation(false, 'Docker containers not running');
         }
+
+        // Test database connection via Docker
+        $dbName = trim($env['DB_NAME'], '"\'');
+        $dbUser = trim($env['DB_USER'], '"\'');
+        $dbPass = trim($env['DB_PASSWORD'], '"\'');
+        
+        $output = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u{$dbUser} -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}';\" 2>/dev/null");
+        
+        if ($output && strpos($output, $dbName) !== false) {
+            return new DatabaseValidation(true, 'Database connection successful');
+        }
+        
+        return new DatabaseValidation(false, 'Database connection failed or database does not exist');
     }
 
     public function validateWordPress(string $projectPath): WordPressValidation
@@ -61,6 +67,17 @@ class ProjectValidationService
         $wpConfigPath = $projectPath . '/web/wp-config.php';
         if (!file_exists($wpConfigPath)) {
             return new WordPressValidation(false, 'wp-config.php not found');
+        }
+
+        // Check if WordPress is actually installed in database
+        $dbValidation = $this->validateDatabase($projectPath);
+        if (!$dbValidation->isValid) {
+            return new WordPressValidation(false, 'WordPress files exist but database not accessible');
+        }
+
+        // Check if WordPress tables exist
+        if (!$this->hasWordPressTables($projectPath)) {
+            return new WordPressValidation(false, 'WordPress files exist but not installed in database');
         }
 
         return new WordPressValidation(true, 'WordPress installed');
@@ -221,5 +238,23 @@ class ProjectValidationService
         $projectName = basename($projectPath);
         $output = shell_exec("docker ps --filter name={$projectName} --format '{{.Names}}' 2>/dev/null");
         return !empty(trim($output ?? ''));
+    }
+
+    private function hasWordPressTables(string $projectPath): bool
+    {
+        $env = $this->readEnvFile($projectPath);
+        
+        if (!isset($env['DB_NAME'], $env['DB_USER'], $env['DB_PASSWORD'])) {
+            return false;
+        }
+
+        $dbName = trim($env['DB_NAME'], '"\'');
+        $dbUser = trim($env['DB_USER'], '"\'');
+        $dbPass = trim($env['DB_PASSWORD'], '"\'');
+        $prefix = trim($env['DB_PREFIX'] ?? 'wp_', '"\'');
+        
+        $output = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e \"SHOW TABLES LIKE '{$prefix}options';\" 2>/dev/null");
+        
+        return $output && strpos($output, $prefix . 'options') !== false;
     }
 }
