@@ -113,9 +113,13 @@ class InfoCommand extends Command
         $output->writeln('');
         
         foreach ($inconsistencies as $issue) {
-            $icon = $issue['severity'] === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
+            $severity = $issue['severity'] ?? 'warning';
+            $icon = $severity === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
             $output->writeln("  {$icon} {$issue['message']}");
-            $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+            
+            if (isset($issue['files'])) {
+                $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+            }
         }
         
         $output->writeln('');
