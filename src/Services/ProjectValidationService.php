@@ -189,7 +189,25 @@ class ProjectValidationService
             return [];
         }
 
-        return yaml_parse_file($dockerComposePath) ?: [];
+        // Fallback to manual parsing if yaml extension not available
+        if (function_exists('yaml_parse_file')) {
+            return yaml_parse_file($dockerComposePath) ?: [];
+        }
+        
+        // Simple regex-based parsing for basic docker-compose structure
+        $content = file_get_contents($dockerComposePath);
+        $config = ['services' => []];
+        
+        // Extract service ports
+        if (preg_match_all('/^\s*(\w+):\s*$/m', $content, $serviceMatches)) {
+            foreach ($serviceMatches[1] as $service) {
+                if (preg_match('/^\s*' . $service . ':[\s\S]*?ports:[\s\S]*?"(\d+):(\d+)"/m', $content, $portMatches)) {
+                    $config['services'][$service]['ports'] = [$portMatches[1] . ':' . $portMatches[2]];
+                }
+            }
+        }
+        
+        return $config;
     }
 
     private function isDockerRunning(): bool
