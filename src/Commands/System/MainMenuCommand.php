@@ -189,21 +189,59 @@ class MainMenuCommand extends Command
     {
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
+        $stateService = new StateService();
+        $projectPath = getcwd();
+        
         $validations = [
-            'Profile configuration' => 0.2,
-            'VCS access (GitHub/GitLab)' => 0.4,
-            'Docker + Database' => 0.6,
-            'WordPress installation' => 0.5,
-            'Theme activation' => 0.3,
-            'Plugins status' => 0.2,
-            'Acorn setup' => 0.3,
-            'External services' => 0.4
+            'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
+            'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
+            'Docker + Database' => ['delay' => 0.6, 'method' => 'validateDockerAndDatabase'],
+            'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
+            'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
+            'Plugins status' => ['delay' => 0.2, 'method' => 'validatePluginsActive'],
+            'Acorn setup' => ['delay' => 0.3, 'method' => 'validateAcornConfigured'],
+            'External services' => ['delay' => 0.4, 'method' => 'validateExternalServices']
         ];
         
-        foreach ($validations as $task => $delay) {
+        foreach ($validations as $task => $config) {
             $output->write("  • Evaluando {$task}...");
-            usleep((int)($delay * 1000000)); // Convertir a microsegundos
-            $output->writeln(' <fg=green>✓</>');
+            usleep((int)($config['delay'] * 1000000));
+            
+            // Ejecutar validación real
+            $result = false;
+            switch ($config['method']) {
+                case 'validateProfileExists':
+                    $result = $stateService->validateProfileExists($projectPath);
+                    break;
+                case 'validateVcsAccess':
+                    $result = $stateService->validateVcsAccess($projectPath);
+                    break;
+                case 'validateDockerAndDatabase':
+                    $result = $stateService->validateDockerAndDatabase($projectPath);
+                    break;
+                case 'validateWordPressInstalled':
+                    $result = $stateService->validateWordPressInstalled($projectPath);
+                    break;
+                case 'validateThemeActive':
+                    $result = $stateService->validateThemeActive($projectPath, 'twentytwentyfive');
+                    break;
+                case 'validatePluginsActive':
+                    $result = $stateService->validatePluginsActive($projectPath);
+                    break;
+                case 'validateAcornConfigured':
+                    $result = $stateService->validateAcornConfigured($projectPath);
+                    break;
+                case 'validateExternalServices':
+                    $services = $stateService->validateExternalServices();
+                    $result = $services['premium_repo'] || $services['github'] || $services['gitlab'];
+                    break;
+            }
+            
+            if ($result) {
+                $output->writeln(' <fg=green>✓</>');
+            } else {
+                $output->writeln(' <fg=red>❌</>');
+            }
         }
         
         $output->writeln('');
