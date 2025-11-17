@@ -13,6 +13,7 @@ use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
 use Roots\BedrockCli\Services\AuthService;
 use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Services\DockerVerificationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 
 class NewCommand extends Command
@@ -76,6 +77,11 @@ class NewCommand extends Command
         $this->copySeeders($name, $output);
         $this->initGit($name, $output);
         $this->generateWizardState($name, $input, $profile, $output);
+        
+        // Verificación y auto-fix post-creación
+        if (!$input->getOption('no-docker')) {
+            $this->verifyAndFixProject($name, $output);
+        }
 
         $output->writeln('');
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
@@ -606,5 +612,23 @@ class NewCommand extends Command
 
         $stateService->generateInitialState($name, $config);
         $output->writeln('<info>✓ bedrock_state.json creado</info>');
+    }
+    
+    private function verifyAndFixProject(string $name, OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<info>Verificando proyecto...</info>');
+        
+        // Esperar a que los contenedores se inicialicen
+        sleep(3);
+        
+        $verificationService = new DockerVerificationService();
+        $projectPath = realpath($name);
+        
+        if ($projectPath && $verificationService->verifyAndFixProject($projectPath, $output)) {
+            $output->writeln('<info>✓ Proyecto verificado y listo</info>');
+        } else {
+            $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');
+        }
     }
 }

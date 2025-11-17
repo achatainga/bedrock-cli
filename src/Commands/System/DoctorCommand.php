@@ -4,10 +4,12 @@ namespace Roots\BedrockCli\Commands\System;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
+use Roots\BedrockCli\Services\DockerVerificationService;
 
 class DoctorCommand extends Command
 {
@@ -18,7 +20,8 @@ class DoctorCommand extends Command
     {
         $this
             ->setName('doctor')
-            ->setDescription('Verificar e instalar dependencias del sistema');
+            ->setDescription('Verificar e instalar dependencias del sistema')
+            ->addOption('fix', null, InputOption::VALUE_NONE, 'Detectar y arreglar problemas automáticamente');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -33,11 +36,18 @@ class DoctorCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
+        // Si --fix está activado, ejecutar verificación de proyecto
+        if ($input->getOption('fix')) {
+            return $this->fixProjectIssues($output);
+        }
+
         // Detectar OS
         $this->detectOS($output);
 
         if ($this->os === 'Windows') {
             return $this->windowsSetup($input, $output);
+        } elseif ($this->os === 'WSL') {
+            return $this->wslSetup($input, $output);
         } elseif ($this->os === 'Linux') {
             return $this->linuxSetup($input, $output);
         } elseif ($this->os === 'Mac') {
@@ -48,22 +58,58 @@ class DoctorCommand extends Command
         return Command::FAILURE;
     }
 
+    private function fixProjectIssues(OutputInterface $output): int
+    {
+        $output->writeln('<fg=cyan>═══ Verificación y Reparación de Proyecto ═══</>');
+        $output->writeln('');
+        
+        $verificationService = new DockerVerificationService();
+        $projectPath = getcwd();
+        
+        $success = $verificationService->verifyAndFixProject($projectPath, $output);
+        
+        $output->writeln('');
+        if ($success) {
+            $output->writeln('<fg=green;options=bold>✓ Proyecto verificado y corregido</>');
+            return Command::SUCCESS;
+        } else {
+            $output->writeln('<fg=yellow;options=bold>⚠ Algunos problemas requieren atención manual</>');
+            return Command::FAILURE;
+        }
+    }
+
     private function detectOS(OutputInterface $output): void
     {
         $uname = php_uname('s');
         
-        if (stripos($uname, 'Windows') !== false || DIRECTORY_SEPARATOR === '\\') {
+        // Detectar WSL en Linux
+        if (stripos($uname, 'Linux') !== false) {
+            if ($this->isWSL()) {
+                $this->os = 'WSL';
+                $output->writeln("<fg=green>Sistema detectado: WSL (Windows Subsystem for Linux)</>");
+            } else {
+                $this->os = 'Linux';
+                $output->writeln("<fg=green>Sistema detectado: Linux</>");
+            }
+        } elseif (stripos($uname, 'Windows') !== false || DIRECTORY_SEPARATOR === '\\') {
             $this->os = 'Windows';
+            $output->writeln("<fg=green>Sistema detectado: Windows</>");
         } elseif (stripos($uname, 'Darwin') !== false) {
             $this->os = 'Mac';
-        } elseif (stripos($uname, 'Linux') !== false) {
-            $this->os = 'Linux';
+            $output->writeln("<fg=green>Sistema detectado: Mac</>");
         } else {
             $this->os = 'Unknown';
+            $output->writeln("<fg=red>Sistema detectado: Desconocido</>");
         }
-
-        $output->writeln("<fg=green>Sistema detectado: {$this->os}</>");
+        
         $output->writeln('');
+    }
+    
+    private function isWSL(): bool
+    {
+        // Verificar si estamos en WSL
+        return file_exists('/proc/version') && 
+               strpos(file_get_contents('/proc/version'), 'Microsoft') !== false;
     }
 
     private function windowsSetup(InputInterface $input, OutputInterface $output): int
@@ -125,6 +171,39 @@ class DoctorCommand extends Command
         $output->writeln('');
 
         $output->writeln('<fg=green;options=bold>✓ Verificación completada</>');
+        return Command::SUCCESS;
+    }
+
+    private function wslSetup(InputInterface $input, OutputInterface $output): int
+    {
+        $output->writeln('<fg=cyan>═══ Verificando Docker en WSL ═══</>');
+        
+        // Verificar Docker Desktop integration
+        $process = new Process(['docker', '--version']);
+        $process->run();
+        
+        if (!$process->isSuccessful()) {
+            $output->writeln('<fg=red>✗ Docker no disponible en WSL</>');
+            $output->writeln('<fg=yellow>Solución:</>');
+            $output->writeln('  1. Abre Docker Desktop en Windows');
+            $output->writeln('  2. Ve a Settings → Resources → WSL Integration');
+            $output->writeln('  3. Activa "Enable integration with my default WSL distro"');
+            $output->writeln('  4. Apply & Restart');
+            return Command::FAILURE;
+        }
+        
+        $output->writeln('<fg=green>✓ Docker disponible en WSL</>');
+        
+        // Verificar docker-compose
+        $process = new Process(['docker-compose', '--version']);
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('<fg=green>✓ Docker Compose disponible</>');
+        } else {
+            $output->writeln('<fg=yellow>⚠ Docker Compose no disponible</>');
+        }
+        
         return Command::SUCCESS;
     }
 
