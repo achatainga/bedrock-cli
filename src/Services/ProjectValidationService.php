@@ -85,22 +85,28 @@ class ProjectValidationService
 
     public function validateAcorn(string $projectPath): AcornValidation
     {
-        $acornPath = $projectPath . '/web/app/themes';
+        // Check 1: Package installed (from composer.json)
+        $packageInstalled = $this->isAcornPackageInstalled($projectPath);
         
-        if (!is_dir($acornPath)) {
-            return new AcornValidation(false, 'Themes directory not found');
-        }
-
-        // Check for Acorn theme (look for composer.json with acorn dependency)
-        $themes = glob($acornPath . '/*/composer.json');
-        foreach ($themes as $composerFile) {
-            $composer = json_decode(file_get_contents($composerFile), true);
-            if (isset($composer['require']['roots/acorn'])) {
-                return new AcornValidation(true, 'Acorn theme found');
-            }
-        }
-
-        return new AcornValidation(false, 'No Acorn theme found');
+        // Check 2: Storage initialized (storage directory exists)
+        $storageInitialized = is_dir($projectPath . '/storage');
+        
+        // Check 3: Configs published (config/app.php exists)
+        $configsPublished = file_exists($projectPath . '/config/app.php');
+        
+        // Overall validity: all three must be true
+        $isValid = $packageInstalled && $storageInitialized && $configsPublished;
+        
+        // Generate descriptive message
+        $message = $this->generateAcornMessage($packageInstalled, $storageInitialized, $configsPublished);
+        
+        return new AcornValidation(
+            $packageInstalled,
+            $storageInitialized, 
+            $configsPublished,
+            $isValid,
+            $message
+        );
     }
 
     public function detectInconsistencies(string $projectPath): array
@@ -339,5 +345,38 @@ class ProjectValidationService
         $output = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e \"SHOW TABLES LIKE '{$prefix}options';\" 2>/dev/null");
         
         return $output && strpos($output, $prefix . 'options') !== false;
+    }
+
+    private function isAcornPackageInstalled(string $projectPath): bool
+    {
+        $composerPath = $projectPath . '/composer.json';
+        
+        if (!file_exists($composerPath)) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents($composerPath), true);
+        return isset($composer['require']['roots/acorn']);
+    }
+
+    private function generateAcornMessage(bool $packageInstalled, bool $storageInitialized, bool $configsPublished): string
+    {
+        if ($packageInstalled && $storageInitialized && $configsPublished) {
+            return 'Fully configured';
+        }
+        
+        if (!$packageInstalled) {
+            return 'Package not installed';
+        }
+        
+        if (!$storageInitialized) {
+            return 'Storage not initialized';
+        }
+        
+        if (!$configsPublished) {
+            return 'Configs not published';
+        }
+        
+        return 'Partially configured';
     }
 }

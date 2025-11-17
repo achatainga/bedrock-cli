@@ -232,14 +232,29 @@ class MainMenuCommand extends Command
                     $result = $stateService->validatePluginsActive($projectPath);
                     break;
                 case 'validateAcornConfigured':
-                    $result = $stateService->validateAcornConfigured($projectPath);
+                    // Use unified validation service for granular Acorn status
+                    $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                    $acornValidation = $validationService->validateAcorn($projectPath);
+                    $result = $acornValidation->isValid;
                     break;
             }
             
-            if ($result) {
-                $output->writeln(' <fg=green>✓</>');
+            // Special handling for Acorn to show granular status
+            if ($config['method'] === 'validateAcornConfigured') {
+                $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                $acornValidation = $validationService->validateAcorn($projectPath);
+                
+                if ($acornValidation->isValid) {
+                    $output->writeln(' <fg=green>✓ Fully configured</>');
+                } else {
+                    $output->writeln(' <fg=yellow>⚠ ' . $acornValidation->message . '</>');
+                }
             } else {
-                $output->writeln(' <fg=red>❌</>');
+                if ($result) {
+                    $output->writeln(' <fg=green>✓</>');
+                } else {
+                    $output->writeln(' <fg=red>❌</>');
+                }
             }
         }
         
