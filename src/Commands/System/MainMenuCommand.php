@@ -10,6 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\ArrayInput;
 
 class MainMenuCommand extends Command
 {
@@ -152,7 +153,9 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                $command->run($input, $output);
+                // FASE 3: Fix propagación de flags - crear input limpio
+                $cleanInput = new ArrayInput([]);
+                $command->run($cleanInput, $output);
             }
         }
 
@@ -187,14 +190,14 @@ class MainMenuCommand extends Command
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
         $validations = [
-            'Docker containers' => 0.3,
+            'Profile configuration' => 0.2,
+            'VCS access (GitHub/GitLab)' => 0.4,
+            'Docker + Database' => 0.6,
             'WordPress installation' => 0.5,
+            'Theme activation' => 0.3,
             'Plugins status' => 0.2,
-            'Theme configuration' => 0.2,
             'Acorn setup' => 0.3,
-            'Premium repositories' => 0.8,
-            'API keys configuration' => 0.2,
-            'GitHub/GitLab access' => 0.4
+            'External services' => 0.4
         ];
         
         foreach ($validations as $task => $delay) {
@@ -285,7 +288,9 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                $command->run($input, $output);
+                // FASE 3: Fix propagación de flags - crear input limpio
+                $cleanInput = new ArrayInput([]);
+                $command->run($cleanInput, $output);
                 
                 // Recargar estado después de ejecutar comando (con validación rápida)
                 $stateService = new StateService();
@@ -335,12 +340,14 @@ class MainMenuCommand extends Command
     private function getMainOptionForStep(array $step): ?array
     {
         $stepOptions = [
-            1 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores'],
-            2 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
-            3 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
-            4 => ['key' => 'T', 'label' => '🎨 Themes   - Activar tema'],
-            5 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
-            6 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
+            1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
+            2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
+            3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
+            4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
+            5 => ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'],
+            6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
+            7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
+            8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
         ];
         
         return $stepOptions[$step['id']] ?? null;

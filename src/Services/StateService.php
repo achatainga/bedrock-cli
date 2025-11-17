@@ -398,6 +398,80 @@ class StateService
     }
 
     /**
+     * Verifica si existe un profile aplicado al proyecto
+     */
+    public function validateProfileExists(string $projectPath): bool
+    {
+        $profileFile = "{$projectPath}/bedrock_profile.json";
+        return file_exists($profileFile);
+    }
+
+    /**
+     * Verifica acceso a repositorios VCS basado en el profile
+     */
+    public function validateVcsAccess(string $projectPath): bool
+    {
+        $profileFile = "{$projectPath}/bedrock_profile.json";
+        if (!file_exists($profileFile)) {
+            return true; // Sin profile, no necesita VCS
+        }
+
+        $profile = json_decode(file_get_contents($profileFile), true);
+        $hasPrivateRepos = false;
+
+        // Verificar plugins privados
+        foreach ($profile['plugins'] ?? [] as $plugin) {
+            if (isset($plugin['source']) && $plugin['source'] !== 'wordpress.org') {
+                $hasPrivateRepos = true;
+                break;
+            }
+        }
+
+        // Verificar themes privados
+        foreach ($profile['themes'] ?? [] as $theme) {
+            if (isset($theme['source']) && $theme['source'] !== 'wordpress.org') {
+                $hasPrivateRepos = true;
+                break;
+            }
+        }
+
+        if (!$hasPrivateRepos) {
+            return true; // Solo repos públicos
+        }
+
+        // Verificar acceso a servicios externos
+        $externalServices = $this->validateExternalServices();
+        return $externalServices['github'] || $externalServices['gitlab'] || $externalServices['premium_repo'];
+    }
+
+    /**
+     * Verifica Docker + Base de datos
+     */
+    public function validateDockerAndDatabase(string $projectPath): bool
+    {
+        // Verificar Docker corriendo
+        if (!$this->validateDockerRunning($projectPath)) {
+            return false;
+        }
+
+        // Verificar base de datos existe y es accesible
+        $envFile = "{$projectPath}/.env";
+        if (!file_exists($envFile)) {
+            return false;
+        }
+
+        $envContent = file_get_contents($envFile);
+        preg_match('/DB_NAME=(.+)/', $envContent, $dbMatches);
+        $dbName = trim($dbMatches[1] ?? 'wordpress');
+
+        // Verificar DB existe
+        $projectName = basename($projectPath);
+        $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -proot -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
+        
+        return $dbCheck && strpos($dbCheck, $dbName) !== false;
+    }
+
+    /**
      * Actualiza el estado de los pasos basado en validaciones reales
      */
     public function updateStepValidations(string $projectPath): void
@@ -411,23 +485,26 @@ class StateService
 
         foreach ($state['steps'] as &$step) {
             $wasCompleted = $step['completed'] ?? false;
+            $validation = $step['validation'] ?? null;
             
-            switch ($step['id']) {
-                case 1: // Docker
-                    $step['completed'] = $this->validateDockerRunning($projectPath);
+            switch ($validation) {
+                case 'profile':
+                    $step['completed'] = $this->validateProfileExists($projectPath);
                     break;
                     
-                case 2: // WordPress
+                case 'vcs_access':
+                    $step['completed'] = $this->validateVcsAccess($projectPath);
+                    break;
+                    
+                case 'docker_db':
+                    $step['completed'] = $this->validateDockerAndDatabase($projectPath);
+                    break;
+                    
+                case 'wordpress':
                     $step['completed'] = $this->validateWordPressInstalled($projectPath);
                     break;
                     
-                case 3: // Plugins
-                    if (isset($step['condition']) && $step['condition'] === 'true') {
-                        $step['completed'] = $this->validatePluginsActive($projectPath);
-                    }
-                    break;
-                    
-                case 4: // Theme
+                case 'theme':
                     if (isset($step['condition']) && $step['condition'] === 'true') {
                         // Extraer nombre del tema del comando
                         if (preg_match('/wp theme activate (\w+)/', $step['command'] ?? '', $matches)) {
@@ -436,10 +513,20 @@ class StateService
                     }
                     break;
                     
-                case 5: // Acorn
+                case 'plugins':
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validatePluginsActive($projectPath);
+                    }
+                    break;
+                    
+                case 'acorn':
                     if (isset($step['condition']) && $step['condition'] === 'true') {
                         $step['completed'] = $this->validateAcornConfigured($projectPath);
                     }
+                    break;
+                    
+                case 'seeders':
+                    // Seeders siempre opcional, no auto-validar
                     break;
             }
             
