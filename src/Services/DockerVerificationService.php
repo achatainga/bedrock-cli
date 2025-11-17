@@ -2,11 +2,18 @@
 
 namespace Roots\BedrockCli\Services;
 
+use Achatainga\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class DockerVerificationService
 {
+    private ProjectValidationService $validationService;
+    
+    public function __construct()
+    {
+        $this->validationService = new ProjectValidationService();
+    }
     public function verifyAndFixProject(string $projectPath, OutputInterface $output): bool
     {
         $output->writeln('<info>Verificando configuración Docker...</info>');
@@ -51,21 +58,12 @@ class DockerVerificationService
     
     private function areContainersRunning(string $projectPath): bool
     {
-        $process = new Process(['docker-compose', 'ps', '-q'], $projectPath);
-        $process->run();
-        
-        return $process->isSuccessful() && !empty(trim($process->getOutput()));
+        return $this->validationService->validateDocker($projectPath)->isValid;
     }
     
     private function checkAcornStorage(string $projectPath): bool
     {
-        $containerName = $this->getWebContainerName($projectPath);
-        if (!$containerName) return false;
-        
-        $process = new Process(['docker', 'exec', $containerName, 'test', '-d', '/var/www/html/storage/framework']);
-        $process->run();
-        
-        return $process->isSuccessful();
+        return $this->validationService->validateAcorn($projectPath)->isValid;
     }
     
     private function checkSiteResponse(string $projectPath): bool
@@ -201,12 +199,12 @@ class DockerVerificationService
     
     private function getHttpPort(string $projectPath): int
     {
-        $envFile = "$projectPath/.env";
-        if (!file_exists($envFile)) return 80;
+        $config = $this->validationService->getProjectConfiguration($projectPath);
+        $env = $config['env'] ?? [];
         
-        $env = file_get_contents($envFile);
-        if (preg_match('/WP_HOME=.*:(\d+)/', $env, $matches)) {
-            return (int)$matches[1];
+        if (isset($env['WP_HOME'])) {
+            $port = parse_url($env['WP_HOME'], PHP_URL_PORT);
+            return $port ?? 80;
         }
         
         return 80;

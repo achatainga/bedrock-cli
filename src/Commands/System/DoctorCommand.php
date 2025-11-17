@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
+use Achatainga\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -15,6 +16,13 @@ class DoctorCommand extends Command
 {
     use ProjectSelectorTrait;
     private string $os;
+    private ProjectValidationService $validationService;
+    
+    public function __construct()
+    {
+        parent::__construct();
+        $this->validationService = new ProjectValidationService();
+    }
 
     protected function configure(): void
     {
@@ -376,10 +384,9 @@ class DoctorCommand extends Command
 
     private function checkDockerRunning(OutputInterface $output): void
     {
-        $process = Process::fromShellCommandline('docker info');
-        $process->run();
+        $dockerValidation = $this->validationService->validateDocker(getcwd());
         
-        if ($process->isSuccessful()) {
+        if ($dockerValidation->isValid) {
             $output->writeln('<fg=green>✓ Docker está corriendo</>');
             return;
         }
@@ -394,10 +401,9 @@ class DoctorCommand extends Command
             
             $this->waitWithLoader($output, 'Esperando a que Docker se inicialice', 60);
             
-            $process = Process::fromShellCommandline('docker info');
-            $process->run();
+            $dockerValidation = $this->validationService->validateDocker(getcwd());
             
-            if ($process->isSuccessful()) {
+            if ($dockerValidation->isValid) {
                 $output->writeln('<fg=green>✓ Docker iniciado correctamente</>');
             } else {
                 $output->writeln('<fg=red>✗ Docker no se inició. Inicia Docker Desktop manualmente</>');

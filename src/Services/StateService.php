@@ -2,8 +2,16 @@
 
 namespace Roots\BedrockCli\Services;
 
+use Achatainga\BedrockCli\Services\ProjectValidationService;
+
 class StateService
 {
+    private ProjectValidationService $validationService;
+    
+    public function __construct()
+    {
+        $this->validationService = new ProjectValidationService();
+    }
     public function generateInitialState(string $projectPath, array $config): void
     {
         $stubPath = $this->getStubPath();
@@ -256,31 +264,7 @@ class StateService
      */
     public function validateDockerRunning(string $projectPath): bool
     {
-        // Verificar que Docker esté disponible
-        $dockerCheck = shell_exec('docker --version 2>/dev/null');
-        if (!$dockerCheck) {
-            return false;
-        }
-
-        // Verificar contenedores del proyecto específico
-        $projectName = basename($projectPath);
-        $containers = shell_exec("docker ps --filter \"name={$projectName}\" --format \"{{.Names}}\" 2>/dev/null");
-        
-        if (!$containers) {
-            return false;
-        }
-
-        // Verificar que al menos web y db estén corriendo
-        $containerList = explode("\n", trim($containers));
-        $hasWeb = false;
-        $hasDb = false;
-
-        foreach ($containerList as $container) {
-            if (strpos($container, 'web') !== false) $hasWeb = true;
-            if (strpos($container, 'mysql') !== false || strpos($container, 'db') !== false) $hasDb = true;
-        }
-
-        return $hasWeb && $hasDb;
+        return $this->validationService->validateDocker($projectPath)->isValid;
     }
 
     /**
@@ -288,17 +272,7 @@ class StateService
      */
     public function validateWordPressInstalled(string $projectPath): bool
     {
-        // Verificar que wp-config.php existe
-        $wpConfigPath = "{$projectPath}/web/wp-config.php";
-        if (!file_exists($wpConfigPath)) {
-            return false;
-        }
-
-        // Intentar verificar via WP-CLI si está disponible
-        $projectName = basename($projectPath);
-        $wpCheck = shell_exec("cd {$projectPath} && docker-compose exec -T web wp core is-installed 2>/dev/null");
-        
-        return $wpCheck !== null && trim($wpCheck) === '';
+        return $this->validationService->validateWordPress($projectPath)->isValid;
     }
 
     /**
@@ -328,29 +302,7 @@ class StateService
      */
     public function validateAcornConfigured(string $projectPath): bool
     {
-        // Verificar que Acorn esté instalado
-        if (!$this->hasAcorn($projectPath)) {
-            return false;
-        }
-
-        // Verificar directorios de storage
-        $storageDirs = [
-            "{$projectPath}/storage/framework/cache",
-            "{$projectPath}/storage/framework/views",
-            "{$projectPath}/storage/logs"
-        ];
-
-        foreach ($storageDirs as $dir) {
-            if (!is_dir($dir)) {
-                return false;
-            }
-        }
-
-        // Verificar que el plugin esté activo
-        $projectName = basename($projectPath);
-        $acornStatus = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin status acorn 2>/dev/null");
-        
-        return $acornStatus && strpos($acornStatus, 'Active') !== false;
+        return $this->validationService->validateAcorn($projectPath)->isValid;
     }
 
     /**
@@ -501,23 +453,7 @@ class StateService
      */
     public function validateDatabaseAccess(string $projectPath): bool
     {
-        // Verificar .env existe
-        $envFile = "{$projectPath}/.env";
-        if (!file_exists($envFile)) {
-            return false;
-        }
-
-        $envContent = file_get_contents($envFile);
-        preg_match('/DB_NAME=(.+)/', $envContent, $dbMatches);
-        preg_match('/DB_PASSWORD=(.+)/', $envContent, $passMatches);
-        
-        $dbName = trim($dbMatches[1] ?? 'wordpress', "'\"\r\n");
-        $dbPass = trim($passMatches[1] ?? 'root', "'\"\r\n");
-
-        // Verificar DB existe y es accesible con password del .env
-        $dbCheck = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u root -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}'\" 2>/dev/null");
-        
-        return $dbCheck && strpos($dbCheck, $dbName) !== false;
+        return $this->validationService->validateDatabase($projectPath)->isValid;
     }
 
     /**

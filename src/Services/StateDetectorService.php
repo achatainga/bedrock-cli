@@ -2,10 +2,17 @@
 
 namespace Roots\BedrockCli\Services;
 
+use Achatainga\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Process\Process;
 
 class StateDetectorService
 {
+    private ProjectValidationService $validationService;
+    
+    public function __construct()
+    {
+        $this->validationService = new ProjectValidationService();
+    }
     public function detectProjectState(): array
     {
         return [
@@ -42,52 +49,7 @@ class StateDetectorService
     
     public function detectInconsistencies(): array
     {
-        $inconsistencies = [];
-        $env = $this->readEnvFile();
-        $docker = $this->readDockerCompose();
-        
-        if (empty($env) || empty($docker)) {
-            return $inconsistencies;
-        }
-        
-        // Verificar URL vs Puerto
-        if (isset($env['WP_HOME']) && isset($docker['http_port'])) {
-            $envPort = parse_url($env['WP_HOME'], PHP_URL_PORT) ?? 80;
-            if ($envPort != $docker['http_port']) {
-                $inconsistencies[] = [
-                    'type' => 'port_mismatch',
-                    'severity' => 'warning',
-                    'message' => "Puerto en .env ({$envPort}) no coincide con docker-compose.yml ({$docker['http_port']})",
-                    'files' => ['.env', 'docker-compose.yml'],
-                ];
-            }
-        }
-        
-        // Verificar nombre de BD
-        if (isset($env['DB_NAME']) && isset($docker['db_name'])) {
-            if ($env['DB_NAME'] !== $docker['db_name']) {
-                $inconsistencies[] = [
-                    'type' => 'db_name_mismatch',
-                    'severity' => 'error',
-                    'message' => "Nombre de BD en .env ({$env['DB_NAME']}) no coincide con docker-compose.yml ({$docker['db_name']})",
-                    'files' => ['.env', 'docker-compose.yml'],
-                ];
-            }
-        }
-        
-        // Verificar contraseña de BD
-        if (isset($env['DB_PASSWORD']) && isset($docker['db_password'])) {
-            if ($env['DB_PASSWORD'] !== $docker['db_password']) {
-                $inconsistencies[] = [
-                    'type' => 'db_password_mismatch',
-                    'severity' => 'error',
-                    'message' => "Contraseña de BD en .env no coincide con docker-compose.yml",
-                    'files' => ['.env', 'docker-compose.yml'],
-                ];
-            }
-        }
-        
-        return $inconsistencies;
+        return $this->validationService->detectInconsistencies(getcwd());
     }
     
     public function detectPendingTasks(): array
@@ -158,36 +120,12 @@ class StateDetectorService
     
     public function readConfiguration(): array
     {
-        return [
-            'env' => $this->readEnvFile(),
-            'docker_compose' => $this->readDockerCompose(),
-        ];
+        return $this->validationService->getProjectConfiguration(getcwd());
     }
     
     private function readEnvFile(): array
     {
-        $envFile = getcwd() . '/.env';
-        
-        if (!file_exists($envFile)) {
-            return [];
-        }
-        
-        $env = [];
-        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line) || $line[0] === '#') {
-                continue;
-            }
-            
-            if (strpos($line, '=') !== false) {
-                [$key, $value] = explode('=', $line, 2);
-                $env[$key] = trim($value, "'\"");
-            }
-        }
-        
-        return $env;
+        return $this->validationService->readEnvFile(getcwd());
     }
     
     private function readDockerCompose(): array
@@ -226,23 +164,7 @@ class StateDetectorService
     
     private function databaseExists(): bool
     {
-        if (!$this->areContainersRunning()) {
-            return false;
-        }
-        
-        $env = $this->readEnvFile();
-        $dbName = $env['DB_NAME'] ?? 'bedrock';
-        $dbUser = $env['DB_USER'] ?? 'root';
-        $dbPass = $env['DB_PASSWORD'] ?? 'mysql';
-        
-        $process = new Process([
-            'docker-compose', 'exec', '-T', 'mysql',
-            'mysql', "-u{$dbUser}", "-p{$dbPass}",
-            '-e', "SHOW DATABASES LIKE '{$dbName}';"
-        ]);
-        $process->run();
-        
-        return $process->isSuccessful() && str_contains($process->getOutput(), $dbName);
+        return $this->validationService->validateDatabase(getcwd())->isValid;
     }
     
     private function databaseHasTables(): bool
@@ -378,22 +300,12 @@ class StateDetectorService
     
     private function isDockerRunning(): bool
     {
-        $process = Process::fromShellCommandline('docker info');
-        $process->run();
-        
-        return $process->isSuccessful();
+        return $this->validationService->validateDocker(getcwd())->isValid;
     }
     
     private function isWordPressInstalled(): bool
     {
-        if (!$this->areContainersRunning()) {
-            return false;
-        }
-        
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'core', 'is-installed']);
-        $process->run();
-        
-        return $process->isSuccessful();
+        return $this->validationService->validateWordPress(getcwd())->isValid;
     }
     
     private function isAcornInstalled(): bool
