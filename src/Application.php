@@ -107,7 +107,12 @@ class Application extends BaseApplication
             new OptionsPushCommand(),
             new OptionsListCommand(),
             new OptionsManageCommand(),
-            new PluginsMenuCommand(),
+            new PluginsMenuCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
+                $this->container->get('Roots\BedrockCli\Services\UnzipService'),
+                $this->container->get('Roots\BedrockCli\Services\ZipService')
+            ),
             new PluginsListCommand(),
             new PluginsActivateCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
@@ -118,7 +123,10 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')
             ),
-            new PluginsCompressCommand(),
+            new PluginsCompressCommand(
+                $this->container->get('Roots\BedrockCli\Services\UnzipService'),
+                $this->container->get('Roots\BedrockCli\Services\ZipService')
+            ),
             new PluginsStatusCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')

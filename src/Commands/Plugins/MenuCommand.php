@@ -17,6 +17,20 @@ use Roots\BedrockCli\Services\ZipService;
 
 class MenuCommand extends Command
 {
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+    private UnzipService $unzipService;
+    private ZipService $zipService;
+
+    public function __construct(DockerService $dockerService, WpCliService $wpCliService, UnzipService $unzipService, ZipService $zipService)
+    {
+        parent::__construct();
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+        $this->unzipService = $unzipService;
+        $this->zipService = $zipService;
+    }
+
     protected function configure(): void
     {
         $this
@@ -30,8 +44,6 @@ class MenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
         
         $plugin = $input->getArgument('plugin');
         
