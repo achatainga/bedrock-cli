@@ -29,11 +29,13 @@ class EditWizardCommand extends Command
     private ProfileService $profileService;
     private VcsValidator $vcsValidator;
 
-    public function __construct()
-    {
+    public function __construct(
+        ProfileService $profileService,
+        VcsValidator $vcsValidator
+    ) {
+        $this->profileService = $profileService;
+        $this->vcsValidator = $vcsValidator;
         parent::__construct();
-        $this->profileService = new ProfileService();
-        $this->vcsValidator = new VcsValidator();
     }
 
     protected function configure(): void

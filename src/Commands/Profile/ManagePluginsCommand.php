@@ -22,10 +22,10 @@ class ManagePluginsCommand extends Command
     protected static $defaultName = 'profile:manage-plugins';
     private ProfileService $profileService;
 
-    public function __construct()
+    public function __construct(ProfileService $profileService)
     {
+        $this->profileService = $profileService;
         parent::__construct();
-        $this->profileService = new ProfileService();
     }
 
     protected function configure(): void

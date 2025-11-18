@@ -241,9 +241,17 @@ class Application extends BaseApplication
             new ProfileAddRepoCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
             ),
-            new ProfileEditWizardCommand(),
-            new ProfileManagePluginsCommand(),
-            new ProfileValidateVcsCommand(),
+            new ProfileEditWizardCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
+                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
+            ),
+            new ProfileManagePluginsCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileValidateVcsCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
+                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
+            ),
             new PluginSearchCommand(
                 $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
