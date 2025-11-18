@@ -134,7 +134,12 @@ class Application extends BaseApplication
             new PluginsOrderCommand(),
             new PluginsOrderMenuCommand(),
             new PluginsOrderBuilderCommand(),
-            new ThemesMenuCommand(),
+            new ThemesMenuCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
+                $this->container->get('Roots\BedrockCli\Services\UnzipService'),
+                $this->container->get('Roots\BedrockCli\Services\ZipService')
+            ),
             new ThemesListCommand(
                 $this->container->get('Roots\BedrockCli\Services\UnzipService')
             ),
