@@ -13,6 +13,18 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 class InfoCommand extends Command
 {
+    private WordPressApiService $wordPressApiService;
+    private ProfileService $profileService;
+    
+    public function __construct(
+        WordPressApiService $wordPressApiService,
+        ProfileService $profileService
+    ) {
+        $this->wordPressApiService = $wordPressApiService;
+        $this->profileService = $profileService;
+        parent::__construct();
+    }
+    
     protected function configure(): void
     {
         $this->setName('theme:info')
@@ -26,8 +38,7 @@ class InfoCommand extends Command
         $slug = $input->getArgument('slug');
         $profileName = $input->getOption('profile');
 
-        $apiService = new WordPressApiService();
-        $theme = $apiService->getThemeInfo($slug);
+        $theme = $this->wordPressApiService->getThemeInfo($slug);
 
         if (!$theme) {
             $output->writeln("<error>Theme '{$slug}' not found.</error>");
@@ -63,17 +74,15 @@ class InfoCommand extends Command
             return Command::SUCCESS;
         }
 
-        $profileService = new ProfileService();
-
-        if (!$profileService->profileExists($profileName)) {
+        if (!$this->profileService->profileExists($profileName)) {
             $output->writeln("<error>Profile '{$profileName}' does not exist.</error>");
             return Command::FAILURE;
         }
 
-        $profile = $profileService->loadProfile($profileName);
+        $profile = $this->profileService->loadProfile($profileName);
         $profile['theme']['name'] = $slug;
         $profile['theme']['type'] = 'public';
-        $profileService->saveProfile($profileName, $profile);
+        $this->profileService->saveProfile($profileName, $profile);
 
         $output->writeln("<info>✓ Theme added to profile '{$profileName}'</info>");
 

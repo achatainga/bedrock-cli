@@ -234,12 +234,18 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
             ),
-            new PluginInfoCommand(),
+            new PluginInfoCommand(
+                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ThemeSearchCommand(
                 $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
             ),
-            new ThemeInfoCommand(),
+            new ThemeInfoCommand(
+                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ManageCommand(
                 $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector')
             ),
