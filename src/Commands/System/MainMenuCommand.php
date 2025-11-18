@@ -59,6 +59,16 @@ class MainMenuCommand extends Command
         // FASE 2: Verificar si está en modo guía
         $isGuidedMode = $input->getOption('guia');
         
+        // DEBUG: Mostrar información de modo guía
+        if ($isGuidedMode) {
+            $output->writeln('<comment>DEBUG: Modo guía activado</comment>');
+            $output->writeln('<comment>DEBUG: currentStep = ' . ($currentStep ? 'EXISTS' : 'NULL') . '</comment>');
+            $output->writeln('<comment>DEBUG: state = ' . ($state ? 'EXISTS' : 'NULL') . '</comment>');
+            if ($state) {
+                $output->writeln('<comment>DEBUG: wizard_mode = ' . ($state['wizard_mode'] ?? 'NOT_SET') . '</comment>');
+            }
+        }
+        
         // FASE 2.6: Verificar acceso a repo premium (con skip-validation)
         $needsAuth = false;
         if (!$skipValidation) {
@@ -70,6 +80,8 @@ class MainMenuCommand extends Command
             if ($isGuidedMode && $currentStep) {
                 // Pasar flag de skip validation al modo guía
                 return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth, $skipValidation);
+            } elseif ($isGuidedMode) {
+                $output->writeln('<info>Modo guía solicitado pero no hay wizard activo. Mostrando menú normal.</info>');
             }
             $output->writeln('');
             // Usar caracteres ASCII en Windows para evitar artefactos visuales

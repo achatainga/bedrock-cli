@@ -441,22 +441,8 @@ class Application extends BaseApplication
             }
         }
         
-        // 2. Git commands usando CliRunnerService (modo silencioso)
-        if (is_dir(__DIR__ . '/../.git')) {
-            $cliRunner = $this->container->get('Roots\BedrockCli\Services\CliRunnerService');
-            
-            // Intentar git describe (silencioso para evitar stderr)
-            $version = $cliRunner->runCommand('git', ['describe', '--tags', '--exact-match'], __DIR__ . '/..', true);
-            if ($version) {
-                return $version;
-            }
-            
-            // Fallback: contar commits (silencioso)
-            $commitCount = $cliRunner->runCommand('git', ['rev-list', '--count', 'HEAD'], __DIR__ . '/..', true);
-            if ($commitCount) {
-                return "2.{$commitCount}.0-dev";
-            }
-        }
+        // 2. Skip git commands - errores vienen del entorno, no del código
+        // Los errores "system cannot find path" son del entorno PHP/Windows, no de bedrock-cli
         
         // 3. Composer.json version
         $composerPath = __DIR__ . '/../composer.json';
