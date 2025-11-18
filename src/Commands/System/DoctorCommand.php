@@ -7,9 +7,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class DoctorCommand extends Command
 {
+    use ProjectSelectorTrait;
+    
     private ProjectValidationService $validationService;
 
     public function __construct(ProjectValidationService $validationService)
@@ -28,6 +31,10 @@ class DoctorCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+        
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK DOCTOR - System Check  </> <fg=cyan;options=bold>        ║</>');

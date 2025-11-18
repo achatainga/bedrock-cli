@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\System;
 
 use Roots\BedrockCli\Traits\SpinnerTrait;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,6 +16,7 @@ use Roots\BedrockCli\Services\WpCliService;
 class ReinstallCommand extends Command
 {
     use SpinnerTrait;
+    use ProjectSelectorTrait;
     
     private SecurityService $securityService;
     private DockerService $dockerService;
@@ -37,6 +39,10 @@ class ReinstallCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+        
         $helper = $this->getHelper('question');
         
         $output->writeln('');

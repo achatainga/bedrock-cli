@@ -6,9 +6,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\ProjectValidationService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class InfoCommand extends Command
 {
+    use ProjectSelectorTrait;
+    
     private ProjectValidationService $validationService;
 
     public function __construct(ProjectValidationService $validationService)
@@ -26,6 +29,10 @@ class InfoCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+        
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan>║</>   ℹ️  INFO - Estado del Proyecto     <fg=cyan>║</>');
