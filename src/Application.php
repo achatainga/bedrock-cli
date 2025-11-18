@@ -179,7 +179,8 @@ class Application extends BaseApplication
             ),
             new MainMenuCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService'),
-                $this->container->get('Roots\BedrockCli\Services\PremiumRepoService')
+                $this->container->get('Roots\BedrockCli\Services\PremiumRepoService'),
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
             ),
             new InitMenuCommand(),
             new SearchMenuCommand(),
@@ -386,8 +387,9 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
         
-        // Add StateService
-        $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
+        // Add StateService with ProjectValidationService dependency
+        $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\ProjectValidationService'));
         
         // Add SecurityService
         $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');

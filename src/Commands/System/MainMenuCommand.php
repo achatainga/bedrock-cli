@@ -4,6 +4,7 @@ namespace Roots\BedrockCli\Commands\System;
 
 use Roots\BedrockCli\Services\PremiumRepoService;
 use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,12 +17,14 @@ class MainMenuCommand extends Command
 {
     private StateService $stateService;
     private PremiumRepoService $premiumRepoService;
+    private ProjectValidationService $validationService;
 
-    public function __construct(StateService $stateService, PremiumRepoService $premiumRepoService)
+    public function __construct(StateService $stateService, PremiumRepoService $premiumRepoService, ProjectValidationService $validationService)
     {
         parent::__construct();
         $this->stateService = $stateService;
         $this->premiumRepoService = $premiumRepoService;
+        $this->validationService = $validationService;
     }
 
     protected function configure(): void
@@ -174,8 +177,7 @@ class MainMenuCommand extends Command
     private function checkPremiumRepoAccess(string $repoUrl): bool
     {
         try {
-            $service = new PremiumRepoService();
-            $result = $service->checkAccess($repoUrl);
+            $result = $this->premiumRepoService->checkAccess($repoUrl);
             return $result['needs_auth'] ?? false;
         } catch (\Exception $e) {
             return false;
@@ -198,7 +200,6 @@ class MainMenuCommand extends Command
     {
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
-        $stateService = new StateService();
         $projectPath = getcwd();
         
         $validations = [
@@ -220,38 +221,35 @@ class MainMenuCommand extends Command
             $result = false;
             switch ($config['method']) {
                 case 'validateProfileExists':
-                    $result = $stateService->validateProfileExists($projectPath);
+                    $result = $this->stateService->validateProfileExists($projectPath);
                     break;
                 case 'validateVcsAccess':
-                    $result = $stateService->validateVcsAccess($projectPath);
+                    $result = $this->stateService->validateVcsAccess($projectPath);
                     break;
                 case 'validateDockerRunning':
-                    $result = $stateService->validateDockerRunning($projectPath);
+                    $result = $this->stateService->validateDockerRunning($projectPath);
                     break;
                 case 'validateDatabaseAccess':
-                    $result = $stateService->validateDatabaseAccess($projectPath);
+                    $result = $this->stateService->validateDatabaseAccess($projectPath);
                     break;
                 case 'validateWordPressInstalled':
-                    $result = $stateService->validateWordPressInstalled($projectPath);
+                    $result = $this->stateService->validateWordPressInstalled($projectPath);
                     break;
                 case 'validateThemeActive':
-                    $result = $stateService->validateThemeActive($projectPath, 'twentytwentyfive');
+                    $result = $this->stateService->validateThemeActive($projectPath, 'twentytwentyfive');
                     break;
                 case 'validatePluginsActive':
-                    $result = $stateService->validatePluginsActive($projectPath);
+                    $result = $this->stateService->validatePluginsActive($projectPath);
                     break;
                 case 'validateAcornConfigured':
-                    // Use unified validation service for granular Acorn status
-                    $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
-                    $acornValidation = $validationService->validateAcorn($projectPath);
+                    $acornValidation = $this->validationService->validateAcorn($projectPath);
                     $result = $acornValidation->isValid;
                     break;
             }
             
             // Special handling for Acorn to show granular status
             if ($config['method'] === 'validateAcornConfigured') {
-                $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
-                $acornValidation = $validationService->validateAcorn($projectPath);
+                $acornValidation = $this->validationService->validateAcorn($projectPath);
                 
                 if ($acornValidation->isValid) {
                     $output->writeln(' <fg=green>✓ Fully configured</>');
@@ -392,8 +390,7 @@ class MainMenuCommand extends Command
     private function showProgressIndicator(OutputInterface $output, array $currentStep): void
     {
         // Obtener estado completo para calcular progreso
-        $stateService = new StateService();
-        $state = $stateService->loadState(getcwd());
+        $state = $this->stateService->loadState(getcwd());
         
         if (!$state || !isset($state['steps'])) {
             return;
@@ -419,11 +416,10 @@ class MainMenuCommand extends Command
     private function getMainOptionForStep(array $step): ?array
     {
         // Dynamic step options based on actual validation state
-        $stateService = new StateService();
         $projectPath = getcwd();
         
         // Check actual WordPress installation status
-        $wordpressInstalled = $stateService->validateWordPressInstalled($projectPath);
+        $wordpressInstalled = $this->stateService->validateWordPressInstalled($projectPath);
         
         $stepOptions = [
             1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
@@ -457,8 +453,7 @@ class MainMenuCommand extends Command
     
     private function showInconsistencies(OutputInterface $output): void
     {
-        $stateService = new StateService();
-        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
         
         if (!empty($inconsistencies)) {
             $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias Detectadas (' . count($inconsistencies) . '):</>');
@@ -473,8 +468,7 @@ class MainMenuCommand extends Command
     
     private function hasInconsistencies(): bool
     {
-        $stateService = new StateService();
-        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
         return !empty($inconsistencies);
     }
     
@@ -483,8 +477,7 @@ class MainMenuCommand extends Command
         $output->writeln('');
         $output->writeln('<fg=cyan>🔧 Reparando inconsistencias...</>');
         
-        $stateService = new StateService();
-        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
         
         if (empty($inconsistencies)) {
             $output->writeln('<info>✓ No hay inconsistencias que reparar</info>');

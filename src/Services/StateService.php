@@ -8,9 +8,9 @@ class StateService
 {
     private ProjectValidationService $validationService;
     
-    public function __construct()
+    public function __construct(ProjectValidationService $validationService = null)
     {
-        $this->validationService = new ProjectValidationService();
+        $this->validationService = $validationService ?? new ProjectValidationService();
     }
     public function generateInitialState(string $projectPath, array $config): void
     {
@@ -312,6 +312,7 @@ class StateService
     {
         try {
             $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
+            // TODO: Inject PremiumRepoService via DI
             $service = new \Roots\BedrockCli\Services\PremiumRepoService();
             $result = $service->checkAccess($repoUrl);
             return !($result['needs_auth'] ?? false);
