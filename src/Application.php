@@ -359,7 +359,8 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\DockerService', 'Roots\BedrockCli\Services\DockerService');
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService');
         $this->container->register('Roots\BedrockCli\Services\WordPressApiService', 'Roots\BedrockCli\Services\WordPressApiService');
-        $this->container->register('Roots\BedrockCli\Services\PremiumRepoService', 'Roots\BedrockCli\Services\PremiumRepoService');
+        $this->container->register('Roots\BedrockCli\Services\PremiumRepoService', 'Roots\BedrockCli\Services\PremiumRepoService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\AuthService'));
         $this->container->register('Roots\BedrockCli\Services\AuthService', 'Roots\BedrockCli\Services\AuthService');
         $this->container->register('Roots\BedrockCli\Services\BlueprintService', 'Roots\BedrockCli\Services\BlueprintService');
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
@@ -426,20 +427,7 @@ class Application extends BaseApplication
             }
         }
         
-        // 2. Intentar git tag (desarrollo local)
-        $process = new Process(['git', 'describe', '--tags', '--exact-match', 'HEAD']);
-        $process->setWorkingDirectory(__DIR__ . '/..');
-        if ($process->run() === 0) {
-            return trim($process->getOutput());
-        }
-        
-        // 3. Git commits count (desarrollo local)
-        $process = new Process(['git', 'rev-list', '--count', 'HEAD']);
-        $process->setWorkingDirectory(__DIR__ . '/..');
-        if ($process->run() === 0) {
-            $commits = trim($process->getOutput());
-            return "2.{$commits}.0-dev";
-        }
+        // Skip git commands to prevent path errors
         
         // 4. Composer.json version
         $composerPath = __DIR__ . '/../composer.json';

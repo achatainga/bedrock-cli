@@ -118,16 +118,7 @@ class AuthService
 
     private function getComposerHome(): string
     {
-        $output = [];
-        exec('composer config --global home 2>&1', $output, $returnCode);
-        
-        if ($returnCode === 0 && !empty($output[0])) {
-            $path = trim($output[0]);
-            // Normalizar separadores de directorio
-            return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
-        }
-        
-        // Fallback a detección manual
+        // Skip exec to prevent path errors - use direct fallback
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('APPDATA') . DIRECTORY_SEPARATOR . 'Composer';
         }

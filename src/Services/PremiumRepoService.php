@@ -10,9 +10,9 @@ class PremiumRepoService
     private string $repoUrl;
     private string $branch;
 
-    public function __construct(string $repoUrl = '', string $branch = 'main')
+    public function __construct(AuthService $authService = null, string $repoUrl = '', string $branch = 'main')
     {
-        $this->authService = new AuthService();
+        $this->authService = $authService ?? new AuthService();
         $this->repoUrl = $repoUrl;
         $this->branch = $branch;
     }
