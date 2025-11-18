@@ -32,10 +32,18 @@ class CliRunnerService
             $process->setTimeout(5);
             
             if ($silent) {
+                // Suprimir completamente stdout y stderr
                 $process->disableOutput();
+                $process->setErrorOutput(null);
+                // En Windows, redirigir stderr a nul
+                if (PHP_OS_FAMILY === 'Windows') {
+                    $process->run(null, ['2' => fopen('nul', 'w')]);
+                } else {
+                    $process->run(null, ['2' => fopen('/dev/null', 'w')]);
+                }
+            } else {
+                $process->run();
             }
-            
-            $process->run();
             
             if ($process->isSuccessful()) {
                 return trim($process->getOutput());

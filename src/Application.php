@@ -182,7 +182,7 @@ class Application extends BaseApplication
             new InitCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
-            // MainMenuCommand ahora registrado via CommandRegistryService
+            // MainMenuCommand registrado via CommandRegistryService - NO duplicar aquí
             new InitMenuCommand(),
             new SearchMenuCommand(),
             new InfoCommand(
