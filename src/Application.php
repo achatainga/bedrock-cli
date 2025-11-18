@@ -3,6 +3,8 @@
 namespace Roots\BedrockCli;
 
 use Symfony\Component\Console\Application as BaseApplication;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Reference;
 use Roots\BedrockCli\Commands\Acorn\AcornCommand;
 use Roots\BedrockCli\Commands\Database\MenuCommand as DatabaseMenuCommand;
 use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
@@ -84,8 +86,13 @@ use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
 {
+    private ContainerBuilder $container;
+
     public function __construct()
     {
+        $this->container = new ContainerBuilder();
+        $this->configureServices();
+        
         parent::__construct('bedrock', $this->getVersion());
 
         $this->addCommands([
@@ -167,6 +174,32 @@ class Application extends BaseApplication
             new CacheImportCommand(),
             new CacheUpdateVersionCommand(),
         ]);
+    }
+
+    private function configureServices(): void
+    {
+        // Register core services
+        $this->container->register('Roots\\BedrockCli\\Services\\ProfileService');
+        $this->container->register('Roots\\BedrockCli\\Services\\ComposerService');
+        $this->container->register('Roots\\BedrockCli\\Services\\DockerService');
+        $this->container->register('Roots\\BedrockCli\\Services\\WpCliService');
+        $this->container->register('Roots\\BedrockCli\\Services\\WordPressApiService');
+        $this->container->register('Roots\\BedrockCli\\Services\\PremiumRepoService');
+        $this->container->register('Roots\\BedrockCli\\Services\\AuthService');
+        $this->container->register('Roots\\BedrockCli\\Services\\BlueprintService');
+        $this->container->register('Roots\\BedrockCli\\Services\\StateService');
+        $this->container->register('Roots\\BedrockCli\\Services\\SecurityService');
+        $this->container->register('Roots\\BedrockCli\\Services\\ProjectValidationService');
+        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ManagementService');
+        $this->container->register('Roots\\BedrockCli\\Services\\Management\\PluginManager');
+        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ThemeManager');
+        $this->container->register('Roots\\BedrockCli\\Services\\Management\\DependencyManager');
+        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ContextDetector');
+    }
+
+    public function getContainer(): ContainerBuilder
+    {
+        return $this->container;
     }
 
     public function getHelp(): string
