@@ -15,6 +15,19 @@ use Roots\BedrockCli\Services\WpCliService;
 class ReinstallCommand extends Command
 {
     use SpinnerTrait;
+    
+    private SecurityService $securityService;
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+
+    public function __construct(SecurityService $securityService, DockerService $dockerService, WpCliService $wpCliService)
+    {
+        parent::__construct();
+        $this->securityService = $securityService;
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+    }
+
     protected function configure(): void
     {
         $this
@@ -40,7 +53,7 @@ class ReinstallCommand extends Command
         $output->writeln('  6. <fg=green>Instalar WordPress</>      - (con datos guardados)');
         $output->writeln('');
         
-        if (!SecurityService::confirmDangerousAction(
+        if (!$this->securityService->confirmDangerousAction(
             $input,
             $output,
             $helper,
@@ -60,9 +73,7 @@ class ReinstallCommand extends Command
         // 1. Resetear base de datos
         $output->writeln('');
         $output->writeln('<fg=cyan>Paso 1/6: Reseteando base de datos...</>');
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
-        $process = $wpcli->dbReset();
+        $process = $this->wpCliService->dbReset();
         $this->runWithLoader($process, $output, 'Reseteando base de datos');
         
         if (!$process->isSuccessful()) {
@@ -89,14 +100,14 @@ class ReinstallCommand extends Command
         // 5. Docker rebuild
         $output->writeln('');
         $output->writeln('<fg=cyan>Paso 5/6: Reconstruyendo contenedores Docker...</>');
-        $docker->rebuild();
+        $this->dockerService->rebuild();
         $output->writeln('<fg=green>✓ Contenedores reconstruidos</>');
 
         // 6. Instalar WordPress
         if ($wpData) {
             $output->writeln('');
             $output->writeln('<fg=cyan>Paso 6/6: Instalando WordPress...</>');
-            $this->reinstallWordPress($wpcli, $wpData, $output);
+            $this->reinstallWordPress($this->wpCliService, $wpData, $output);
         } else {
             $output->writeln('');
             $output->writeln('<fg=yellow>Paso 6/6: Omitido (no hay datos de instalación)</>');
@@ -126,14 +137,11 @@ class ReinstallCommand extends Command
         }
 
         // Intentar obtener datos del sitio actual
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
-        
-        $process = $wpcli->execute(['option', 'get', 'blogname']);
+        $process = $this->wpCliService->execute(['option', 'get', 'blogname']);
         $process->run();
         $title = $process->isSuccessful() ? trim($process->getOutput()) : 'Mi Sitio';
         
-        $process = $wpcli->execute(['option', 'get', 'admin_email']);
+        $process = $this->wpCliService->execute(['option', 'get', 'admin_email']);
         $process->run();
         $email = $process->isSuccessful() ? trim($process->getOutput()) : 'admin@example.com';
 

@@ -132,13 +132,24 @@ class Application extends BaseApplication
             ),
             new NewWizardCommand(),
             new InitCommand(),
-            new MainMenuCommand(),
+            new MainMenuCommand(
+                $this->container->get('Roots\BedrockCli\Services\StateService'),
+                $this->container->get('Roots\BedrockCli\Services\PremiumRepoService')
+            ),
             new InitMenuCommand(),
             new SearchMenuCommand(),
-            new InfoCommand(),
-            new DoctorCommand(),
+            new InfoCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+            ),
+            new DoctorCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+            ),
             new BackupCommand(),
-            new ReinstallCommand(),
+            new ReinstallCommand(
+                $this->container->get('Roots\BedrockCli\Services\SecurityService'),
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new SeedCommand(),
             new ExportConfigCommand(),
             new ImportCoreCommand(),
@@ -226,6 +237,10 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
         $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');
         $this->container->register('Roots\BedrockCli\Services\AIContextBuilder', 'Roots\BedrockCli\Services\AIContextBuilder');
+        
+        // Add WpCliService with DockerService dependency
+        $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
     }
 
     public function getContainer(): ContainerBuilder

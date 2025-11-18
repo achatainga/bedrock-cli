@@ -9,6 +9,14 @@ use Roots\BedrockCli\Services\ProjectValidationService;
 
 class InfoCommand extends Command
 {
+    private ProjectValidationService $validationService;
+
+    public function __construct(ProjectValidationService $validationService)
+    {
+        parent::__construct();
+        $this->validationService = $validationService;
+    }
+
     protected function configure(): void
     {
         $this
@@ -27,14 +35,13 @@ class InfoCommand extends Command
         $output->writeln('');
         
         // Detectar estado usando unified validation service
-        $validationService = new ProjectValidationService();
         $projectPath = getcwd();
         
-        $dockerValidation = $validationService->validateDocker($projectPath);
-        $dbValidation = $validationService->validateDatabase($projectPath);
-        $wpValidation = $validationService->validateWordPress($projectPath);
-        $acornValidation = $validationService->validateAcorn($projectPath);
-        $inconsistencies = $validationService->detectInconsistencies($projectPath);
+        $dockerValidation = $this->validationService->validateDocker($projectPath);
+        $dbValidation = $this->validationService->validateDatabase($projectPath);
+        $wpValidation = $this->validationService->validateWordPress($projectPath);
+        $acornValidation = $this->validationService->validateAcorn($projectPath);
+        $inconsistencies = $this->validationService->detectInconsistencies($projectPath);
         
         // Build state array for compatibility
         $state = [
