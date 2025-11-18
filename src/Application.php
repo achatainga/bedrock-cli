@@ -122,7 +122,14 @@ class Application extends BaseApplication
             new ThemesCompressCommand(),
             new ThemesStatusCommand(),
             new SetupCommand(),
-            new NewCommand(),
+            new NewCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
+                $this->container->get('Roots\BedrockCli\Services\ComposerService'),
+                $this->container->get('Roots\BedrockCli\Services\BlueprintService'),
+                $this->container->get('Roots\BedrockCli\Services\AuthService'),
+                $this->container->get('Roots\BedrockCli\Services\StateService'),
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+            ),
             new NewWizardCommand(),
             new InitCommand(),
             new MainMenuCommand(),
@@ -142,7 +149,11 @@ class Application extends BaseApplication
             new ProfileDeleteCommand(),
             new ProfileEditCommand(),
             new ProfileExportCommand(),
-            new ProfileApplyCommand(),
+            new ProfileApplyCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
+                $this->container->get('Roots\BedrockCli\Services\ComposerService'),
+                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
+            ),
             new ProfileAddPluginCommand(),
             new ProfileRemovePluginCommand(),
             new ProfileSetThemeCommand(),
@@ -154,7 +165,9 @@ class Application extends BaseApplication
             new PluginInfoCommand(),
             new ThemeSearchCommand(),
             new ThemeInfoCommand(),
-            new ManageCommand(),
+            new ManageCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector')
+            ),
             new PluginsManageCommand(),
             new ThemesManageCommand(),
             new DependenciesManageCommand(),
@@ -179,22 +192,23 @@ class Application extends BaseApplication
     private function configureServices(): void
     {
         // Register core services
-        $this->container->register('Roots\\BedrockCli\\Services\\ProfileService');
-        $this->container->register('Roots\\BedrockCli\\Services\\ComposerService');
-        $this->container->register('Roots\\BedrockCli\\Services\\DockerService');
-        $this->container->register('Roots\\BedrockCli\\Services\\WpCliService');
-        $this->container->register('Roots\\BedrockCli\\Services\\WordPressApiService');
-        $this->container->register('Roots\\BedrockCli\\Services\\PremiumRepoService');
-        $this->container->register('Roots\\BedrockCli\\Services\\AuthService');
-        $this->container->register('Roots\\BedrockCli\\Services\\BlueprintService');
-        $this->container->register('Roots\\BedrockCli\\Services\\StateService');
-        $this->container->register('Roots\\BedrockCli\\Services\\SecurityService');
-        $this->container->register('Roots\\BedrockCli\\Services\\ProjectValidationService');
-        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ManagementService');
-        $this->container->register('Roots\\BedrockCli\\Services\\Management\\PluginManager');
-        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ThemeManager');
-        $this->container->register('Roots\\BedrockCli\\Services\\Management\\DependencyManager');
-        $this->container->register('Roots\\BedrockCli\\Services\\Management\\ContextDetector');
+        $this->container->register('Roots\BedrockCli\Services\ProfileService', 'Roots\BedrockCli\Services\ProfileService');
+        $this->container->register('Roots\BedrockCli\Services\ComposerService', 'Roots\BedrockCli\Services\ComposerService');
+        $this->container->register('Roots\BedrockCli\Services\DockerService', 'Roots\BedrockCli\Services\DockerService');
+        $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService');
+        $this->container->register('Roots\BedrockCli\Services\WordPressApiService', 'Roots\BedrockCli\Services\WordPressApiService');
+        $this->container->register('Roots\BedrockCli\Services\PremiumRepoService', 'Roots\BedrockCli\Services\PremiumRepoService');
+        $this->container->register('Roots\BedrockCli\Services\AuthService', 'Roots\BedrockCli\Services\AuthService');
+        $this->container->register('Roots\BedrockCli\Services\BlueprintService', 'Roots\BedrockCli\Services\BlueprintService');
+        $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
+        $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
+        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService');
+        $this->container->register('Roots\BedrockCli\Services\Management\ManagementService', 'Roots\BedrockCli\Services\Management\ManagementService');
+        $this->container->register('Roots\BedrockCli\Services\Management\PluginManager', 'Roots\BedrockCli\Services\Management\PluginManager');
+        $this->container->register('Roots\BedrockCli\Services\Management\ThemeManager', 'Roots\BedrockCli\Services\Management\ThemeManager');
+        $this->container->register('Roots\BedrockCli\Services\Management\DependencyManager', 'Roots\BedrockCli\Services\Management\DependencyManager');
+        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector');
+        $this->container->register('Roots\BedrockCli\Services\VcsValidator', 'Roots\BedrockCli\Services\VcsValidator');
     }
 
     public function getContainer(): ContainerBuilder

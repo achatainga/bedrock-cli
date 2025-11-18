@@ -20,12 +20,15 @@ class ApplyCommand extends Command
     private ComposerService $composerService;
     private VcsValidator $vcsValidator;
 
-    public function __construct()
-    {
+    public function __construct(
+        ProfileService $profileService,
+        ComposerService $composerService,
+        VcsValidator $vcsValidator
+    ) {
         parent::__construct();
-        $this->profileService = new ProfileService();
-        $this->composerService = new ComposerService();
-        $this->vcsValidator = new VcsValidator();
+        $this->profileService = $profileService;
+        $this->composerService = $composerService;
+        $this->vcsValidator = $vcsValidator;
     }
 
     protected function configure(): void
