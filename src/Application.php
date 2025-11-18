@@ -407,6 +407,10 @@ class Application extends BaseApplication
         // Add CliRunnerService with ErrorLoggerService dependency
         $this->container->register('Roots\BedrockCli\Services\CliRunnerService', 'Roots\BedrockCli\Services\CliRunnerService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\ErrorLoggerService'));
+        
+        // Add CommandRegistryService
+        $this->container->register('Roots\BedrockCli\Services\CommandRegistryService', 'Roots\BedrockCli\Services\CommandRegistryService')
+            ->addArgument($this->container);
     }
 
     public function getContainer(): ContainerBuilder
@@ -421,8 +425,6 @@ class Application extends BaseApplication
 
     public function getVersion(): string
     {
-        // Estrategia híbrida: Composer InstalledVersions > Git tag > Git commits > Fallback
-        
         // 1. Composer InstalledVersions (instalación global)
         if (class_exists('\Composer\InstalledVersions')) {
             try {
@@ -430,7 +432,6 @@ class Application extends BaseApplication
                 if ($version && $version !== 'dev-feature/unified-management-system') {
                     return $version;
                 }
-                // Si es dev branch, obtener referencia
                 $reference = \Composer\InstalledVersions::getReference('achatainga/bedrock-cli');
                 if ($reference) {
                     return 'dev-' . substr($reference, 0, 7);
@@ -440,28 +441,20 @@ class Application extends BaseApplication
             }
         }
         
-        // 2. Git commands (con ExecutableFinder para evitar errores de PATH)
-        $executableFinder = new ExecutableFinder();
-        $git = $executableFinder->find('git');
-        
-        if ($git && is_dir(__DIR__ . '/../.git')) {
-            try {
-                // Intentar git describe
-                $process = new Process([$git, 'describe', '--tags', '--exact-match'], __DIR__ . '/..');
-                $process->run();
-                if ($process->isSuccessful()) {
-                    return trim($process->getOutput());
-                }
-                
-                // Fallback: contar commits
-                $process = new Process([$git, 'rev-list', '--count', 'HEAD'], __DIR__ . '/..');
-                $process->run();
-                if ($process->isSuccessful()) {
-                    $commitCount = trim($process->getOutput());
-                    return "2.{$commitCount}.0-dev";
-                }
-            } catch (\Exception $e) {
-                // Silencio, continuar con otros métodos
+        // 2. Git commands usando CliRunnerService
+        if (is_dir(__DIR__ . '/../.git')) {
+            $cliRunner = $this->container->get('Roots\BedrockCli\Services\CliRunnerService');
+            
+            // Intentar git describe
+            $version = $cliRunner->runCommand('git', ['describe', '--tags', '--exact-match'], __DIR__ . '/..');
+            if ($version) {
+                return $version;
+            }
+            
+            // Fallback: contar commits
+            $commitCount = $cliRunner->runCommand('git', ['rev-list', '--count', 'HEAD'], __DIR__ . '/..');
+            if ($commitCount) {
+                return "2.{$commitCount}.0-dev";
             }
         }
         
@@ -474,7 +467,6 @@ class Application extends BaseApplication
             }
         }
         
-        // 4. Fallback
         return '2.0.0-unknown';
     }
 }
