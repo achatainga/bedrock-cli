@@ -13,12 +13,37 @@ use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
 use Roots\BedrockCli\Services\AuthService;
 use Roots\BedrockCli\Services\StateService;
-use Roots\BedrockCli\Services\DockerVerificationService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
+use Roots\BedrockCli\Traits\SpinnerTrait;
 
 class NewCommand extends Command
 {
-    use PremiumAssetsTrait;
+    use PremiumAssetsTrait, SpinnerTrait;
+
+    private ProfileService $profileService;
+    private ComposerService $composerService;
+    private BlueprintService $blueprintService;
+    private AuthService $authService;
+    private StateService $stateService;
+    private ProjectValidationService $validationService;
+
+    public function __construct(
+        ProfileService $profileService,
+        ComposerService $composerService,
+        BlueprintService $blueprintService,
+        AuthService $authService,
+        StateService $stateService,
+        ProjectValidationService $validationService
+    ) {
+        parent::__construct();
+        $this->profileService = $profileService;
+        $this->composerService = $composerService;
+        $this->blueprintService = $blueprintService;
+        $this->authService = $authService;
+        $this->stateService = $stateService;
+        $this->validationService = $validationService;
+    }
 
     protected function configure(): void
     {
@@ -432,30 +457,27 @@ class NewCommand extends Command
         $profileName = $input->getOption('profile');
         $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
 
-        $profileService = new ProfileService();
-        $composerService = new ComposerService();
-
         try {
-            $profile = $profileService->loadProfile($profileName);
+            $profile = $this->profileService->loadProfile($profileName);
             
             // Detectar Docker y actualizar profile si no está definido
             if (!isset($profile['docker_mode'])) {
                 $dockerMode = !$input->getOption('no-docker');
                 if ($dockerMode) {
                     $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados.</>');                    $profile['docker_mode'] = true;
-                    $profileService->saveProfile($profileName, $profile);
+                    $this->profileService->saveProfile($profileName, $profile);
                 }
             }
             
-            $composerService->generateFromProfile($profile, $name);
-            $composerService->copyProfileToProject($profile, $name);
+            $this->composerService->generateFromProfile($profile, $name);
+            $this->composerService->copyProfileToProject($profile, $name);
             
             $output->writeln('<info>Instalando dependencias del profile...</info>');
             $process = new Process(['composer', 'update', '--no-interaction'], $name);
             $process->setTimeout(600);
             $this->runWithLoader($process, $output, 'Instalando dependencias');
             
-            $composerService->copyCustomZipFiles($profile, $name);
+            $this->composerService->copyCustomZipFiles($profile, $name);
             $output->writeln('<info>✓ Archivos .zip copiados</info>');
             
             $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
@@ -471,13 +493,11 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Generando blueprints...</info>');
 
-        $profileService = new ProfileService();
-        $blueprintService = new BlueprintService();
         $profileName = $input->getOption('profile');
 
         try {
-            $profile = $profileService->loadProfile($profileName);
-            $blueprintService->generateBlueprints($profile, $name);
+            $profile = $this->profileService->loadProfile($profileName);
+            $this->blueprintService->generateBlueprints($profile, $name);
             $output->writeln('<info>✓ Blueprints generados (production, staging, development)</info>');
         } catch (\RuntimeException $e) {
             $output->writeln("<comment>Blueprints no generados: {$e->getMessage()}</comment>");
@@ -563,8 +583,7 @@ class NewCommand extends Command
 
     private function copyAuthJson(string $name, OutputInterface $output): void
     {
-        $authService = new AuthService();
-        $globalAuth = $authService->getAuthFile();
+        $globalAuth = $this->authService->getAuthFile();
 
         if (!file_exists($globalAuth)) {
             $output->writeln('<comment>⚠️  auth.json no encontrado, omitiendo...</comment>');
@@ -624,7 +643,7 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Generando wizard de configuración...</info>');
 
-        $stateService = new StateService();
+
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
 
         $themeName = 'twentytwentyfive';
@@ -648,7 +667,7 @@ class NewCommand extends Command
             'theme_name' => $themeName
         ];
 
-        $stateService->generateInitialState($name, $config);
+        $this->stateService->generateInitialState($name, $config);
         $output->writeln('<info>✓ bedrock_state.json creado</info>');
     }
     
@@ -660,10 +679,9 @@ class NewCommand extends Command
         // Esperar a que los contenedores se inicialicen
         sleep(3);
         
-        $verificationService = new DockerVerificationService();
         $projectPath = realpath($name);
         
-        if ($projectPath && $verificationService->verifyAndFixProject($projectPath, $output)) {
+        if ($projectPath && $this->validationService->validateProject($projectPath)) {
             $output->writeln('<info>✓ Proyecto verificado y listo</info>');
         } else {
             $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');

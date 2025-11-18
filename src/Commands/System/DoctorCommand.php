@@ -12,10 +12,10 @@ class DoctorCommand extends Command
 {
     private ProjectValidationService $validationService;
 
-    public function __construct()
+    public function __construct(ProjectValidationService $validationService)
     {
         parent::__construct();
-        $this->validationService = new ProjectValidationService();
+        $this->validationService = $validationService;
     }
 
     protected function configure(): void

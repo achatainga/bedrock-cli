@@ -14,6 +14,19 @@ use Roots\BedrockCli\Services\StateService;
 class ActivateCommand extends Command
 {
     use SpinnerTrait;
+    
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+    private StateService $stateService;
+
+    public function __construct(DockerService $dockerService, WpCliService $wpCliService, StateService $stateService)
+    {
+        parent::__construct();
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+        $this->stateService = $stateService;
+    }
+
     protected function configure(): void
     {
         $this->setName('themes:activate')
@@ -24,10 +37,7 @@ class ActivateCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $theme = $input->getArgument('theme');
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
-
-        $process = $wpcli->themeActivate($theme);
+        $process = $this->wpCliService->themeActivate($theme);
         $this->runWithLoader($process, $output, "Activando tema: {$theme}");
 
         if ($process->isSuccessful()) {
@@ -41,8 +51,7 @@ class ActivateCommand extends Command
 
     private function markStepCompleted(int $stepId): void
     {
-        $stateService = new StateService();
-        $stateService->markCompleted(getcwd(), $stepId);
+        $this->stateService->markCompleted(getcwd(), $stepId);
     }
 
 

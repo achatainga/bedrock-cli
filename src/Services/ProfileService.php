@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
+use Roots\BedrockCli\DTOs\Profile;
 
 class ProfileService
 {
@@ -70,31 +71,37 @@ class ProfileService
         return file_exists($this->profilesPath . '/' . $name . '.json');
     }
 
-    public function loadProfile(string $name): array
+    public function loadProfile(string $name): Profile
     {
         if (!$this->profileExists($name)) {
             throw new RuntimeException("Profile '{$name}' no existe");
         }
 
         $content = file_get_contents($this->profilesPath . '/' . $name . '.json');
-        $profile = json_decode($content, true);
+        $data = json_decode($content, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new RuntimeException("Profile '{$name}' contiene JSON inválido: " . json_last_error_msg());
         }
 
-        return $profile;
+        return Profile::fromArray($data);
     }
 
-    public function saveProfile(string $name, array $data): void
+    public function saveProfile(string $name, Profile $profile): void
     {
-        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($profile->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new RuntimeException("Error al codificar profile: " . json_last_error_msg());
         }
 
         file_put_contents($this->profilesPath . '/' . $name . '.json', $json);
+    }
+
+    public function saveProfileArray(string $name, array $data): void
+    {
+        $profile = Profile::fromArray($data);
+        $this->saveProfile($name, $profile);
     }
 
     public function listProfiles(): array

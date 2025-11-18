@@ -14,6 +14,20 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class PluginCommand extends Command
 {
+    private ContextDetector $contextDetector;
+    private ManagementService $managementService;
+    private PluginManager $pluginManager;
+    private DependencyManager $dependencyManager;
+
+    public function __construct(ContextDetector $contextDetector, ManagementService $managementService, PluginManager $pluginManager, DependencyManager $dependencyManager)
+    {
+        parent::__construct();
+        $this->contextDetector = $contextDetector;
+        $this->managementService = $managementService;
+        $this->pluginManager = $pluginManager;
+        $this->dependencyManager = $dependencyManager;
+    }
+
     protected function configure(): void
     {
         $this->setName('add:plugin')
@@ -25,11 +39,8 @@ class PluginCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $contextDetector = new ContextDetector();
-        $management = new ManagementService($contextDetector);
-
         try {
-            $management->requireBedrockProject();
+            $this->managementService->requireBedrockProject();
         } catch (\RuntimeException $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             return Command::FAILURE;
@@ -39,15 +50,12 @@ class PluginCommand extends Command
         $version = $input->getOption('plugin-version');
         $activate = $input->getOption('activate');
 
-        $pluginManager = new PluginManager($management);
-        $dependencyManager = new DependencyManager($management);
-
         $output->writeln("<info>Instalando plugin: {$slug}</info>");
 
-        $pluginManager->add($slug, 'wpackagist-plugin', $version);
+        $this->pluginManager->add($slug, 'wpackagist-plugin', $version);
 
         $package = "wpackagist-plugin/{$slug}";
-        $exitCode = $dependencyManager->require(
+        $exitCode = $this->dependencyManager->require(
             $package,
             $version,
             false,

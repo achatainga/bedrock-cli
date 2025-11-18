@@ -9,6 +9,14 @@ use Roots\BedrockCli\Services\UnzipService;
 
 class ListCommand extends Command
 {
+    private UnzipService $unzipService;
+
+    public function __construct(UnzipService $unzipService)
+    {
+        parent::__construct();
+        $this->unzipService = $unzipService;
+    }
+
     protected function configure(): void
     {
         $this->setName('themes:list')
@@ -17,8 +25,7 @@ class ListCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $unzipService = new UnzipService();
-        $projectRoot = $unzipService->detectProjectRoot();
+        $projectRoot = $this->unzipService->detectProjectRoot();
         $themesDir = $projectRoot . '/web/app/themes';
 
         if (!is_dir($themesDir)) {

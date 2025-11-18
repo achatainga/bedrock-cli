@@ -14,6 +14,16 @@ use Symfony\Component\Console\Input\ArrayInput;
 
 class MainMenuCommand extends Command
 {
+    private StateService $stateService;
+    private PremiumRepoService $premiumRepoService;
+
+    public function __construct(StateService $stateService, PremiumRepoService $premiumRepoService)
+    {
+        parent::__construct();
+        $this->stateService = $stateService;
+        $this->premiumRepoService = $premiumRepoService;
+    }
+
     protected function configure(): void
     {
         $this->setName('menu')
@@ -27,20 +37,19 @@ class MainMenuCommand extends Command
         $helper = $this->getHelper('question');
         
         // Cargar wizard state si existe
-        $stateService = new StateService();
-        $state = $stateService->loadState(getcwd());
+        $state = $this->stateService->loadState(getcwd());
         
         // FASE 2.5: Validaciones con animación y cache
         $skipValidation = $input->getOption('skip-validation');
         
         if ($state && $state['wizard_mode'] && !$skipValidation) {
             $this->showValidationProgress($output);
-            $stateService->updateStepValidations(getcwd());
+            $this->stateService->updateStepValidations(getcwd());
             // Recargar estado después de validaciones
-            $state = $stateService->loadState(getcwd());
+            $state = $this->stateService->loadState(getcwd());
         }
         
-        $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+        $currentStep = $state && $state['wizard_mode'] ? $this->stateService->getCurrentStep($state) : null;
         
         // FASE 2: Verificar si está en modo guía
         $isGuidedMode = $input->getOption('guia');
@@ -48,7 +57,7 @@ class MainMenuCommand extends Command
         // FASE 2.6: Verificar acceso a repo premium (con skip-validation)
         $needsAuth = false;
         if (!$skipValidation) {
-            $externalServices = $stateService->validateExternalServices();
+            $externalServices = $this->stateService->validateExternalServices();
             $needsAuth = !$externalServices['premium_repo'];
         }
         
