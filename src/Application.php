@@ -84,6 +84,7 @@ use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
 use Roots\BedrockCli\Commands\UpdateCommand;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Process\ExecutableFinder;
 
 class Application extends BaseApplication
 {
@@ -348,6 +349,10 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')
             ),
+            new \Roots\BedrockCli\Commands\System\DiagnosticsCommand(
+                $this->container->get('Roots\BedrockCli\Services\ErrorLoggerService'),
+                $this->container->get('Roots\BedrockCli\Services\CliRunnerService')
+            ),
         ]);
     }
 
@@ -383,6 +388,7 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
         $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');
         $this->container->register('Roots\BedrockCli\Services\AIContextBuilder', 'Roots\BedrockCli\Services\AIContextBuilder');
+        $this->container->register('Roots\BedrockCli\Services\ErrorLoggerService', 'Roots\BedrockCli\Services\ErrorLoggerService');
         
         // Add WpCliService with DockerService dependency
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
@@ -394,6 +400,13 @@ class Application extends BaseApplication
         
         // Add SecurityService
         $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
+        
+        // Add ErrorLoggerService
+        $this->container->register('Roots\BedrockCli\Services\ErrorLoggerService', 'Roots\BedrockCli\Services\ErrorLoggerService');
+        
+        // Add CliRunnerService with ErrorLoggerService dependency
+        $this->container->register('Roots\BedrockCli\Services\CliRunnerService', 'Roots\BedrockCli\Services\CliRunnerService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\ErrorLoggerService'));
     }
 
     public function getContainer(): ContainerBuilder
@@ -427,9 +440,32 @@ class Application extends BaseApplication
             }
         }
         
-        // Skip git commands to prevent path errors
+        // 2. Git commands (con ExecutableFinder para evitar errores de PATH)
+        $executableFinder = new ExecutableFinder();
+        $git = $executableFinder->find('git');
         
-        // 4. Composer.json version
+        if ($git && is_dir(__DIR__ . '/../.git')) {
+            try {
+                // Intentar git describe
+                $process = new Process([$git, 'describe', '--tags', '--exact-match'], __DIR__ . '/..');
+                $process->run();
+                if ($process->isSuccessful()) {
+                    return trim($process->getOutput());
+                }
+                
+                // Fallback: contar commits
+                $process = new Process([$git, 'rev-list', '--count', 'HEAD'], __DIR__ . '/..');
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $commitCount = trim($process->getOutput());
+                    return "2.{$commitCount}.0-dev";
+                }
+            } catch (\Exception $e) {
+                // Silencio, continuar con otros métodos
+            }
+        }
+        
+        // 3. Composer.json version
         $composerPath = __DIR__ . '/../composer.json';
         if (file_exists($composerPath)) {
             $composer = json_decode(file_get_contents($composerPath), true);
@@ -438,7 +474,7 @@ class Application extends BaseApplication
             }
         }
         
-        // 5. Fallback
+        // 4. Fallback
         return '2.0.0-unknown';
     }
 }

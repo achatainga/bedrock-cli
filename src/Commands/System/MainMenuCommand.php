@@ -18,6 +18,7 @@ class MainMenuCommand extends Command
     private StateService $stateService;
     private PremiumRepoService $premiumRepoService;
     private ProjectValidationService $validationService;
+    private bool $isWindows;
 
     public function __construct(StateService $stateService, PremiumRepoService $premiumRepoService, ProjectValidationService $validationService)
     {
@@ -25,6 +26,7 @@ class MainMenuCommand extends Command
         $this->stateService = $stateService;
         $this->premiumRepoService = $premiumRepoService;
         $this->validationService = $validationService;
+        $this->isWindows = PHP_OS_FAMILY === 'Windows';
     }
 
     protected function configure(): void
@@ -70,9 +72,17 @@ class MainMenuCommand extends Command
                 return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth, $skipValidation);
             }
             $output->writeln('');
-            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ║</>');
-            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            // Usar caracteres ASCII en Windows para evitar artefactos visuales
+            $boxTopLeft = $this->isWindows ? '+' : '╔';
+            $boxTopRight = $this->isWindows ? '+' : '╗';
+            $boxBottomLeft = $this->isWindows ? '+' : '╚';
+            $boxBottomRight = $this->isWindows ? '+' : '╝';
+            $boxHorizontal = $this->isWindows ? '-' : '═';
+            $boxVertical = $this->isWindows ? '|' : '║';
+            
+            $output->writeln('<fg=cyan;options=bold>' . $boxTopLeft . str_repeat($boxHorizontal, 39) . $boxTopRight . '</>');
+            $output->writeln('<fg=cyan;options=bold>' . $boxVertical . '</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ' . $boxVertical . '</>');
+            $output->writeln('<fg=cyan;options=bold>' . $boxBottomLeft . str_repeat($boxHorizontal, 39) . $boxBottomRight . '</>');
             $output->writeln('');
             
             // Mostrar wizard si está activo
@@ -274,9 +284,17 @@ class MainMenuCommand extends Command
     {
         while (true) {
             $output->writeln('');
-            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>║</>');
-            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            // Usar caracteres ASCII en Windows para evitar artefactos visuales
+            $boxTopLeft = $this->isWindows ? '+' : '╔';
+            $boxTopRight = $this->isWindows ? '+' : '╗';
+            $boxBottomLeft = $this->isWindows ? '+' : '╚';
+            $boxBottomRight = $this->isWindows ? '+' : '╝';
+            $boxHorizontal = $this->isWindows ? '-' : '═';
+            $boxVertical = $this->isWindows ? '|' : '║';
+            
+            $output->writeln('<fg=cyan;options=bold>' . $boxTopLeft . str_repeat($boxHorizontal, 39) . $boxTopRight . '</>');
+            $output->writeln('<fg=cyan;options=bold>' . $boxVertical . '</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>' . $boxVertical . '</>');
+            $output->writeln('<fg=cyan;options=bold>' . $boxBottomLeft . str_repeat($boxHorizontal, 39) . $boxBottomRight . '</>');
             $output->writeln('');
             
             // Mostrar progreso
