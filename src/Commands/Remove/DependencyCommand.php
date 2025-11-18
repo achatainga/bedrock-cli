@@ -12,6 +12,21 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class DependencyCommand extends Command
 {
+    private ContextDetector $contextDetector;
+    private ManagementService $management;
+    private DependencyManager $dependencyManager;
+
+    public function __construct(
+        ContextDetector $contextDetector,
+        ManagementService $management,
+        DependencyManager $dependencyManager
+    ) {
+        $this->contextDetector = $contextDetector;
+        $this->management = $management;
+        $this->dependencyManager = $dependencyManager;
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->setName('remove:dependency')
@@ -21,11 +36,8 @@ class DependencyCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $contextDetector = new ContextDetector();
-        $management = new ManagementService($contextDetector);
-
         try {
-            $management->requireBedrockProject();
+            $this->management->requireBedrockProject();
         } catch (\RuntimeException $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             return Command::FAILURE;
@@ -38,18 +50,16 @@ class DependencyCommand extends Command
             return Command::FAILURE;
         }
 
-        $dependencyManager = new DependencyManager($management);
-
-        if (!$dependencyManager->exists($package)) {
+        if (!$this->dependencyManager->exists($package)) {
             $output->writeln("<error>Dependencia '{$package}' no está instalada</error>");
             return Command::FAILURE;
         }
 
         $output->writeln("<info>Removiendo dependencia: {$package}</info>");
 
-        $dependencyManager->remove($package);
+        $this->dependencyManager->remove($package);
 
-        $exitCode = $dependencyManager->update(
+        $exitCode = $this->dependencyManager->update(
             [$package],
             function($buffer) use ($output) {
                 $output->write($buffer);

@@ -302,7 +302,11 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
                 $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
             ),
-            new AddDependencyCommand(),
+            new AddDependencyCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
             new RemovePluginCommand(
                 $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
                 $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
@@ -313,7 +317,11 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
                 $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
             ),
-            new RemoveDependencyCommand(),
+            new RemoveDependencyCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
             new AuthMenuCommand(),
             new AuthAddCommand(
                 $this->container->get('Roots\BedrockCli\Services\AuthService')
@@ -324,11 +332,17 @@ class Application extends BaseApplication
             new AuthRemoveCommand(
                 $this->container->get('Roots\BedrockCli\Services\AuthService')
             ),
-            new AICommand(),
+            new AICommand(
+                $this->container->get('Roots\BedrockCli\Services\AIContextBuilder')
+            ),
             new InstallMuPluginCommand(),
             new UpdateMuPluginCommand(),
-            new CacheImportCommand(),
-            new CacheUpdateVersionCommand(),
+            new CacheImportCommand(
+                $this->container->get('Roots\BedrockCli\Services\PremiumCacheService')
+            ),
+            new CacheUpdateVersionCommand(
+                $this->container->get('Roots\BedrockCli\Services\PremiumCacheService')
+            ),
             new UpdateCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')

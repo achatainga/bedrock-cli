@@ -11,6 +11,14 @@ use Symfony\Component\Process\Process;
 
 class AICommand extends Command
 {
+    private AIContextBuilder $contextBuilder;
+
+    public function __construct(AIContextBuilder $contextBuilder)
+    {
+        $this->contextBuilder = $contextBuilder;
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this
@@ -30,8 +38,7 @@ class AICommand extends Command
 
         $output->writeln('<info>🤖 Inicializando Bedrock AI Copilot (wrapper para gemini-cli)...</info>');
 
-        $contextBuilder = new AIContextBuilder();
-        $context = $contextBuilder->buildContext();
+        $context = $this->contextBuilder->buildContext();
         $contextFile = tempnam(sys_get_temp_dir(), 'GEMINI_CONTEXT') . '.md';
         $contextString = "## Contexto del Proyecto Bedrock\n\n```json\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n```";
         file_put_contents($contextFile, $contextString);
