@@ -25,14 +25,19 @@ class ThemesManageCommand extends Command
     private WordPressApiService $wpApi;
     private array $pendingThemes = [];
 
-    public function __construct()
-    {
+    public function __construct(
+        ContextDetector $contextDetector,
+        ManagementService $management,
+        ThemeManager $themeManager,
+        DependencyManager $dependencyManager,
+        WordPressApiService $wpApi
+    ) {
+        $this->contextDetector = $contextDetector;
+        $this->management = $management;
+        $this->themeManager = $themeManager;
+        $this->dependencyManager = $dependencyManager;
+        $this->wpApi = $wpApi;
         parent::__construct();
-        $this->contextDetector = new ContextDetector();
-        $this->management = new ManagementService($this->contextDetector);
-        $this->themeManager = new ThemeManager($this->management);
-        $this->dependencyManager = new DependencyManager($this->management);
-        $this->wpApi = new WordPressApiService();
     }
 
     protected function configure(): void

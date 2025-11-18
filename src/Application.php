@@ -278,8 +278,18 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager'),
                 $this->container->get('Roots\BedrockCli\Services\WordPressApiService')
             ),
-            new ThemesManageCommand(),
-            new DependenciesManageCommand(),
+            new ThemesManageCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager'),
+                $this->container->get('Roots\BedrockCli\Services\WordPressApiService')
+            ),
+            new DependenciesManageCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
             new AddPluginCommand(
                 $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
                 $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
