@@ -224,8 +224,18 @@ class Application extends BaseApplication
             new PluginsManageCommand(),
             new ThemesManageCommand(),
             new DependenciesManageCommand(),
-            new AddPluginCommand(),
-            new AddThemeCommand(),
+            new AddPluginCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
+            new AddThemeCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
             new AddDependencyCommand(),
             new RemovePluginCommand(),
             new RemoveThemeCommand(),
