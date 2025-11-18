@@ -28,7 +28,8 @@ class DiagnosticsCommand extends Command
     
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $output->writeln('<fg=cyan;options=bold>🔍 DIAGNÓSTICO COMPLETO DEL SISTEMA</>');\n        $output->writeln('');
+        $output->writeln('<fg=cyan;options=bold>🔍 DIAGNÓSTICO COMPLETO DEL SISTEMA</>');
+        $output->writeln('');
         
         // Log system info
         $this->errorLogger->logSystemInfo();
@@ -48,7 +49,8 @@ class DiagnosticsCommand extends Command
                     $output->writeln("  <comment>Versión: " . substr($version, 0, 100) . "</comment>");
                 }
             } else {
-                $output->writeln('<fg=red>❌ No encontrado en PATH</>');\n            }
+                $output->writeln('<fg=red>❌ No encontrado en PATH</>');
+            }
         }
         
         $output->writeln('');
