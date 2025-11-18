@@ -12,9 +12,11 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\ArrayInput;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class MainMenuCommand extends Command
 {
+    use ProjectSelectorTrait;
     private StateService $stateService;
     private PremiumRepoService $premiumRepoService;
     private ProjectValidationService $validationService;
@@ -39,6 +41,13 @@ class MainMenuCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // NUEVO: Activar ProjectSelectorTrait para modo guía
+        if ($input->getOption('guia')) {
+            if (!$this->ensureBedrockProject($input, $output)) {
+                return Command::FAILURE;
+            }
+        }
+        
         $helper = $this->getHelper('question');
         
         // Cargar wizard state si existe
