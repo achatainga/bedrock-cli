@@ -27,12 +27,15 @@ class CreateCommand extends Command
     private PremiumCacheService $cacheService;
     private VcsValidator $vcsValidator;
 
-    public function __construct()
-    {
+    public function __construct(
+        ProfileService $profileService,
+        PremiumCacheService $cacheService,
+        VcsValidator $vcsValidator
+    ) {
         parent::__construct();
-        $this->profileService = new ProfileService();
-        $this->cacheService = new PremiumCacheService();
-        $this->vcsValidator = new VcsValidator();
+        $this->profileService = $profileService;
+        $this->cacheService = $cacheService;
+        $this->vcsValidator = $vcsValidator;
     }
 
     protected function configure(): void

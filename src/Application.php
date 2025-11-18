@@ -143,10 +143,20 @@ class Application extends BaseApplication
             new ExportConfigCommand(),
             new ImportCoreCommand(),
             new ProfileMenuCommand(),
-            new ProfileCreateCommand(),
-            new ProfileListCommand(),
-            new ProfileShowCommand(),
-            new ProfileDeleteCommand(),
+            new ProfileCreateCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
+                $this->container->get('Roots\BedrockCli\Services\PremiumCacheService'),
+                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
+            ),
+            new ProfileListCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileShowCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileDeleteCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ProfileEditCommand(),
             new ProfileExportCommand(),
             new ProfileApplyCommand(
@@ -209,6 +219,13 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\Management\DependencyManager', 'Roots\BedrockCli\Services\Management\DependencyManager');
         $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector');
         $this->container->register('Roots\BedrockCli\Services\VcsValidator', 'Roots\BedrockCli\Services\VcsValidator');
+        $this->container->register('Roots\BedrockCli\Services\PremiumCacheService', 'Roots\BedrockCli\Services\PremiumCacheService');
+        $this->container->register('Roots\BedrockCli\Services\UnzipService', 'Roots\BedrockCli\Services\UnzipService');
+        $this->container->register('Roots\BedrockCli\Services\ZipService', 'Roots\BedrockCli\Services\ZipService');
+        $this->container->register('Roots\BedrockCli\Services\ProgressService', 'Roots\BedrockCli\Services\ProgressService');
+        $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
+        $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');
+        $this->container->register('Roots\BedrockCli\Services\AIContextBuilder', 'Roots\BedrockCli\Services\AIContextBuilder');
     }
 
     public function getContainer(): ContainerBuilder

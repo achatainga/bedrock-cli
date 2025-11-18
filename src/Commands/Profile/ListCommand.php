@@ -13,10 +13,10 @@ class ListCommand extends Command
     protected static $defaultName = 'profile:list';
     private ProfileService $profileService;
 
-    public function __construct()
+    public function __construct(ProfileService $profileService)
     {
         parent::__construct();
-        $this->profileService = new ProfileService();
+        $this->profileService = $profileService;
     }
 
     protected function configure(): void
