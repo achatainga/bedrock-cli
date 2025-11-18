@@ -18,6 +18,25 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class SetupCommand extends Command
 {
     use ProjectSelectorTrait;
+    
+    private StateService $stateService;
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+    private ProjectValidationService $validationService;
+    
+    public function __construct(
+        StateService $stateService,
+        DockerService $dockerService,
+        WpCliService $wpCliService,
+        ProjectValidationService $validationService
+    ) {
+        $this->stateService = $stateService;
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+        $this->validationService = $validationService;
+        parent::__construct();
+    }
+    
     protected function configure(): void
     {
         $this
@@ -58,8 +77,9 @@ class SetupCommand extends Command
         $output->writeln('<info>Detectando estado del proyecto...</info>');
         $output->writeln('');
         
-        $stateService = new StateService();
-        $validationService = new ProjectValidationService();
+        // Use injected services
+        $stateService = $this->stateService;
+        $validationService = $this->validationService;
         
         // Use unified validation logic
         $projectPath = getcwd();
@@ -226,8 +246,7 @@ class SetupCommand extends Command
         
         $output->writeln('<info>Iniciando Docker Desktop...</info>');
         
-        $docker = new DockerService();
-        $docker->up();
+        $this->dockerService->up();
         
         sleep(5);
         
@@ -271,8 +290,8 @@ class SetupCommand extends Command
         // Obtener título actual de WordPress si existe
         $defaultTitle = 'Mi Sitio';
         if ($state['wp_installed']) {
-            $docker = new DockerService();
-            $wpcli = new WpCliService($docker);
+            $docker = $this->dockerService;
+            $wpcli = $this->wpCliService;
             $getTitleProcess = $wpcli->custom('option get blogname 2>/dev/null');
             $getTitleProcess->run();
             if ($getTitleProcess->isSuccessful() && !empty(trim($getTitleProcess->getOutput()))) {
@@ -329,8 +348,8 @@ class SetupCommand extends Command
     
     private function runSetup(InputInterface $input, OutputInterface $output, array $config, array $state, bool $tutorialMode): int
     {
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
+        $docker = $this->dockerService;
+        $wpcli = $this->wpCliService;
         
         $output->writeln('');
         $output->writeln('<info>Ejecutando setup...</info>');
@@ -451,8 +470,7 @@ class SetupCommand extends Command
         $output->writeln('');
         
         // Marcar paso 2 del wizard como completado
-        $stateService = new StateService();
-        $stateService->markStepCompleted(2);
+        $this->stateService->markStepCompleted(2);
         
         return Command::SUCCESS;
     }
@@ -527,7 +545,7 @@ class SetupCommand extends Command
             
             // Reconstruir contenedores
             $output->writeln('<comment>Reconstruyendo contenedores...</comment>');
-            $dockerService = new DockerService();
+            $dockerService = $this->dockerService;
             
             $process = $dockerService->down();
             $this->runWithLoader($process, $output, 'Deteniendo contenedores');

@@ -14,6 +14,15 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class AcornCommand extends Command
 {
     use ProjectSelectorTrait;
+    
+    private StateService $stateService;
+    
+    public function __construct(StateService $stateService)
+    {
+        $this->stateService = $stateService;
+        parent::__construct();
+    }
+    
     protected function configure()
     {
         $this
@@ -509,7 +518,6 @@ class AcornCommand extends Command
 
     private function markStepCompleted(int $stepId): void
     {
-        $stateService = new StateService();
-        $stateService->markCompleted(getcwd(), $stepId);
+        $this->stateService->markCompleted(getcwd(), $stepId);
     }
 }

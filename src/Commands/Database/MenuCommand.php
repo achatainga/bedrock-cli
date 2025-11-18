@@ -19,6 +19,19 @@ class MenuCommand extends Command
 {
     use ProjectSelectorTrait;
     use SpinnerTrait;
+    
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+    
+    public function __construct(
+        DockerService $dockerService,
+        WpCliService $wpCliService
+    ) {
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+        parent::__construct();
+    }
+    
     protected function configure(): void
     {
         $this
@@ -38,8 +51,8 @@ class MenuCommand extends Command
             return Command::FAILURE;
         }
 
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
+        $docker = $this->dockerService;
+        $wpcli = $this->wpCliService;
 
         if ($input->getOption('create')) {
             return $this->create($wpcli, $output);

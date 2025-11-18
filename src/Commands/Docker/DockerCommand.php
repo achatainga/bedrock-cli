@@ -18,6 +18,19 @@ class DockerCommand extends Command
 {
     use ProjectSelectorTrait;
     use SpinnerTrait;
+    
+    private DockerService $dockerService;
+    private StateService $stateService;
+    
+    public function __construct(
+        DockerService $dockerService,
+        StateService $stateService
+    ) {
+        $this->dockerService = $dockerService;
+        $this->stateService = $stateService;
+        parent::__construct();
+    }
+    
     protected function configure(): void
     {
         $this
@@ -37,7 +50,7 @@ class DockerCommand extends Command
             return Command::FAILURE;
         }
 
-        $docker = new DockerService();
+        $docker = $this->dockerService;
         
         // Verificar si Docker está corriendo
         if (!$docker->isRunning()) {
@@ -284,7 +297,7 @@ class DockerCommand extends Command
             sleep(5);
             $attempt++;
             
-            $docker = new DockerService();
+            $docker = $this->dockerService;
             if ($docker->isRunning()) {
                 $output->writeln('<fg=green>✓ Docker Desktop está funcionando correctamente</>');
                 $output->writeln('');
@@ -311,7 +324,6 @@ class DockerCommand extends Command
 
     private function markStepCompleted(int $stepId): void
     {
-        $stateService = new StateService();
-        $stateService->markCompleted(getcwd(), $stepId);
+        $this->stateService->markCompleted(getcwd(), $stepId);
     }
 }

@@ -96,12 +96,20 @@ class Application extends BaseApplication
         parent::__construct('bedrock', $this->getVersion());
 
         $this->addCommands([
-            new AcornCommand(),
-            new DatabaseMenuCommand(),
+            new AcornCommand(
+                $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
+            new DatabaseMenuCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new DatabaseCleanCommand(),
             new DatabaseSnapshotCommand(),
             new DatabaseMigrateCommand(),
-            new DockerCommand(),
+            new DockerCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
             new OptionsMenuCommand(),
             new OptionsPullCommand(),
             new OptionsPushCommand(),
@@ -150,7 +158,12 @@ class Application extends BaseApplication
             ),
             new ThemesCompressCommand(),
             new ThemesStatusCommand(),
-            new SetupCommand(),
+            new SetupCommand(
+                $this->container->get('Roots\BedrockCli\Services\StateService'),
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+            ),
             new NewCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService'),
                 $this->container->get('Roots\BedrockCli\Services\ComposerService'),
@@ -295,6 +308,12 @@ class Application extends BaseApplication
         // Add WpCliService with DockerService dependency
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
+        
+        // Add StateService
+        $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
+        
+        // Add SecurityService
+        $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
     }
 
     public function getContainer(): ContainerBuilder
