@@ -4,4 +4,10 @@ composer.lock
 .idea/
 *.log
 .io/
+.io_old
 profiles/*.json
+.phpunit.cache/
+*.txt
+generate_tests.php
+fix_descriptions.php
+auto_fix_tests.php

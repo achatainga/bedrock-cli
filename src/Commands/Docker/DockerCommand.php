@@ -2,17 +2,22 @@
 
 namespace Roots\BedrockCli\Commands\Docker;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\DockerService;
+use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class DockerCommand extends Command
 {
+    use ProjectSelectorTrait;
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this
@@ -28,6 +33,10 @@ class DockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $docker = new DockerService();
         
         // Verificar si Docker está corriendo
@@ -82,57 +91,58 @@ class DockerCommand extends Command
         $helper = $this->getHelper('question');
         
         while (true) {
-            $choices = [
-                1 => '<fg=green>Levantar</>     - contenedores',
-                2 => '<fg=green>Bajar</>        - contenedores',
-                3 => '<fg=green>Reiniciar</>    - contenedores',
-                4 => '<fg=green>Reconstruir</>  - (sin caché)',
-                5 => '<fg=green>Reconstruir</>  - (con caché)',
-                6 => '<fg=green>Ver</>          - estado',
-                7 => '<fg=green>Ver</>          - logs',
-                0 => '<fg=yellow>Volver</>      - atrás',
-            ];
+            $output->writeln('');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   🐳 DOCKER - Contenedores        <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+            $output->writeln('');
+            $output->writeln('<comment>Gestiona contenedores Docker del proyecto.</comment>');
+            $output->writeln('');
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
-            $question->setAutocompleterValues(null);
-
-            $answer = $helper->ask($input, $output, $question);
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+            $output->writeln(' <fg=cyan>[1]</> ▶️  Levantar contenedores');
+            $output->writeln(' <fg=cyan>[2]</> ⏹️  Bajar contenedores');
+            $output->writeln(' <fg=cyan>[3]</> 🔄 Reiniciar contenedores');
+            $output->writeln(' <fg=cyan>[4]</> 🛠️  Reconstruir (sin caché)');
+            $output->writeln(' <fg=cyan>[5]</> 🛠️  Reconstruir (con caché)');
+            $output->writeln(' <fg=cyan>[6]</> 📊 Ver estado');
+            $output->writeln(' <fg=cyan>[7]</> 📜 Ver logs');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
+            $index = $helper->ask($input, $output, $question);
             
-            if ($index === 0) {
+            if (!is_numeric($index) || $index < 0 || $index > 7) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
+            
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->up($docker, $output, false);
                     break;
-                case 2:
+                case '2':
                     $this->down($docker, $output);
                     break;
-                case 3:
+                case '3':
                     $this->restart($docker, $output);
                     break;
-                case 4:
+                case '4':
                     $this->rebuild($docker, $output, false);
                     break;
-                case 5:
+                case '5':
                     $this->rebuild($docker, $output, true);
                     break;
-                case 6:
+                case '6':
                     $this->status($docker, $output);
                     break;
-                case 7:
+                case '7':
                     $this->logs($docker, $output);
                     break;
             }
@@ -151,6 +161,7 @@ class DockerCommand extends Command
         
         if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
+            $this->markStepCompleted(1);
             return Command::SUCCESS;
         }
         
@@ -296,19 +307,11 @@ class DockerCommand extends Command
         return false;
     }
 
-    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+
+
+    private function markStepCompleted(int $stepId): void
     {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }

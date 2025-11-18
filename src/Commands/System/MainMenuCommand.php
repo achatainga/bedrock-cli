@@ -2,90 +2,578 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
+use Roots\BedrockCli\Services\PremiumRepoService;
+use Roots\BedrockCli\Services\StateService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\ArrayInput;
 
 class MainMenuCommand extends Command
 {
     protected function configure(): void
     {
         $this->setName('menu')
-             ->setDescription('Abre el menú interactivo');
+             ->setDescription('Abre el menú interactivo')
+             ->addOption('guia', 'g', InputOption::VALUE_NONE, 'Modo guía simplificado para principiantes')
+             ->addOption('skip-validation', 's', InputOption::VALUE_NONE, 'Omitir validaciones para carga rápida');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
         
+        // Cargar wizard state si existe
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
+        
+        // FASE 2.5: Validaciones con animación y cache
+        $skipValidation = $input->getOption('skip-validation');
+        
+        if ($state && $state['wizard_mode'] && !$skipValidation) {
+            $this->showValidationProgress($output);
+            $stateService->updateStepValidations(getcwd());
+            // Recargar estado después de validaciones
+            $state = $stateService->loadState(getcwd());
+        }
+        
+        $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+        
+        // FASE 2: Verificar si está en modo guía
+        $isGuidedMode = $input->getOption('guia');
+        
+        // FASE 2.6: Verificar acceso a repo premium (con skip-validation)
+        $needsAuth = false;
+        if (!$skipValidation) {
+            $externalServices = $stateService->validateExternalServices();
+            $needsAuth = !$externalServices['premium_repo'];
+        }
+        
         while (true) {
+            if ($isGuidedMode && $currentStep) {
+                // Pasar flag de skip validation al modo guía
+                return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth, $skipValidation);
+            }
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK CLI - Menú Principal  </> <fg=cyan;options=bold>     ║</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ║</>');
             $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
+            
+            // Mostrar wizard si está activo
+            if ($currentStep) {
+                $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
+                $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+                $output->writeln('');
+            }
+            
+            $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
+            $this->printMenuItem($output, 'N', 'N', '🆕 New      - Crear proyecto desde cero', $currentStep);
+            $this->printMenuItem($output, '1', '1', '🩺 Doctor   - Verificar dependencias', $currentStep);
+            $this->printMenuItem($output, '2', '2', '⚙️  Setup    - Configuración inicial', $currentStep);
+            $this->printMenuItem($output, '3', '3', '📋 Profiles - Crear/gestionar profiles', $currentStep);
+            $output->writeln('');
+            
+            $output->writeln('<fg=green>⚡ DESARROLLO</>');
+            $this->printMenuItem($output, '4', 'D', '🐳 Docker   - Levantar/bajar contenedores', $currentStep);
+            $this->printMenuItem($output, '5', 'M', '🎛️  Manage   - Plugins, Themes, Dependencies', $currentStep);
+            $this->printMenuItem($output, '6', 'B', '🗄️  Database - Gestión de base de datos', $currentStep);
+            $output->writeln('');
+            
+            $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
+            $this->printMenuItem($output, '7', '7', '🔍 Search   - Buscar en WordPress.org', $currentStep);
+            $this->printMenuItem($output, '8', '8', 'ℹ️  Info     - Estado del proyecto', $currentStep);
+            $output->writeln('');
+            
+            $output->writeln('<fg=magenta>🔧 AVANZADO</>');
+            $this->printMenuItem($output, '9', '9', '🚀 Init     - Inicializar ambiente', $currentStep);
+            $this->printMenuItem($output, 'I', 'I', '🤖 AI       - Copiloto inteligente', $currentStep);
+            $output->writeln('');
+            
+            $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
+            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
+            
+            if ($needsAuth) {
+                $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
+            } else {
+                $this->printMenuItem($output, 'T', 'T', '🔐 Auth     - Credenciales repos privados', $currentStep);
+            }
+            $this->printMenuItem($output, 'B', 'B', '💾 Backup   - Crear backup', $currentStep);
+            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall - Reinstalar (DESTRUCTIVO)', $currentStep);
+            $output->writeln('');
+            
+            $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
+            $output->writeln('');
 
-            $choices = [
-                1 => '<fg=cyan>Info</>         - Estado del proyecto y tareas pendientes',
-                2 => '<fg=green>Setup</>        - Configuración inicial',
-                3 => '<fg=magenta>Profiles</>     - Gestión de profiles',
-                4 => '<fg=magenta>Init</>         - Inicializar ambiente',
-                5 => '<fg=yellow>Search</>       - Buscar plugins/temas WordPress.org',
-                6 => '<fg=green>Docker</>       - Gestión de contenedores',
-                7 => '<fg=green>Database</>     - Gestión de base de datos',
-                8 => '<fg=green>Options</>      - Gestión de opciones WP',
-                9 => '<fg=green>Plugins</>      - Gestión de plugins',
-                10 => '<fg=green>Themes</>       - Gestión de temas',
-                11 => '<fg=green>Acorn</>        - Gestión de Roots Acorn',
-                12 => '<fg=green>Backup</>       - Crear backup',
-                13 => '<fg=red>Reinstall</>    - Reinstalar aplicación (DESTRUCTIVO)',
-                14 => '<fg=cyan>Doctor</>       - Verificar dependencias del sistema',
-                0 => '<fg=red>Salir</>',
-            ];
-
-            $question = new ChoiceQuestion('<fg=yellow>Selecciona una opción:</>', $choices, 1);
-            $question->setAutocompleterValues(null);
-            $question->setErrorMessage('<fg=red>Opción %s inválida.</>');
-
-            $choice = $helper->ask($input, $output, $question);
+            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, A, T, B, R]:</> ', '0');
+            $selectedIndex = $helper->ask($input, $output, $question);
+            
             $cursor = new Cursor($output);
             $cursor->moveUp(1);
             $cursor->clearLine();
-            $selectedIndex = array_search($choice, $choices);
             
-            if ($selectedIndex === 0) {
+            $selectedIndex = strtoupper($selectedIndex);
+            
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'A', 'T', 'B', 'R'];
+            if (!in_array($selectedIndex, $validOptions)) {
+                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, A, T, B, R.</error>');
+                sleep(1);
+                continue;
+            }
+            
+            if ($selectedIndex === '0') {
                 $output->writeln('');
                 $output->writeln('<info>Hasta luego!</info>');
                 return Command::SUCCESS;
             }
 
             $commandMap = [
-                1 => 'info',
-                2 => 'setup',
-                3 => 'profile:menu',
-                4 => 'init:menu',
-                5 => 'search:menu',
-                6 => 'docker',
-                7 => 'db',
-                8 => 'options',
-                9 => 'plugins',
-                10 => 'themes',
-                11 => 'acorn',
-                12 => 'backup',
-                13 => 'reinstall',
-                14 => 'doctor',
+                'N' => 'new:wizard',
+                '1' => 'doctor',
+                '2' => 'setup',
+                '3' => 'profile:menu',
+                '4' => 'docker',
+                '5' => 'manage',
+                '6' => 'db',
+                '7' => 'search:menu',
+                '8' => 'info',
+                '9' => 'init:menu',
+                'I' => 'ai',
+                'O' => 'options',
+                'A' => 'acorn',
+                'T' => 'auth:menu',
+                'B' => 'backup',
+                'R' => 'reinstall',
             ];
 
             $commandName = $commandMap[$selectedIndex];
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                $command->run($input, $output);
+                // FASE 3: Fix propagación de flags - crear input limpio
+                $cleanInput = new ArrayInput([]);
+                $command->run($cleanInput, $output);
             }
         }
 
         return Command::SUCCESS;
+    }
+
+    private function checkPremiumRepoAccess(string $repoUrl): bool
+    {
+        try {
+            $service = new PremiumRepoService();
+            $result = $service->checkAccess($repoUrl);
+            return $result['needs_auth'] ?? false;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    private function printMenuItem(OutputInterface $output, string $key, string $menuItem, string $label, ?array $currentStep): void
+    {
+        $isActive = $currentStep && $currentStep['menu_item'] === $menuItem;
+        if ($isActive) {
+            $output->writeln(" <fg=green>[{$key}] {$label}</>");
+        } else {
+            $output->writeln(" <fg=cyan>[{$key}]</> {$label}");
+        }
+    }
+
+    // ===== FASE 2.5: ANIMACIÓN DE VALIDACIONES =====
+    
+    private function showValidationProgress(OutputInterface $output): void
+    {
+        $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
+        
+        $stateService = new StateService();
+        $projectPath = getcwd();
+        
+        $validations = [
+            'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
+            'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
+            'Docker containers' => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
+            'Database connection' => ['delay' => 0.4, 'method' => 'validateDatabaseAccess'],
+            'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
+            'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
+            'Plugins status' => ['delay' => 0.2, 'method' => 'validatePluginsActive'],
+            'Acorn setup' => ['delay' => 0.3, 'method' => 'validateAcornConfigured']
+        ];
+        
+        foreach ($validations as $task => $config) {
+            $output->write("  • Evaluando {$task}...");
+            usleep((int)($config['delay'] * 1000000));
+            
+            // Ejecutar validación real
+            $result = false;
+            switch ($config['method']) {
+                case 'validateProfileExists':
+                    $result = $stateService->validateProfileExists($projectPath);
+                    break;
+                case 'validateVcsAccess':
+                    $result = $stateService->validateVcsAccess($projectPath);
+                    break;
+                case 'validateDockerRunning':
+                    $result = $stateService->validateDockerRunning($projectPath);
+                    break;
+                case 'validateDatabaseAccess':
+                    $result = $stateService->validateDatabaseAccess($projectPath);
+                    break;
+                case 'validateWordPressInstalled':
+                    $result = $stateService->validateWordPressInstalled($projectPath);
+                    break;
+                case 'validateThemeActive':
+                    $result = $stateService->validateThemeActive($projectPath, 'twentytwentyfive');
+                    break;
+                case 'validatePluginsActive':
+                    $result = $stateService->validatePluginsActive($projectPath);
+                    break;
+                case 'validateAcornConfigured':
+                    // Use unified validation service for granular Acorn status
+                    $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                    $acornValidation = $validationService->validateAcorn($projectPath);
+                    $result = $acornValidation->isValid;
+                    break;
+            }
+            
+            // Special handling for Acorn to show granular status
+            if ($config['method'] === 'validateAcornConfigured') {
+                $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                $acornValidation = $validationService->validateAcorn($projectPath);
+                
+                if ($acornValidation->isValid) {
+                    $output->writeln(' <fg=green>✓ Fully configured</>');
+                } else {
+                    $output->writeln(' <fg=yellow>⚠ ' . $acornValidation->message . '</>');
+                }
+            } else {
+                if ($result) {
+                    $output->writeln(' <fg=green>✓</>');
+                } else {
+                    $output->writeln(' <fg=red>❌</>');
+                }
+            }
+        }
+        
+        $output->writeln('');
+    }
+
+    // ===== FASE 2: MODO GUÍA SIMPLIFICADO =====
+
+    private function showGuidedMenu(InputInterface $input, OutputInterface $output, $helper, array $currentStep, bool $needsAuth, bool $skipValidation = false): int
+    {
+        while (true) {
+            $output->writeln('');
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            $output->writeln('');
+            
+            // Mostrar progreso
+            $this->showProgressIndicator($output, $currentStep);
+            $output->writeln('');
+            
+            // Mostrar inconsistencias si existen
+            $this->showInconsistencies($output);
+            
+            // Mostrar paso actual destacado
+            $output->writeln('<fg=yellow;options=bold>📝 PASO ACTUAL: ' . $currentStep['title'] . '</>');
+            $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+            $output->writeln('');
+            
+            // Comando copy-paste destacado
+            if (isset($currentStep['command'])) {
+                $output->writeln('<fg=green;options=bold>📝 COMANDO PARA EJECUTAR:</>');
+                $output->writeln('<info>' . $currentStep['command'] . '</info>');
+                $output->writeln('');
+            }
+            
+            // Opciones simplificadas
+            $output->writeln('<fg=cyan>🎯 OPCIONES:</>');
+            
+            // Opción principal del paso actual
+            $mainOption = $this->getMainOptionForStep($currentStep);
+            if ($mainOption) {
+                $output->writeln(" <fg=green;options=bold>[{$mainOption['key']}]</> {$mainOption['label']}");
+            }
+            
+            // Opción de reparación si hay inconsistencias
+            $hasInconsistencies = $this->hasInconsistencies();
+            if ($hasInconsistencies) {
+                $output->writeln(' <fg=yellow;options=bold>[F]</> 🔧 Fix      - Reparar inconsistencias automáticamente');
+            }
+            
+            // Opciones esenciales
+            $output->writeln(' <fg=cyan>[8]</> ℹ️  Info     - Estado del proyecto');
+            $output->writeln(' <fg=cyan>[M]</> 📝 Menú    - Ver menú completo');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Salir');
+            $output->writeln('');
+
+            $options = ($mainOption ? $mainOption['key'] . ', ' : '') . ($hasInconsistencies ? 'F, ' : '') . '8, M, 0';
+            $question = new Question('<fg=yellow>Opción [' . $options . ']:</> ', '0');
+            $selectedIndex = $helper->ask($input, $output, $question);
+            
+            $cursor = new Cursor($output);
+            $cursor->moveUp(1);
+            $cursor->clearLine();
+            
+            $selectedIndex = strtoupper($selectedIndex);
+            
+            if ($selectedIndex === '0') {
+                $output->writeln('');
+                $output->writeln('<info>Hasta luego!</info>');
+                return Command::SUCCESS;
+            }
+            
+            if ($selectedIndex === 'M') {
+                // Cambiar a menú completo
+                return $this->showFullMenu($input, $output, $helper, $needsAuth);
+            }
+            
+            if ($selectedIndex === 'F' && $hasInconsistencies) {
+                // Reparar inconsistencias
+                $this->fixInconsistencies($output);
+                continue;
+            }
+            
+            // Ejecutar comando seleccionado
+            $commandMap = [
+                '1' => 'doctor',
+                '2' => 'setup', 
+                '4' => 'docker',
+                '8' => 'info',
+                'D' => 'docker',
+                'P' => 'plugins:menu',
+                'T' => 'themes:menu',
+                'A' => 'acorn',
+                'S' => 'seed'
+            ];
+
+            $commandName = $commandMap[$selectedIndex] ?? null;
+            if ($commandName) {
+                $output->writeln('');
+                $command = $this->getApplication()->find($commandName);
+                // FASE 3: Fix propagación de flags - crear input limpio
+                $cleanInput = new ArrayInput([]);
+                $command->run($cleanInput, $output);
+                
+                // Recargar estado después de ejecutar comando (con validación rápida)
+                $stateService = new StateService();
+                if (!$skipValidation) {
+                    $output->writeln('<fg=cyan>🔄 Actualizando estado...</>');
+                    $stateService->updateStepValidations(getcwd());
+                }
+                $state = $stateService->loadState(getcwd());
+                $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+                
+                if (!$currentStep) {
+                    $output->writeln('<info>🎉 ¡Todos los pasos completados! El proyecto está listo.</info>');
+                    return Command::SUCCESS;
+                }
+            } else {
+                $output->writeln('<error>Opción inválida.</error>');
+                sleep(1);
+            }
+        }
+    }
+    
+    private function showProgressIndicator(OutputInterface $output, array $currentStep): void
+    {
+        // Obtener estado completo para calcular progreso
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
+        
+        if (!$state || !isset($state['steps'])) {
+            return;
+        }
+        
+        // Contar TODOS los pasos para mejor UX y consistencia visual
+        $totalSteps = 0;
+        $completedSteps = 0;
+        
+        foreach ($state['steps'] as $step) {
+            $totalSteps++;
+            if ($step['completed'] ?? false) {
+                $completedSteps++;
+            }
+        }
+        
+        $progress = $totalSteps > 0 ? ($completedSteps / $totalSteps) * 100 : 0;
+        $progressBar = str_repeat('█', (int)($progress / 10)) . str_repeat('░', 10 - (int)($progress / 10));
+        
+        $output->writeln('<fg=cyan>📈 PROGRESO:</> [' . $progressBar . '] ' . round($progress) . '% (' . $completedSteps . '/' . $totalSteps . ')');
+    }
+    
+    private function getMainOptionForStep(array $step): ?array
+    {
+        // Dynamic step options based on actual validation state
+        $stateService = new StateService();
+        $projectPath = getcwd();
+        
+        // Check actual WordPress installation status
+        $wordpressInstalled = $stateService->validateWordPressInstalled($projectPath);
+        
+        $stepOptions = [
+            1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
+            2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
+            3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
+            4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
+            5 => $wordpressInstalled ? 
+                ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'] :
+                ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress (CRÍTICO)'],
+            6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
+            7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
+            8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
+        ];
+        
+        return $stepOptions[$step['id']] ?? null;
+    }
+    
+    private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int
+    {
+        // Redirigir al menú completo original (sin --guia, con skip-validation)
+        $output->writeln('<info>Cambiando a menú completo...</info>');
+        $output->writeln('');
+        
+        // Crear nueva instancia sin --guia pero CON --skip-validation (ya se evaluó)
+        $newInput = clone $input;
+        $newInput->setOption('guia', false);
+        $newInput->setOption('skip-validation', true); // CLAVE: Evitar re-evaluación
+        
+        return $this->execute($newInput, $output);
+    }
+    
+    private function showInconsistencies(OutputInterface $output): void
+    {
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        
+        if (!empty($inconsistencies)) {
+            $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias Detectadas (' . count($inconsistencies) . '):</>');
+            $output->writeln('');
+            
+            foreach ($inconsistencies as $inconsistency) {
+                $output->writeln('  <fg=yellow>⚠</> ' . $inconsistency['message']);
+            }
+            $output->writeln('');
+        }
+    }
+    
+    private function hasInconsistencies(): bool
+    {
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        return !empty($inconsistencies);
+    }
+    
+    private function fixInconsistencies(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔧 Reparando inconsistencias...</>');
+        
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
+        
+        if (empty($inconsistencies)) {
+            $output->writeln('<info>✓ No hay inconsistencias que reparar</info>');
+            return;
+        }
+        
+        $envPath = getcwd() . '/.env';
+        $envContent = file_get_contents($envPath);
+        $envLines = explode("\n", $envContent);
+        $modified = false;
+        
+        foreach ($inconsistencies as $inconsistency) {
+            $output->writeln('<comment>Procesando: ' . $inconsistency['type'] . '</comment>');
+            
+            switch ($inconsistency['type']) {
+                case 'wp_port_missing':
+                    // Agregar WP_PORT y actualizar WP_HOME
+                    $wpPort = $inconsistency['docker_value'];
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_PORT', $wpPort);
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'WP_HOME', '"http://localhost:${WP_PORT}"');
+                    $modified = true;
+                    $output->writeln('<info>✓ WP_PORT agregado: ' . $wpPort . '</info>');
+                    break;
+                    
+                case 'mysql_port_missing':
+                    // Agregar DB_PORT
+                    $dbPort = $inconsistency['docker_value'];
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'DB_PORT', $dbPort);
+                    $modified = true;
+                    $output->writeln('<info>✓ DB_PORT agregado: ' . $dbPort . '</info>');
+                    break;
+                    
+                case 'redis_port_mismatch':
+                    // Actualizar REDIS_PORT
+                    $redisPort = $inconsistency['docker_value'];
+                    $output->writeln('<comment>Actualizando REDIS_PORT de ' . $inconsistency['env_value'] . ' a ' . $redisPort . '</comment>');
+                    $envLines = $this->addOrUpdateEnvLine($envLines, 'REDIS_PORT', $redisPort);
+                    $modified = true;
+                    $output->writeln('<info>✓ REDIS_PORT actualizado: ' . $redisPort . '</info>');
+                    break;
+                    
+                default:
+                    $output->writeln('<comment>Tipo no manejado: ' . $inconsistency['type'] . '</comment>');
+                    break;
+            }
+        }
+        
+        if ($modified) {
+            file_put_contents($envPath, implode("\n", $envLines));
+            $output->writeln('');
+            $output->writeln('<info>✅ Archivo .env actualizado exitosamente</info>');
+            $output->writeln('<comment>Reinicia los contenedores Docker para aplicar los cambios:</comment>');
+            $output->writeln('<comment>  docker-compose down && docker-compose up -d</comment>');
+        } else {
+            $output->writeln('<comment>No se pudieron reparar automáticamente todas las inconsistencias</comment>');
+        }
+        
+        $output->writeln('');
+        $output->writeln('<comment>Presiona Enter para continuar...</comment>');
+        fgets(STDIN);
+    }
+    
+    private function addOrUpdateEnvLine(array $envLines, string $key, $value): array
+    {
+        $found = false;
+        
+        // Buscar línea existente (más robusto)
+        foreach ($envLines as $index => $line) {
+            $trimmedLine = trim($line);
+            if (strpos($trimmedLine, $key . '=') === 0) {
+                $envLines[$index] = $key . '=' . $value;
+                $found = true;
+                break;
+            }
+        }
+        
+        // Si no existe, agregar en posición apropiada
+        if (!$found) {
+            $insertIndex = count($envLines);
+            
+            // Buscar mejor posición para insertar
+            foreach ($envLines as $index => $line) {
+                $trimmedLine = trim($line);
+                if ($key === 'WP_PORT' && strpos($trimmedLine, 'WP_ENV=') === 0) {
+                    $insertIndex = $index + 1;
+                    break;
+                } elseif ($key === 'DB_PORT' && strpos($trimmedLine, 'DB_HOST=') === 0) {
+                    $insertIndex = $index + 1;
+                    break;
+                } elseif ($key === 'REDIS_PORT' && (strpos($trimmedLine, 'REDIS_HOST=') === 0 || strpos($trimmedLine, 'REDIS_URL=') === 0)) {
+                    $insertIndex = $index + 1;
+                    break;
+                }
+            }
+            
+            array_splice($envLines, $insertIndex, 0, $key . '=' . $value);
+        }
+        
+        return $envLines;
     }
 }

@@ -4,22 +4,28 @@ namespace Roots\BedrockCli\Commands\Profile;
 
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
+use Roots\BedrockCli\Services\VcsValidator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class ApplyCommand extends Command
 {
+    use ProjectSelectorTrait;
+    
     private ProfileService $profileService;
     private ComposerService $composerService;
+    private VcsValidator $vcsValidator;
 
     public function __construct()
     {
         parent::__construct();
         $this->profileService = new ProfileService();
         $this->composerService = new ComposerService();
+        $this->vcsValidator = new VcsValidator();
     }
 
     protected function configure(): void
@@ -27,7 +33,8 @@ class ApplyCommand extends Command
         $this
             ->setName('profile:apply')
             ->setDescription('Aplicar un profile a un proyecto existente')
-            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile');
+            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del profile')
+            ->addOption('yes', 'y', null, 'Confirmar automáticamente sin preguntar');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -39,54 +46,179 @@ class ApplyCommand extends Command
             return Command::FAILURE;
         }
 
-        $projectRoot = $this->detectProjectRoot();
-        if (!$projectRoot) {
-            $output->writeln('<error>No estás en un proyecto Bedrock</error>');
+        if (!$this->ensureBedrockProject($input, $output)) {
             return Command::FAILURE;
         }
+        
+        $projectRoot = getcwd();
 
-        $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion(
-            "<question>¿Aplicar profile '{$name}' a este proyecto? Esto modificará composer.json (Y/n):</question> ",
-            false
-        );
+        if (!$input->getOption('yes')) {
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                "<question>¿Aplicar profile '{$name}' a este proyecto? Esto modificará composer.json (Y/n):</question> ",
+                false
+            );
 
-        if (!$helper->ask($input, $output, $question)) {
-            $output->writeln('<comment>Operación cancelada</comment>');
-            return Command::SUCCESS;
+            if (!$helper->ask($input, $output, $question)) {
+                $output->writeln('<comment>Operación cancelada</comment>');
+                return Command::SUCCESS;
+            }
         }
 
         $profile = $this->profileService->loadProfile($name);
         
+        // Detectar Docker mode si no está definido
+        if (!isset($profile['docker_mode'])) {
+            $dockerDetected = $this->profileService->detectDockerMode($projectRoot);
+            if ($dockerDetected) {
+                $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados en lugar de symlinks.</>');                $profile['docker_mode'] = true;
+                $this->profileService->saveProfile($name, $profile);
+            }
+        }
+        
+        // Validar VCS plugins si existen
+        if ($this->hasVcsPlugins($profile)) {
+            $output->writeln('');
+            $output->writeln('<info>🔍 Validando VCS plugins...</info>');
+            $profile = $this->validateVcsPlugins($profile, $output);
+            $this->profileService->saveProfile($name, $profile);
+        }
+        
         $output->writeln('');
         $output->writeln('<info>Aplicando profile...</info>');
         
-        // Regenerar composer.json
+        // IMPORTANTE: Regenerar composer.json ANTES de copiar el nuevo profile
+        // para que cleanPreviousProfilePackages() pueda leer el profile anterior
         $this->composerService->generateFromProfile($profile, $projectRoot);
         $output->writeln('✓ composer.json actualizado');
         
-        // Actualizar .bedrock/profile.json
+        // Actualizar .bedrock/profile.json DESPUÉS de generar composer.json
         $this->composerService->copyProfileToProject($profile, $projectRoot);
         $output->writeln('✓ .bedrock/profile.json actualizado');
         
+        // Copiar archivos .zip custom
+        $this->composerService->copyCustomZipFiles($profile, $projectRoot);
+        $output->writeln('✓ Archivos .zip copiados');
+        
         $output->writeln('');
-        $output->writeln('<comment>Ejecuta:</comment> composer update');
+        $output->writeln('<info>Ejecutando composer update...</info>');
+        
+        $process = new \Symfony\Component\Process\Process(['composer', 'update', '--no-interaction'], $projectRoot);
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
+        
+        if (!$process->isSuccessful()) {
+            $output->writeln('<error>Error al ejecutar composer update</error>');
+            $output->writeln($process->getErrorOutput());
+            return Command::FAILURE;
+        }
+        
         $output->writeln('');
+        $output->writeln('<info>✓ Profile aplicado y dependencias instaladas</info>');
+        $output->writeln('');
+        
+        // Verificar si profile tiene activation_order
+        if (isset($profile['activation_order'])) {
+            $this->applyActivationOrder($input, $output, $profile, $projectRoot);
+        }
 
         return Command::SUCCESS;
     }
-
-    private function detectProjectRoot(): ?string
+    
+    private function applyActivationOrder(InputInterface $input, OutputInterface $output, array $profile, string $projectRoot): void
     {
-        $current = getcwd();
+        $orderData = $profile['activation_order'];
         
-        while ($current !== dirname($current)) {
-            if (file_exists("{$current}/web/wp-config.php") || file_exists("{$current}/config/application.php")) {
-                return $current;
-            }
-            $current = dirname($current);
+        // Guardar en config/plugins/activation-order.json
+        $configDir = $projectRoot . '/config/plugins';
+        if (!is_dir($configDir)) {
+            mkdir($configDir, 0755, true);
         }
         
-        return null;
+        $orderFile = $configDir . '/activation-order.json';
+        file_put_contents($orderFile, json_encode([
+            'activation_order' => $orderData['order'],
+            'dependencies' => $orderData['dependencies'] ?? [],
+            'created_at' => $orderData['updated_at']
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        
+        $output->writeln('<info>✓ Orden de activación guardado</info>');
+        
+        // Preguntar si aplicar ahora
+        if (!$input->getOption('yes')) {
+            $helper = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                '<fg=yellow>¿Aplicar orden de activación ahora? [S/n]:</> ',
+                true
+            );
+            
+            if ($helper->ask($input, $output, $question)) {
+                $output->writeln('');
+                $output->writeln('<info>Activando plugins en orden...</info>');
+                
+                $process = new \Symfony\Component\Process\Process(
+                    ['php', 'vendor/bin/bedrock', 'plugins:order', 'activate'],
+                    $projectRoot
+                );
+                $process->setTimeout(300);
+                $process->run(function ($type, $buffer) use ($output) {
+                    $output->write($buffer);
+                });
+                
+                if ($process->isSuccessful()) {
+                    $output->writeln('<info>✓ Plugins activados correctamente</info>');
+                } else {
+                    $output->writeln('<error>Error al activar plugins</error>');
+                }
+            }
+        }
     }
+    
+    private function hasVcsPlugins(array $profile): bool
+    {
+        if (empty($profile['plugins']['premium'])) {
+            return false;
+        }
+        
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private function validateVcsPlugins(array $profile, OutputInterface $output): array
+    {
+        $updated = 0;
+        
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                // Extraer rama del version (dev-branch o branch directa)
+                $branch = $plugin['version'];
+                if (str_starts_with($branch, 'dev-')) {
+                    $branch = substr($branch, 4); // Remover "dev-"
+                }
+                
+                $info = $this->vcsValidator->getPackageInfo($plugin['url'], $branch);
+                
+                if ($info) {
+                    // Usar la rama del plugin, no la del validator
+                    $profile['require'][$info['name']] = "dev-{$branch}";
+                    $updated++;
+                }
+            }
+        }
+        
+        if ($updated > 0) {
+            $output->writeln("  ✓ {$updated} VCS plugins validados");
+        }
+        
+        return $profile;
+    }
+
+
 }

@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Plugins;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -11,6 +12,7 @@ use Symfony\Component\Process\Process;
 
 class OrderCommand extends Command
 {
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this->setName('plugins:order')
@@ -195,81 +197,134 @@ PHP;
         }
 
         $config = json_decode(file_get_contents($configFile), true);
-        $order = array_keys($config['activation_order'] ?? []);
+        $orderData = $config['activation_order'] ?? [];
+        $dependencies = $config['dependencies'] ?? [];
+        
+        asort($orderData);
 
-        if (empty($order)) {
+        if (empty($orderData)) {
             $output->writeln('<comment>No hay plugins en el orden de activación</comment>');
             return Command::SUCCESS;
         }
 
-        $count = count($order);
-        $output->writeln('');
-        $output->writeln('<fg=yellow;options=bold>Aplicando Orden de Activación:</>');
-        $output->writeln('');
-        $output->writeln("<info>🚀 Se activarán {$count} plugins en secuencia...</info>");
-        $output->writeln('<comment>Los plugins ya activos se omitirán automáticamente.</comment>');
-        $output->writeln('');
+        // Detectar REST API
+        $token = $this->getBedrockToken();
+        $url = $this->getWordPressUrl();
+        $useRestApi = $token && $url;
 
-        $orderJson = json_encode($order);
-        $php = <<<PHP
-\$order = json_decode('{$orderJson}', true);
-\$results = [];
-
-foreach (\$order as \$slug) {
-    \$pluginFile = \$slug . '/' . \$slug . '.php';
-    
-    if (is_plugin_active(\$pluginFile)) {
-        \$results[] = ['plugin' => \$slug, 'status' => 'already_active'];
-        continue;
-    }
-    
-    \$result = activate_plugin(\$pluginFile);
-    
-    if (is_wp_error(\$result)) {
-        \$results[] = ['plugin' => \$slug, 'status' => 'error', 'message' => \$result->get_error_message()];
-    } else {
-        \$results[] = ['plugin' => \$slug, 'status' => 'activated'];
-    }
-}
-
-echo json_encode(\$results);
-PHP;
-
-        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
-        $process->setTimeout(300);
-        $this->runWithLoader($process, $output, 'Activando plugins');
-        $output->writeln('');
-        
-        if (!$process->isSuccessful()) {
-            $output->writeln('<error>Error al activar plugins</error>');
-            return Command::FAILURE;
+        if ($useRestApi) {
+            $output->writeln('');
+            $output->writeln('<fg=green>✓ REST API detectada - Activación rápida habilitada</>');
         }
 
-        $results = json_decode($process->getOutput(), true);
+        // Validar que plugins existen
+        $output->writeln('');
         
-        if (!is_array($results)) {
-            $output->writeln('<error>Error al procesar resultados</error>');
-            $output->writeln('<comment>Output: ' . $process->getOutput() . '</comment>');
-            return Command::FAILURE;
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        $validated = null;
+        
+        for ($i = 0; $i < 10; $i++) {
+            $output->write("\r<comment>Validando plugins...</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            
+            if ($i === 0) {
+                $validated = $this->validatePluginsExist($orderData, $output);
+            }
+            
+            usleep(50000);
         }
+        
+        $orderData = $validated['order'];
+        $missing = $validated['missing'];
+        
+        if (!empty($missing)) {
+            $output->write("\r<comment>Validando plugins...</comment> <fg=yellow>⚠</> " . str_repeat(' ', 10) . "\n");
+            $output->writeln('');
+            $output->writeln('<fg=yellow>Plugins no encontrados (serán omitidos):</>'); 
+            foreach ($missing as $slug) {
+                $output->writeln("  • {$slug}");
+            }
+            $output->writeln('');
+        } else {
+            $output->write("\r<comment>Validando plugins...</comment> <info>✓</info>" . str_repeat(' ', 10) . "\n");
+        }
+        
+        if (empty($orderData)) {
+            $output->writeln('<comment>No hay plugins válidos para activar</comment>');
+            return Command::SUCCESS;
+        }
+
+        // Calcular niveles de dependencias
+        $levels = $this->calculateDependencyLevels($orderData, $dependencies);
+        
+        $totalPlugins = count($orderData);
+        $output->writeln('');
+        $output->writeln('<fg=yellow;options=bold>Aplicando Orden de Activación por Niveles:</>');
+        $output->writeln('');
+        $output->writeln("<info>🚀 {$totalPlugins} plugins en " . count($levels) . " nivel(es)</info>");
+        $output->writeln('<comment>Estrategia: Activar plugins sin dependencias primero</comment>');
+        $output->writeln('');
         
         $activated = 0;
         $skipped = 0;
         $failed = 0;
         $errors = [];
         
-        foreach ($results as $result) {
-            if ($result['status'] === 'already_active') {
-                $output->writeln("  <comment>⊘ {$result['plugin']} (ya activo)</comment>");
-                $skipped++;
-            } elseif ($result['status'] === 'activated') {
-                $output->writeln("  <info>✓ {$result['plugin']}</info>");
-                $activated++;
-            } elseif ($result['status'] === 'error') {
-                $output->writeln("  <error>✗ {$result['plugin']}: {$result['message']}</error>");
-                $failed++;
-                $errors[] = ['plugin' => $result['plugin'], 'message' => $result['message']];
+        foreach ($levels as $levelNum => $levelPlugins) {
+            $count = count($levelPlugins);
+            $output->writeln("<fg=cyan>Nivel {$levelNum}:</> {$count} plugin(s)");
+            
+            // Mostrar plugins del nivel
+            foreach ($levelPlugins as $plugin) {
+                $deps = $dependencies[$plugin] ?? [];
+                $depInfo = !empty($deps) ? ' <fg=gray>← ' . implode(', ', $deps) . '</>' : '';
+                $output->writeln("  • {$plugin}{$depInfo}");
             }
+            
+            // Intentar REST API primero
+            $results = null;
+            if ($useRestApi) {
+                $results = $this->activateViaRestApi($url, $token, $levelPlugins, $output);
+            }
+            
+            // Fallback a wp eval si REST falla
+            if (!$results) {
+                if ($useRestApi) {
+                    $output->writeln('  <fg=yellow>⚠ REST API falló, usando wp eval...</>');
+                }
+                $results = $this->activateViaWpEval($levelPlugins, $levelNum, $output);
+            }
+            
+            if (!$results) {
+                $output->writeln("<error>Error al ejecutar nivel {$levelNum}</error>");
+                return Command::FAILURE;
+            }
+            
+            // Procesar resultados del nivel
+            foreach ($results as $result) {
+                if ($result['status'] === 'skip') {
+                    $output->writeln("    <comment>⊘ {$result['plugin']} (ya activo)</comment>");
+                    $skipped++;
+                } elseif ($result['status'] === 'ok') {
+                    $output->writeln("    <info>✓ {$result['plugin']}</info>");
+                    $activated++;
+                } elseif ($result['status'] === 'error') {
+                    $output->writeln("    <error>✗ {$result['plugin']}</error>");
+                    $output->writeln("      <fg=red>└─</> {$result['msg']}");
+                    $failed++;
+                    $errors[] = ['plugin' => $result['plugin'], 'message' => $result['msg']];
+                }
+            }
+            
+            // Si hay errores en este nivel, DETENER
+            if ($failed > 0) {
+                $output->writeln('');
+                $output->writeln("<error>⚠️  Activación detenida por errores en nivel {$levelNum}</error>");
+                break;
+            }
+            
+            $output->writeln('');
         }
 
         $output->writeln('');
@@ -306,6 +361,77 @@ PHP;
         return Command::FAILURE;
     }
 
+    protected function calculateDependencyLevels(array $order, array $dependencies): array
+    {
+        $levels = [];
+        $processed = [];
+        $currentLevel = 0;
+        
+        while (count($processed) < count($order)) {
+            $levelPlugins = [];
+            
+            foreach ($order as $plugin => $position) {
+                if (isset($processed[$plugin])) {
+                    continue;
+                }
+                
+                $deps = $dependencies[$plugin] ?? [];
+                
+                $allDepsProcessed = true;
+                foreach ($deps as $dep) {
+                    if (!isset($processed[$dep])) {
+                        $allDepsProcessed = false;
+                        break;
+                    }
+                }
+                
+                if ($allDepsProcessed) {
+                    $levelPlugins[] = $plugin;
+                    $processed[$plugin] = true;
+                }
+            }
+            
+            if (empty($levelPlugins)) {
+                foreach ($order as $plugin => $position) {
+                    if (!isset($processed[$plugin])) {
+                        $levelPlugins[] = $plugin;
+                        $processed[$plugin] = true;
+                    }
+                }
+            }
+            
+            $levels[$currentLevel] = $levelPlugins;
+            $currentLevel++;
+        }
+        
+        return $levels;
+    }
+
+    protected function validatePluginsExist(array $orderData, OutputInterface $output): array
+    {
+        $pluginsDir = getcwd() . '/web/app/plugins';
+        
+        if (!is_dir($pluginsDir)) {
+            return ['order' => $orderData, 'missing' => []];
+        }
+        
+        $validated = [];
+        $missing = [];
+        
+        foreach ($orderData as $slug => $position) {
+            $pluginPath = $pluginsDir . '/' . $slug;
+            
+            // Soportar symlinks: file_exists() funciona con symlinks
+            if (file_exists($pluginPath) && (is_dir($pluginPath) || is_link($pluginPath))) {
+                $validated[$slug] = $position;
+            } else {
+                $missing[] = $slug;
+            }
+        }
+        
+        return ['order' => $validated, 'missing' => $missing];
+    }
+
     protected function detectDependencies(array $plugins): array
     {
         $deps = [];
@@ -325,26 +451,182 @@ PHP;
         return $deps;
     }
 
-    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    protected function runWithSpinner(Process $process, OutputInterface $output, string $message): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
+        $startTime = microtime(true);
         
-        // Iniciar proceso asíncrono
         $process->start();
         
-        // Animar mientras el proceso corre
         while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $elapsed = round(microtime(true) - $startTime, 1);
+            $output->write("\r  <comment>{$message}...</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=gray>({$elapsed}s)</>");
             $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000); // 80ms por frame
+            usleep(100000); // 100ms
         }
         
-        // Mostrar resultado final
+        $elapsed = round(microtime(true) - $startTime, 1);
+        
         if ($process->isSuccessful()) {
-            $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+            $output->write("\r  <comment>{$message}...</comment> <info>✓</info> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
         } else {
-            $output->write("\r<comment>{$message}</comment> <error>✗</error>\n");
+            $output->write("\r  <comment>{$message}...</comment> <error>✗</error> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
         }
+    }
+
+
+
+    protected function getBedrockToken(): ?string
+    {
+        $php = "echo get_option('bedrock_cli_token');";
+        
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(10);
+        $process->run();
+        
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+        
+        $token = trim($process->getOutput());
+        return !empty($token) ? $token : null;
+    }
+
+    protected function getWordPressUrl(): ?string
+    {
+        $envFile = getcwd() . '/.env';
+        
+        if (!file_exists($envFile)) {
+            return null;
+        }
+        
+        $content = file_get_contents($envFile);
+        
+        if (preg_match('/^WP_HOME=(.+)$/m', $content, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        return null;
+    }
+
+    protected function activateViaRestApi(string $url, string $token, array $plugins, OutputInterface $output): ?array
+    {
+        $endpoint = rtrim($url, '/') . '/wp-json/bedrock-cli/v1/plugins/activate';
+        
+        $data = json_encode(['plugins' => $plugins]);
+        
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-Bedrock-Token: ' . $token,
+            ],
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || !$response) {
+            return null;
+        }
+        
+        $data = json_decode($response, true);
+        
+        if (!isset($data['results'])) {
+            return null;
+        }
+        
+        // Convertir formato REST a formato wp eval
+        $results = [];
+        foreach ($data['results'] as $slug => $result) {
+            if (isset($result['already_active']) && $result['already_active']) {
+                $results[] = ['plugin' => $slug, 'status' => 'skip'];
+            } elseif ($result['success']) {
+                $results[] = ['plugin' => $slug, 'status' => 'ok'];
+            } else {
+                $results[] = [
+                    'plugin' => $slug,
+                    'status' => 'error',
+                    'msg' => $result['error'] ?? 'Unknown error'
+                ];
+            }
+        }
+        
+        return $results;
+    }
+
+    protected function activateViaWpEval(array $levelPlugins, int $levelNum, OutputInterface $output): ?array
+    {
+        $pluginsJson = json_encode($levelPlugins);
+        $php = <<<'PHP'
+$plugins = json_decode('{PLUGINS_JSON}', true);
+$results = [];
+
+foreach ($plugins as $slug) {
+    $pluginDir = WP_PLUGIN_DIR . '/' . $slug;
+    $pluginFile = null;
+    
+    if (file_exists($pluginDir . '/' . $slug . '.php')) {
+        $pluginFile = $slug . '/' . $slug . '.php';
+    } else {
+        foreach (glob($pluginDir . '/*.php') as $file) {
+            $content = file_get_contents($file);
+            if (strpos($content, 'Plugin Name:') !== false) {
+                $pluginFile = $slug . '/' . basename($file);
+                break;
+            }
+        }
+    }
+    
+    if (!$pluginFile) {
+        $results[] = ['plugin' => $slug, 'status' => 'error', 'msg' => 'Plugin file not found'];
+        continue;
+    }
+    
+    if (is_plugin_active($pluginFile)) {
+        $results[] = ['plugin' => $slug, 'status' => 'skip'];
+        continue;
+    }
+    
+    $result = activate_plugin($pluginFile, '', false, true);
+    
+    if (is_wp_error($result)) {
+        $results[] = [
+            'plugin' => $slug, 
+            'status' => 'error', 
+            'msg' => $result->get_error_message()
+        ];
+    } else {
+        $results[] = ['plugin' => $slug, 'status' => 'ok'];
+    }
+}
+
+echo json_encode($results);
+PHP;
+        
+        $php = str_replace('{PLUGINS_JSON}', $pluginsJson, $php);
+
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+        $process->setTimeout(120);
+        
+        $this->runWithSpinner($process, $output, "Activando nivel {$levelNum}");
+        
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+        
+        $results = json_decode($process->getOutput(), true);
+        
+        if (!is_array($results)) {
+            return null;
+        }
+        
+        return $results;
     }
 }

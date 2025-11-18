@@ -2,15 +2,18 @@
 
 namespace Roots\BedrockCli\Commands\Plugins;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
+use Roots\BedrockCli\Services\StateService;
 
 class ActivateCommand extends Command
 {
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this->setName('plugins:activate')
@@ -29,25 +32,18 @@ class ActivateCommand extends Command
 
         if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Plugin activado</info>');
+            $this->markStepCompleted(3);
             return Command::SUCCESS;
         }
 
         return Command::FAILURE;
     }
 
-    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    private function markStepCompleted(int $stepId): void
     {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
+
+
 }

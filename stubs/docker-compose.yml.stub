@@ -12,6 +12,7 @@ services:
     volumes:
       - ./:/var/www/html
       - ./docker/mysql/client.cnf:/etc/mysql/conf.d/client.cnf:ro
+      - ./auth.json:/root/.composer/auth.json:ro
     depends_on:
       - mysql
 

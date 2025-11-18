@@ -7,7 +7,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Roots\BedrockCli\Services\UnzipService;
+use Roots\BedrockCli\Services\Management\ContextDetector;
+use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\OrderValidator;
 
 class OrderBuilderCommand extends Command
 {
@@ -91,11 +95,11 @@ class OrderBuilderCommand extends Command
     private function displayHeader(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Constructor de Orden de Activación de Plugins       </> <fg=cyan;options=bold>       ║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
+        $output->writeln('<fg=magenta;options=bold>╔═══════════════════════════════════════════════════════════╗</>');
+        $output->writeln('<fg=magenta;options=bold>║</> <fg=yellow;options=bold>  🎯 Constructor de Orden de Activación          </> <fg=magenta;options=bold>       ║</>');
+        $output->writeln('<fg=magenta;options=bold>╚═══════════════════════════════════════════════════════════╝</>');
         $output->writeln('');
-        $output->writeln('<fg=cyan>Plugins disponibles:</>');
+        $output->writeln('<fg=yellow>Plugins disponibles:</>');
         $output->writeln('');
     }
 
@@ -157,7 +161,7 @@ class OrderBuilderCommand extends Command
     private function displaySeparator(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan>' . str_repeat('━', 60) . '</>');
+        $output->writeln('<fg=gray>' . str_repeat('─', 60) . '</>');
     }
 
     private function displayCurrentOrder(OutputInterface $output): void
@@ -213,21 +217,14 @@ class OrderBuilderCommand extends Command
     private function displayHelp(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=yellow>Comandos:</>');
-        $output->writeln('  <fg=cyan><números></>');
-        $output->writeln('    <comment>Ej: 44,10,18 o 7-12 (agregar plugins)</comment>');
-        $output->writeln('  <fg=cyan>load</>');
-        $output->writeln('    <comment>Cargar orden guardado</comment>');
-        $output->writeln('  <fg=cyan>list</>');
-        $output->writeln('    <comment>Ver orden actual</comment>');
-        $output->writeln('  <fg=cyan>remove <pos></>');
-        $output->writeln('    <comment>Quitar posición del orden</comment>');
-        $output->writeln('  <fg=cyan>clear</>');
-        $output->writeln('    <comment>Limpiar todo el orden</comment>');
-        $output->writeln('  <fg=cyan>save</>');
-        $output->writeln('    <comment>Guardar y salir</comment>');
-        $output->writeln('  <fg=cyan>cancel</>');
-        $output->writeln('    <comment>Cancelar sin guardar</comment>');
+        $output->writeln('<fg=yellow>Comandos disponibles:</>');
+        $output->writeln('  <fg=cyan><números></> <comment>→ Ej: 1,2,3 o 7-12 (agregar plugins)</comment>');
+        $output->writeln('  <fg=cyan>load</>     <comment>→ Cargar orden guardado</comment>');
+        $output->writeln('  <fg=cyan>list</>     <comment>→ Ver orden actual</comment>');
+        $output->writeln('  <fg=cyan>remove</>   <comment>→ Quitar posición (ej: remove 5)</comment>');
+        $output->writeln('  <fg=cyan>clear</>    <comment>→ Limpiar todo el orden</comment>');
+        $output->writeln('  <fg=cyan>save</>     <comment>→ Guardar y salir</comment>');
+        $output->writeln('  <fg=cyan>cancel</>   <comment>→ Cancelar sin guardar</comment>');
     }
 
     private function loadCommand(OutputInterface $output): void
@@ -304,7 +301,7 @@ class OrderBuilderCommand extends Command
     private function displayCompactHelp(OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('<fg=yellow>Comandos:</> <fg=cyan><nums></> | <fg=cyan>load</> | <fg=cyan>list</> | <fg=cyan>remove <pos></> | <fg=cyan>clear</> | <fg=cyan>save</> | <fg=cyan>cancel</>');
+        $output->writeln('<fg=gray>Comandos: <fg=cyan><nums></> | <fg=cyan>load</> | <fg=cyan>list</> | <fg=cyan>remove</> | <fg=cyan>clear</> | <fg=cyan>save</> | <fg=cyan>cancel</></>');
     }
 
     private function processCommand(string $command, OutputInterface $output): ?string
@@ -540,33 +537,122 @@ class OrderBuilderCommand extends Command
             $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
         }
 
-        $output->writeln('');
-        $defaultName = 'activation-order-' . date('Ymd-His') . '.json';
-        $filename = $helper->ask($input, $output, new Question(
-            "<fg=yellow>Nombre del archivo [{$defaultName}]:</> ",
-            $defaultName
-        ));
-
-        if (!str_ends_with($filename, '.json')) {
-            $filename .= '.json';
-        }
-
         $configDir = getcwd() . '/config/plugins';
         if (!is_dir($configDir)) {
             mkdir($configDir, 0755, true);
         }
 
-        $filepath = $configDir . '/' . $filename;
         $data = [
             'activation_order' => $order,
             'dependencies' => $this->dependencies,
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
-        file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        // Guardar archivo principal (sin timestamp)
+        $mainFile = $configDir . '/activation-order.json';
+        file_put_contents($mainFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        // Guardar backup con timestamp
+        $backupFile = $configDir . '/activation-order-' . date('Ymd-His') . '.json';
+        file_put_contents($backupFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $output->writeln('');
-        $output->writeln("<info>✓ Orden de activación guardado en: {$filepath}</info>");
+        $output->writeln("<info>✓ Orden guardado en: {$mainFile}</info>");
+        $output->writeln("<comment>📦 Backup: {$backupFile}</comment>");
+        $output->writeln('');
+        
+        // Preguntar si guardar en profile
+        $question = new ConfirmationQuestion('<fg=yellow>¿Guardar también en profile? [S/n]:</> ', true);
+        if ($helper->ask($input, $output, $question)) {
+            $this->saveToProfile($input, $output, $helper, $order);
+        }
+    }
+    
+    private function saveToProfile(InputInterface $input, OutputInterface $output, $helper, array $order): void
+    {
+        $contextDetector = new ContextDetector();
+        $profileService = new ProfileService();
+        $validator = new OrderValidator();
+        
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔍 Detectando contexto...</>');
+        
+        $profileName = null;
+        
+        if ($contextDetector->isBedrockProject()) {
+            $activeProfile = $contextDetector->getActiveProfile();
+            if ($activeProfile) {
+                $profileName = $activeProfile['name'];
+                $output->writeln("<info>✓ Proyecto Bedrock detectado</info>");
+                $output->writeln("<info>✓ Profile activo: {$profileName}</info>");
+            }
+        }
+        
+        if (!$profileName) {
+            $output->writeln('<comment>No hay profile activo. Selecciona uno:</comment>');
+            $output->writeln('');
+            
+            $profiles = $profileService->listProfiles();
+            if (empty($profiles)) {
+                $output->writeln('<error>No hay profiles disponibles</error>');
+                return;
+            }
+            
+            $choices = [];
+            foreach ($profiles as $name => $data) {
+                $choices[] = $name;
+            }
+            
+            $question = new ChoiceQuestion('Selecciona profile:', $choices);
+            $profileName = $helper->ask($input, $output, $question);
+        }
+        
+        // Cargar profile
+        $profile = $profileService->loadProfile($profileName);
+        
+        // Validar
+        $output->writeln('');
+        $output->writeln('<fg=cyan>🔍 Validando plugins...</>');
+        $validation = $validator->validateAgainstProfile($order, $profile);
+        
+        if (!$validation['valid']) {
+            $output->writeln('<fg=red>✗ Plugins faltantes en profile:</>');
+            foreach ($validation['missing'] as $plugin) {
+                $output->writeln("  • {$plugin}");
+            }
+            $output->writeln('');
+            $output->writeln('<fg=cyan>Opciones:</>');
+            $output->writeln('  <fg=cyan>[1]</> Remover plugins del orden');
+            $output->writeln('  <fg=cyan>[2]</> Cancelar');
+            $output->writeln('');
+            
+            $question = new Question('<fg=yellow>Opción [1-2]:</> ', '2');
+            $choice = $helper->ask($input, $output, $question);
+            
+            if ($choice === '1') {
+                foreach ($validation['missing'] as $plugin) {
+                    unset($order[$plugin]);
+                }
+                $output->writeln('<info>✓ Plugins removidos del orden</info>');
+            } else {
+                $output->writeln('<comment>Cancelado</comment>');
+                return;
+            }
+        } else {
+            $output->writeln('<info>✓ Todos los plugins existen en el profile</info>');
+        }
+        
+        // Guardar en profile
+        $profile['activation_order'] = [
+            'order' => $order,
+            'dependencies' => $this->dependencies,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+        
+        $profileService->saveProfile($profileName, $profile);
+        
+        $output->writeln('');
+        $output->writeln("<info>✓ Orden guardado en profile: {$profileName}</info>");
         $output->writeln('');
     }
 }

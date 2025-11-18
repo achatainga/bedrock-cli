@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "project_name": "{{PROJECT_NAME}}",
+  "created_at": "{{CREATED_AT}}",
+  "current_step": 1,
+  "wizard_mode": true,
+  "steps": [
+    {
+      "id": 1,
+      "title": "Verificar Profile",
+      "description": "Verifica si existe un profile aplicado al proyecto.\n\nSi no hay profile:\n• Usa el menú [3] Profiles → Aplicar profile\n• O continúa sin profile (funcionalidad básica)\n\nEl profile define qué plugins, themes y configuraciones instalar.",
+      "menu_item": "3",
+      "completed": false,
+      "skippable": true,
+      "validation": "profile"
+    },
+    {
+      "id": 2,
+      "title": "Verificar Acceso VCS",
+      "description": "Verifica acceso a repositorios privados (GitHub/GitLab).\n\nSi hay plugins/themes privados en el profile:\n• Configura credenciales: menú [T] Auth\n• Verifica tokens de GitHub/GitLab\n\nSin acceso VCS, solo se instalarán plugins públicos.",
+      "menu_item": "T",
+      "completed": false,
+      "skippable": true,
+      "validation": "vcs_access"
+    },
+    {
+      "id": 3,
+      "title": "Iniciar Docker",
+      "description": "Levanta contenedores del proyecto.\n\nEjecuta:\ndocker-compose up -d\n\nVerifica:\n• Contenedores web, nginx, mysql, redis activos\n• Servicios corriendo correctamente",
+      "command": "docker-compose up -d",
+      "menu_item": "D",
+      "completed": false,
+      "skippable": false,
+      "validation": "docker"
+    },
+    {
+      "id": 4,
+      "title": "Verificar Base de Datos",
+      "description": "Verifica que la base de datos existe y es accesible.\n\nVerifica:\n• Base de datos '{{DB_NAME}}' existe\n• Conexión MySQL funcional\n• Credenciales correctas\n\nSi falla, verifica docker-compose.yml y .env",
+      "menu_item": "8",
+      "completed": false,
+      "skippable": false,
+      "validation": "database"
+    },
+    {
+      "id": 5,
+      "title": "Instalar WordPress",
+      "description": "Instala WordPress Core en la base de datos.\n\nUsa el menú [2] Setup\n\nO ejecuta manualmente:\ndocker-compose exec web wp core install \\\n  --url=http://localhost:{{HTTP_PORT}} \\\n  --title=\"Mi Sitio\" \\\n  --admin_user=admin \\\n  --admin_password=admin \\\n  --admin_email=admin@example.com\n\nEsto creará las tablas de WordPress y el usuario administrador.",
+      "command": "docker-compose exec web wp core install --url=http://localhost:{{HTTP_PORT}} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com",
+      "menu_item": "2",
+      "completed": false,
+      "skippable": false,
+      "validation": "wordpress"
+    },
+    {
+      "id": 6,
+      "title": "Activar Tema",
+      "description": "Activa el tema configurado en el profile.\n\n⚠️ CRÍTICO: Sin tema activo, el frontend no carga.\n\nUsa el menú [T] Themes → Activar tema\n\nO ejecuta manualmente:\ndocker-compose exec web wp theme activate {{THEME_NAME}}",
+      "menu_item": "T",
+      "completed": false,
+      "skippable": true,
+      "condition": "{{HAS_THEME}}",
+      "validation": "theme"
+    },
+    {
+      "id": 7,
+      "title": "Activar Plugins",
+      "description": "Activa los plugins instalados desde el profile.\n\nUsa el menú [P] Plugins → Activar plugins\n\nO ejecuta manualmente:\ndocker-compose exec web wp plugin activate --all",
+      "menu_item": "P",
+      "completed": false,
+      "skippable": true,
+      "condition": "{{HAS_PLUGINS}}",
+      "validation": "plugins"
+    },
+    {
+      "id": 8,
+      "title": "Configurar Acorn",
+      "description": "Inicializa Acorn (storage, providers, config) ejecutando:\n\ndocker-compose exec web wp plugin activate acorn\ndocker-compose exec web wp acorn acorn:init storage\ndocker-compose exec web wp acorn vendor:publish --tag=acorn\n\nEsto creará automáticamente:\n• app/Providers/AppServiceProvider.php\n• app/Console/Commands/\n• config/app.php, config/assets.php, config/view.php\n• storage/ (logs, cache, framework)",
+      "menu_item": "A",
+      "completed": false,
+      "skippable": true,
+      "condition": "{{HAS_ACORN}}",
+      "validation": "acorn"
+    },
+    {
+      "id": 9,
+      "title": "Ejecutar Seeders (Opcional)",
+      "description": "Ejecuta los seeders para poblar la base de datos con datos de prueba.\n\nUsa el menú [S] Seed → Ejecutar seeders\n\nO ejecuta manualmente:\ndocker-compose exec web wp eval-file database/seeders/DatabaseSeeder.php",
+      "menu_item": "S",
+      "completed": false,
+      "skippable": true,
+      "validation": "seeders"
+    }
+  ]
+}

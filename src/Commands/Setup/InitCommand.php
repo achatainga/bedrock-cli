@@ -7,9 +7,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class InitCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this
@@ -24,6 +27,10 @@ class InitCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $io = new SymfonyStyle($input, $output);
         $env = $input->getOption('env');
         
@@ -86,6 +93,9 @@ class InitCommand extends Command
         $this->flushRewriteRules($io, $projectRoot);
 
         $io->success("✅ {$env} environment initialized successfully!");
+        
+        // Marcar paso 2 como completado (Instalar WordPress)
+        $this->markStepCompleted(2);
         
         return Command::SUCCESS;
     }
@@ -306,5 +316,11 @@ class InitCommand extends Command
         if ($returnCode === 0) {
             $io->success('Rewrite rules flushed');
         }
+    }
+
+    private function markStepCompleted(int $stepId): void
+    {
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }

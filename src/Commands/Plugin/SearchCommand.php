@@ -4,16 +4,20 @@ namespace Roots\BedrockCli\Commands\Plugin;
 
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Question\Question;
 
 class SearchCommand extends Command
 {
+    use InteractiveSearchTrait;
+    use PremiumAssetsTrait;
+
     protected function configure(): void
     {
         $this->setName('plugin:search')
@@ -46,43 +50,36 @@ class SearchCommand extends Command
 
         $output->writeln("<comment>Found {$total} plugins (showing page {$page}):</comment>\n");
 
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Name', 'Slug', 'Installs', 'Rating', 'Version']);
-
-        foreach ($plugins as $index => $plugin) {
-            $table->addRow([
-                $index + 1,
-                $plugin['name'],
-                $plugin['slug'],
-                number_format($plugin['active_installs'] ?? 0),
-                ($plugin['rating'] ?? 0) . '%',
-                $plugin['version'] ?? 'N/A'
-            ]);
-        }
-
-        $table->render();
-
-        if (!$profileName) {
-            return Command::SUCCESS;
-        }
+        $this->displayPluginsTable($plugins, $output);
 
         $helper = $this->getHelper('question');
-        $question = new Question("\n<question>Select plugins to add (comma-separated numbers, e.g., 1,3,5) or press Enter to skip:</question> ");
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[N]</> Siguiente página');
+        $output->writeln('  <fg=cyan>[P]</> Página anterior');
+        $output->writeln('  <fg=cyan>[0]</> Salir');
+        $question = new Question("\n<fg=yellow>Seleccionar números (ej: 1,3,5), N/P para navegar, o 0 para salir:</> ");
         $selection = $helper->ask($input, $output, $question);
+        
+        if (strtoupper($selection) === 'N') {
+            $input->setOption('page', $page + 1);
+            return $this->execute($input, $output);
+        }
+        
+        if (strtoupper($selection) === 'P' && $page > 1) {
+            $input->setOption('page', $page - 1);
+            return $this->execute($input, $output);
+        }
+        
+        if ($selection === '0') {
+            return Command::SUCCESS;
+        }
 
         if (empty($selection)) {
             return Command::SUCCESS;
         }
 
         $selected = array_map('trim', explode(',', $selection));
-        $profileService = new ProfileService();
-
-        if (!$profileService->profileExists($profileName)) {
-            $output->writeln("<error>Profile '{$profileName}' does not exist.</error>");
-            return Command::FAILURE;
-        }
-
-        $profile = $profileService->loadProfile($profileName);
+        $selectedPlugins = [];
 
         foreach ($selected as $num) {
             $index = (int) $num - 1;
@@ -92,17 +89,277 @@ class SearchCommand extends Command
 
             $plugin = $plugins[$index];
             $slug = $plugin['slug'];
-
-            $versionQuestion = new Question("<question>Version constraint for {$slug} (default: *): </question>", '*');
-            $version = $helper->ask($input, $output, $versionQuestion);
-
-            $profile['plugins']['public'][$slug] = $version;
-            $output->writeln("<info>✓ Added {$slug} ({$version})</info>");
+            $version = $this->selectPluginVersion($slug, $helper, $input, $output);
+            
+            $muQuestion = new Question("<fg=yellow>¿Marcar como MU-Plugin? (s/N):</> ", 'n');
+            $isMU = strtolower($helper->ask($input, $output, $muQuestion)) === 's';
+            
+            $selectedPlugins[] = [
+                'slug' => $slug,
+                'version' => $version,
+                'mu_plugin' => $isMU
+            ];
+            $muBadge = $isMU ? ' <fg=yellow>[MU]</>' : '';
+            $output->writeln("<info>✓ {$slug}:{$version}{$muBadge}</info>");
         }
 
-        $profileService->saveProfile($profileName, $profile);
-        $output->writeln("\n<info>Profile '{$profileName}' updated successfully!</info>");
+        if (empty($selectedPlugins)) {
+            return Command::SUCCESS;
+        }
+
+        // Preguntar qué hacer con los plugins seleccionados
+        $output->writeln('');
+        $output->writeln('<fg=yellow>¿Qué deseas hacer con los plugins seleccionados?</>');
+        $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
+        $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto Bedrock');
+        $output->writeln(' <fg=cyan>[3]</> Buscar plugins premium');
+        $output->writeln(' <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
+        
+        $actionQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
+        $action = $helper->ask($input, $output, $actionQuestion);
+
+        if ($action === '1') {
+            // Agregar a profile
+            if (!$profileName) {
+                $profileService = new ProfileService();
+                $profiles = array_values($profileService->listProfiles());
+                
+                if (empty($profiles)) {
+                    $output->writeln('<comment>No hay profiles creados.</comment>');
+                    $output->writeln('');
+                    $createQuestion = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+                        '<fg=yellow>¿Crear un nuevo profile? (Y/n):</> ',
+                        true
+                    );
+                    
+                    if ($helper->ask($input, $output, $createQuestion)) {
+                        $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                        $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                        
+                        if (!empty($newProfileName)) {
+                            $createCmd = $this->getApplication()->find('profile:create');
+                            $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
+                            $createCmd->run($createInput, $output);
+                        }
+                    }
+                    return Command::SUCCESS;
+                }
+                
+                $output->writeln('');
+                $output->writeln('<fg=cyan>Profiles disponibles:</>');
+                foreach ($profiles as $idx => $profileData) {
+                    $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profileData['name']}");
+                }
+                $output->writeln('  <fg=cyan>[N]</> Crear nuevo profile');
+                $output->writeln('  <fg=cyan>[0]</> Cancelar');
+                $output->writeln('');
+                
+                $profileQuestion = new Question('<fg=yellow>Seleccionar profile [1]:</> ', '1');
+                $profileChoice = $helper->ask($input, $output, $profileQuestion);
+                
+                if (strtoupper($profileChoice) === 'N') {
+                    $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                    $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                    
+                    if (empty($newProfileName)) {
+                        $output->writeln('<error>Nombre requerido</error>');
+                        return Command::FAILURE;
+                    }
+                    
+                    $createCmd = $this->getApplication()->find('profile:create');
+                    $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
+                    $createCmd->run($createInput, $output);
+                    return Command::SUCCESS;
+                }
+                
+                if ($profileChoice === '0') {
+                    return Command::SUCCESS;
+                }
+                
+                $profileIndex = (int)$profileChoice - 1;
+                if (!isset($profiles[$profileIndex])) {
+                    $output->writeln('<error>Selección inválida</error>');
+                    return Command::FAILURE;
+                }
+                
+                $profileName = $profiles[$profileIndex]['name'];
+            } else {
+                $profileService = new ProfileService();
+            }
+
+            if (!$profileService->profileExists($profileName)) {
+                $output->writeln("<error>Profile '{$profileName}' no existe.</error>");
+                return Command::FAILURE;
+            }
+
+            $profile = $profileService->loadProfile($profileName);
+            
+            if (!isset($profile['plugins'])) {
+                $profile['plugins'] = [];
+            }
+            if (!isset($profile['plugins']['public'])) {
+                $profile['plugins']['public'] = [];
+            }
+            
+            foreach ($selectedPlugins as $plugin) {
+                $profile['plugins']['public'][] = $plugin;
+            }
+            $profileService->saveProfile($profileName, $profile);
+            $output->writeln("\n<info>✓ Plugins agregados al profile '{$profileName}'</info>");
+            
+        } elseif ($action === '3') {
+            // Buscar plugins premium o custom
+            $output->writeln('');
+            $output->writeln('  <fg=cyan>[1]</> 💎 Premium (Repositorio privado)');
+            $output->writeln('  <fg=cyan>[2]</> 🔧 Custom (Carpeta/ZIP local)');
+            $output->writeln('  <fg=cyan>[0]</> ⬅️  Volver atrás');
+            $output->writeln('');
+            
+            $typeQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
+            $typeChoice = $helper->ask($input, $output, $typeQuestion);
+            
+            if ($typeChoice === '0') {
+                return Command::SUCCESS;
+            }
+            
+            if ($typeChoice === '1') {
+                $premiumPlugins = $this->selectPremiumPlugins($input, $output, $helper);
+                
+                if (!empty($premiumPlugins)) {
+                    $output->writeln('');
+                    $output->writeln('<info>✓ Plugins premium seleccionados:</info>');
+                    foreach ($premiumPlugins as $plugin) {
+                        $output->writeln("  • {$plugin['name']} v{$plugin['version']} ({$plugin['source']})");
+                    }
+                }
+            } elseif ($typeChoice === '2') {
+                $pathQuestion = new Question('<fg=yellow>Ruta a carpeta o archivo .zip:</> ');
+                $customPath = $helper->ask($input, $output, $pathQuestion);
+                
+                if ($customPath && (is_dir($customPath) || (is_file($customPath) && pathinfo($customPath, PATHINFO_EXTENSION) === 'zip'))) {
+                    $output->writeln('<info>✓ Plugin custom: ' . basename($customPath) . '</info>');
+                } else {
+                    $output->writeln('<error>Ruta inválida</error>');
+                }
+            }
+            
+            return Command::SUCCESS;
+            
+        } elseif ($action === '2') {
+            // Instalar en proyecto actual
+            $projectPath = $this->findBedrockProject($output, $input);
+            
+            if (!$projectPath) {
+                $output->writeln('<error>No se encontró ningún proyecto Bedrock</error>');
+                return Command::FAILURE;
+            }
+            
+            $output->writeln("<info>Proyecto: {$projectPath}</info>");
+            $output->writeln('');
+            
+            // Verificar plugins existentes
+            $composerFile = $projectPath . '/composer.json';
+            $composer = json_decode(file_get_contents($composerFile), true);
+            $existing = $composer['require'] ?? [];
+            
+            foreach ($selectedPlugins as $slug => $version) {
+                $package = "wpackagist-plugin/{$slug}";
+                
+                if (isset($existing[$package])) {
+                    $currentVersion = $existing[$package];
+                    $output->writeln("<comment>⚠️  {$slug} ya existe (versión: {$currentVersion})</comment>");
+                    
+                    $confirmQuestion = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+                        "<fg=yellow>¿Actualizar a {$version}? (Y/n):</> ",
+                        false
+                    );
+                    
+                    if (!$helper->ask($input, $output, $confirmQuestion)) {
+                        $output->writeln("<comment>Omitido: {$slug}</comment>");
+                        continue;
+                    }
+                }
+                
+                $constraint = $version === '*' ? '' : ":{$version}";
+                $command = "composer require {$package}{$constraint} --working-dir={$projectPath}";
+                $output->writeln("<comment>$ {$command}</comment>");
+                passthru($command, $exitCode);
+                
+                if ($exitCode === 0) {
+                    $output->writeln("<info>✓ {$slug} instalado</info>");
+                } else {
+                    $output->writeln("<error>✗ Error instalando {$slug}</error>");
+                }
+                $output->writeln('');
+            }
+        }
 
         return Command::SUCCESS;
+    }
+
+    private function findBedrockProject(OutputInterface $output, ?InputInterface $input = null): ?string
+    {
+        // Verificar directorio actual
+        if ($this->isBedrockProject(getcwd())) {
+            return getcwd();
+        }
+        
+        // Buscar en subdirectorios inmediatos
+        $output->writeln('<comment>Buscando proyectos Bedrock en subdirectorios...</comment>');
+        $subdirs = glob(getcwd() . '/*', GLOB_ONLYDIR);
+        $bedrockProjects = [];
+        
+        foreach ($subdirs as $dir) {
+            if ($this->isBedrockProject($dir)) {
+                $bedrockProjects[] = $dir;
+            }
+        }
+        
+        if (empty($bedrockProjects)) {
+            return null;
+        }
+        
+        if (count($bedrockProjects) === 1) {
+            return $bedrockProjects[0];
+        }
+        
+        // Múltiples proyectos encontrados
+        $output->writeln('');
+        $output->writeln('<fg=cyan>Proyectos Bedrock encontrados:</>');
+        foreach ($bedrockProjects as $idx => $project) {
+            $name = basename($project);
+            $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$name}");
+        }
+        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
+        
+        $helper = $this->getHelper('question');
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Seleccionar proyecto [1]:</> ', '1');
+        $choice = $helper->ask($input, $output, $question);
+        
+        if ($choice === '0') {
+            return null;
+        }
+        
+        $index = (int)$choice - 1;
+        return $bedrockProjects[$index] ?? null;
+    }
+    
+    private function isBedrockProject(string $path): bool
+    {
+        $composerFile = $path . '/composer.json';
+        
+        if (!file_exists($composerFile)) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents($composerFile), true);
+        
+        // Verificar si tiene roots/bedrock como dependencia o es un proyecto bedrock
+        return isset($composer['require']['roots/bedrock']) ||
+               isset($composer['require']['roots/wordpress']) ||
+               (isset($composer['extra']['installer-paths']) && 
+                isset($composer['extra']['installer-paths']['web/app/mu-plugins/{$name}/']));
     }
 }

@@ -11,9 +11,15 @@ use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
+use Roots\BedrockCli\Services\AuthService;
+use Roots\BedrockCli\Services\StateService;
+use Roots\BedrockCli\Services\DockerVerificationService;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 
 class NewCommand extends Command
 {
+    use PremiumAssetsTrait;
+
     protected function configure(): void
     {
         $this
@@ -65,10 +71,17 @@ class NewCommand extends Command
         $this->createExtendedStructure($name, $output);
         $this->generateEnvFile($name, $input, $output);
         $this->copyApplicationConfig($name, $output);
-        $this->applyProfile($name, $input, $output);
+        $this->installMuPlugin($name, $output);
+        $profile = $this->applyProfile($name, $input, $output);
         $this->generateBlueprints($name, $input, $output);
         $this->copySeeders($name, $output);
         $this->initGit($name, $output);
+        $this->generateWizardState($name, $input, $profile, $output);
+        
+        // Verificación y auto-fix post-creación
+        if (!$input->getOption('no-docker')) {
+            $this->verifyAndFixProject($name, $output);
+        }
 
         $output->writeln('');
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
@@ -139,7 +152,7 @@ class NewCommand extends Command
         $process->run();
 
         $process = new Process(['composer', 'require', 'roots/acorn', '--no-interaction'], $name);
-        $process->setTimeout(300);
+        $process->setTimeout(900);
         $this->runWithLoader($process, $output, 'Instalando Roots Acorn');
 
         // Copiar acorn-boot.php a mu-plugins
@@ -154,7 +167,7 @@ class NewCommand extends Command
         $output->writeln('<info>Instalando Redis Object Cache...</info>');
 
         $process = new Process(['composer', 'require', 'rhubarbgroup/redis-cache', '--no-interaction'], $name);
-        $process->setTimeout(300);
+        $process->setTimeout(900);
         $this->runWithLoader($process, $output, 'Instalando Redis');
 
         $output->writeln('<info>✓ Redis instalado</info>');
@@ -236,12 +249,22 @@ class NewCommand extends Command
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
         
+        // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
+        $wpPortLine = '';
+        $wpHomeUrl = 'http://localhost';
+        if ($httpPort != 80) {
+            $wpPortLine = "\nWP_PORT={$httpPort}";
+            $wpHomeUrl = "http://localhost:\${WP_PORT}";
+        }
+        
         $vars = [
             '{{PROJECT_NAME}}' => $name,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
             '{{HTTP_PORT}}' => $httpPort,
+            '{{WP_PORT_LINE}}' => $wpPortLine,
+            '{{WP_HOME_URL}}' => $wpHomeUrl,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),
@@ -297,6 +320,7 @@ class NewCommand extends Command
         $process->run();
 
         $process = new Process(['git', 'add', '.'], $name);
+        $process->setTimeout(120);
         $process->run();
 
         $process = new Process(['git', 'commit', '-m', 'Initial commit'], $name);
@@ -359,6 +383,50 @@ class NewCommand extends Command
         $output->writeln('<info>✓ application.php y environments configurados</info>');
     }
 
+    private function installMuPlugin(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Instalando Bedrock CLI MU-Plugin...</info>');
+
+        // Usar el MU plugin actualizado en lugar del stub obsoleto
+        $reflection = new \ReflectionClass(self::class);
+        $classFile = $reflection->getFileName();
+        $muPluginDir = dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'mu-plugin';
+        
+        $destination = "{$name}/web/app/mu-plugins/bedrock-cli-plugin";
+        
+        if (is_dir($muPluginDir)) {
+            // Copiar todo el directorio del MU plugin actualizado
+            $this->recursiveCopy($muPluginDir, $destination);
+            $output->writeln('<info>✓ MU-Plugin actualizado instalado</info>');
+        } else {
+            $output->writeln('<comment>⚠ MU-Plugin no encontrado, omitiendo...</comment>');
+        }
+    }
+    
+    private function recursiveCopy(string $source, string $destination): void
+    {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+        
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($iterator as $item) {
+            $target = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+            
+            if ($item->isDir()) {
+                if (!is_dir($target)) {
+                    mkdir($target, 0755, true);
+                }
+            } else {
+                copy($item, $target);
+            }
+        }
+    }
+
     private function applyProfile(string $name, InputInterface $input, OutputInterface $output): ?array
     {
         $profileName = $input->getOption('profile');
@@ -370,13 +438,25 @@ class NewCommand extends Command
         try {
             $profile = $profileService->loadProfile($profileName);
             
+            // Detectar Docker y actualizar profile si no está definido
+            if (!isset($profile['docker_mode'])) {
+                $dockerMode = !$input->getOption('no-docker');
+                if ($dockerMode) {
+                    $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados.</>');                    $profile['docker_mode'] = true;
+                    $profileService->saveProfile($profileName, $profile);
+                }
+            }
+            
             $composerService->generateFromProfile($profile, $name);
             $composerService->copyProfileToProject($profile, $name);
             
             $output->writeln('<info>Instalando dependencias del profile...</info>');
-            $process = new Process(['composer', 'install', '--no-interaction'], $name);
+            $process = new Process(['composer', 'update', '--no-interaction'], $name);
             $process->setTimeout(600);
             $this->runWithLoader($process, $output, 'Instalando dependencias');
+            
+            $composerService->copyCustomZipFiles($profile, $name);
+            $output->writeln('<info>✓ Archivos .zip copiados</info>');
             
             $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
             return $profile;
@@ -455,5 +535,138 @@ class NewCommand extends Command
         
         // Subir desde src/Commands/Setup/NewCommand.php hasta la raíz del paquete
         return dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'stubs';
+    }
+
+    private function installPremiumAssets(string $name, ?array $profile, InputInterface $input, OutputInterface $output): void
+    {
+        if (!$profile || empty($profile['plugins']['premium'])) {
+            return;
+        }
+
+        $output->writeln('<info>Instalando assets premium...</info>');
+
+        $hasVcsPlugins = false;
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs') {
+                $hasVcsPlugins = true;
+                break;
+            }
+        }
+
+        if ($hasVcsPlugins) {
+            $this->copyAuthJson($name, $output);
+        }
+
+        $this->configureComposerRepositories($name, $profile, $output);
+        $this->requirePremiumPlugins($name, $profile, $output);
+    }
+
+    private function copyAuthJson(string $name, OutputInterface $output): void
+    {
+        $authService = new AuthService();
+        $globalAuth = $authService->getAuthFile();
+
+        if (!file_exists($globalAuth)) {
+            $output->writeln('<comment>⚠️  auth.json no encontrado, omitiendo...</comment>');
+            return;
+        }
+
+        copy($globalAuth, "{$name}/auth.json");
+        file_put_contents("{$name}/.gitignore", "\nauth.json\n", FILE_APPEND);
+        $output->writeln('<info>✓ auth.json copiado al proyecto</info>');
+    }
+
+    private function configureComposerRepositories(string $name, array $profile, OutputInterface $output): void
+    {
+        $composerFile = "{$name}/composer.json";
+        $composer = json_decode(file_get_contents($composerFile), true);
+
+        $repositories = [];
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            if ($plugin['source'] === 'vcs' && !in_array($plugin['url'], array_column($repositories, 'url'))) {
+                $repositories[] = ['type' => 'vcs', 'url' => $plugin['url']];
+            } elseif ($plugin['source'] === 'path') {
+                $repositories[] = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => true]];
+            }
+        }
+
+        if (!empty($repositories)) {
+            $composer['repositories'] = array_merge($composer['repositories'] ?? [], $repositories);
+            file_put_contents($composerFile, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $output->writeln('<info>✓ Repositories configurados</info>');
+        }
+    }
+
+    private function requirePremiumPlugins(string $name, array $profile, OutputInterface $output): void
+    {
+        foreach ($profile['plugins']['premium'] as $plugin) {
+            $package = $plugin['source'] === 'vcs' 
+                ? "detodo24/{$plugin['name']}" 
+                : "local/{$plugin['name']}";
+            
+            $version = $plugin['version'];
+            
+            $output->writeln("<comment>Instalando {$package}:{$version}...</comment>");
+            
+            $process = new Process(['composer', 'require', "{$package}:{$version}", '--no-interaction'], $name);
+            $process->setTimeout(900);
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $output->writeln("<info>✓ {$plugin['name']} instalado</info>");
+            } else {
+                $output->writeln("<error>✗ Error instalando {$plugin['name']}</error>");
+            }
+        }
+    }
+
+    private function generateWizardState(string $name, InputInterface $input, ?array $profile, OutputInterface $output): void
+    {
+        $output->writeln('<info>Generando wizard de configuración...</info>');
+
+        $stateService = new StateService();
+        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+
+        $themeName = 'twentytwentyfive';
+        if ($profile && !empty($profile['themes'])) {
+            $allThemes = array_merge(
+                $profile['themes']['public'] ?? [],
+                $profile['themes']['premium'] ?? [],
+                $profile['themes']['custom'] ?? []
+            );
+            if (!empty($allThemes)) {
+                $firstTheme = reset($allThemes);
+                $themeName = is_array($firstTheme) ? ($firstTheme['slug'] ?? $firstTheme['name']) : $firstTheme;
+            }
+        }
+
+        $config = [
+            'http_port' => $httpPort,
+            'has_acorn' => !$input->getOption('no-acorn'),
+            'has_plugins' => $profile && (!empty($profile['plugins']['public']) || !empty($profile['plugins']['premium']) || !empty($profile['plugins']['custom'])),
+            'has_theme' => $profile && !empty($profile['themes']),
+            'theme_name' => $themeName
+        ];
+
+        $stateService->generateInitialState($name, $config);
+        $output->writeln('<info>✓ bedrock_state.json creado</info>');
+    }
+    
+    private function verifyAndFixProject(string $name, OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<info>Verificando proyecto...</info>');
+        
+        // Esperar a que los contenedores se inicialicen
+        sleep(3);
+        
+        $verificationService = new DockerVerificationService();
+        $projectPath = realpath($name);
+        
+        if ($projectPath && $verificationService->verifyAndFixProject($projectPath, $output)) {
+            $output->writeln('<info>✓ Proyecto verificado y listo</info>');
+        } else {
+            $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');
+        }
     }
 }

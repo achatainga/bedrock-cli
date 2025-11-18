@@ -5,7 +5,7 @@ namespace Roots\BedrockCli\Commands\System;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Roots\BedrockCli\Services\StateDetectorService;
+use Roots\BedrockCli\Services\ProjectValidationService;
 
 class InfoCommand extends Command
 {
@@ -19,14 +19,46 @@ class InfoCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-        $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  Información del Proyecto Bedrock  </> <fg=cyan;options=bold>║</>');
-        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   ℹ️  INFO - Estado del Proyecto     <fg=cyan>║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        $output->writeln('<comment>Muestra información completa del proyecto, Docker, WordPress y tareas pendientes.</comment>');
         $output->writeln('');
         
-        // Detectar estado
-        $stateDetector = new StateDetectorService();
-        $state = $stateDetector->detectProjectState();
+        // Detectar estado usando unified validation service
+        $validationService = new ProjectValidationService();
+        $projectPath = getcwd();
+        
+        $dockerValidation = $validationService->validateDocker($projectPath);
+        $dbValidation = $validationService->validateDatabase($projectPath);
+        $wpValidation = $validationService->validateWordPress($projectPath);
+        $acornValidation = $validationService->validateAcorn($projectPath);
+        $inconsistencies = $validationService->detectInconsistencies($projectPath);
+        
+        // Build state array for compatibility
+        $state = [
+            'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
+            'env_exists' => file_exists($projectPath . '/.env'),
+            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_running' => $dockerValidation->isValid,
+            'containers_running' => $dockerValidation->isValid,
+            'wp_installed' => $wpValidation->isValid,
+            'acorn_installed' => $acornValidation->isPackageInstalled,
+            'acorn_configured' => $acornValidation->isValid,
+            'inconsistencies' => array_map(function($inc) {
+                return [
+                    'message' => $inc['message'],
+                    'severity' => 'warning',
+                    'files' => ['.env', 'docker-compose.yml']
+                ];
+            }, $inconsistencies),
+            'pending_tasks' => $wpValidation->isValid ? [] : [[
+                'name' => 'Instalar WordPress',
+                'command' => 'bedrock setup',
+                'severity' => 'critical'
+            ]]
+        ];
         
         // Información del proyecto
         $this->showProjectInfo($output);
@@ -47,12 +79,18 @@ class InfoCommand extends Command
         $output->writeln($this->formatStatus($state['wp_installed'], 'WordPress instalado'));
         $output->writeln('');
         
-        // Estado de Acorn
-        if ($state['acorn_installed']) {
-            $output->writeln('<fg=cyan;options=bold>Estado de Acorn:</>')
-;
-            $output->writeln($this->formatStatus(true, 'Paquete instalado'));
-            $output->writeln($this->formatStatus($state['acorn_configured'], 'Storage y configs configurados'));
+        // Estado de Acorn (granular)
+        if ($acornValidation->isPackageInstalled) {
+            $output->writeln('<fg=cyan;options=bold>Estado de Acorn:</>');
+            $output->writeln($this->formatStatus($acornValidation->isPackageInstalled, 'Paquete Composer'));
+            $output->writeln($this->formatStatus($acornValidation->isStorageInitialized, 'Storage inicializado'));
+            $output->writeln($this->formatStatus($acornValidation->areConfigsPublished, 'Configs publicados'));
+            
+            if ($acornValidation->isValid) {
+                $output->writeln('  <info>✓ Estado general: Fully configured</info>');
+            } else {
+                $output->writeln('  <comment>⚠ Estado general: ' . $acornValidation->message . '</comment>');
+            }
             $output->writeln('');
         }
         
@@ -111,9 +149,13 @@ class InfoCommand extends Command
         $output->writeln('');
         
         foreach ($inconsistencies as $issue) {
-            $icon = $issue['severity'] === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
+            $severity = $issue['severity'] ?? 'warning';
+            $icon = $severity === 'error' ? '<error>✗</error>' : '<comment>⚠</comment>';
             $output->writeln("  {$icon} {$issue['message']}");
-            $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+            
+            if (isset($issue['files'])) {
+                $output->writeln("     Archivos: " . implode(', ', $issue['files']));
+            }
         }
         
         $output->writeln('');

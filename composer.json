@@ -23,5 +23,13 @@
   "bin": [
     "bin/bedrock"
   ],
-  "minimum-stability": "stable"
+  "minimum-stability": "stable",
+  "require-dev": {
+    "phpunit/phpunit": "11.5"
+  },
+  "scripts": {
+    "test": "phpunit --testdox",
+    "test:coverage": "phpunit --coverage-html coverage",
+    "test:verbose": "phpunit --testdox --verbose"
+  }
 }

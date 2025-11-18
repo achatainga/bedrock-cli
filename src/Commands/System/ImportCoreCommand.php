@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -10,6 +11,7 @@ use Symfony\Component\Process\Process;
 
 class ImportCoreCommand extends Command
 {
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this
@@ -130,19 +132,5 @@ class ImportCoreCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function runWithLoader(Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
 
-        $process->start();
-
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
 }

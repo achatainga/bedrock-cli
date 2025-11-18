@@ -41,9 +41,11 @@ class MenuCommand extends Command
         $helper = $this->getHelper('question');
         
         $output->writeln('');
-        $output->writeln('<fg=magenta;options=bold>╔════════════════════════════════════════╗</>');
-        $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>📝 GESTIÓN DE PROFILES</><fg=magenta;options=bold>              ║</>');
-        $output->writeln('<fg=magenta;options=bold>╚════════════════════════════════════════╝</>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   📋 <fg=white;options=bold>PROFILES - Gestión</><fg=cyan>            ║</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        $output->writeln('<fg=gray>Crea y gestiona profiles con plugins, themes y dependencias.</>');
         $output->writeln('');
 
         // Detectar contexto
@@ -51,13 +53,13 @@ class MenuCommand extends Command
         $activeProfile = null;
         
         if ($inProject) {
-            $output->writeln('<info>✓ Proyecto detectado:</info> ' . basename(getcwd()));
+            $output->writeln('<fg=green>✓</> <fg=white>Proyecto:</> <fg=yellow>' . basename(getcwd()) . '</>');
             $activeProfile = $this->getActiveProfile();
             if ($activeProfile) {
-                $output->writeln('<info>📋 Profile activo:</info> ' . $activeProfile);
+                $output->writeln('<fg=green>📋</> <fg=white>Profile activo:</> <fg=cyan>' . $activeProfile . '</>');
             }
         } else {
-            $output->writeln('<comment>⚠️  No estás en un proyecto Bedrock</comment>');
+            $output->writeln('<fg=yellow>⚠️  No estás en un proyecto Bedrock</>');
         }
         $output->writeln('');
 
@@ -65,23 +67,31 @@ class MenuCommand extends Command
         $profiles = $this->profileService->listProfiles();
         
         if (empty($profiles)) {
-            $output->writeln('<comment>No hay profiles disponibles</comment>');
+            $output->writeln('<fg=gray>No hay profiles disponibles</>');
             $output->writeln('');
-            $output->writeln('<info>[C]</info> Crear nuevo profile');
-            $output->writeln('<info>[0]</info> Volver al menú principal');
+            $output->writeln(' <fg=cyan>[C]</> 🆕 Crear nuevo profile');
+            $output->writeln(' <fg=cyan>[I]</> 📥 Importar desde JSON');
+            $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
             $output->writeln('');
             
-            $question = new Question('<fg=yellow>Opción (C/0):</> ', '0');
+            $question = new Question('<fg=yellow>Opción [C, I, 0]: </>', '0');
             $choice = strtoupper($helper->ask($input, $output, $question));
             
             if ($choice === 'C') {
                 $this->runCommand('profile:create', [], $input, $output);
                 return 'continue';
+            } elseif ($choice === 'I') {
+                $pathQuestion = new Question('<fg=yellow>Path al archivo JSON:</> ');
+                $path = $helper->ask($input, $output, $pathQuestion);
+                if ($path) {
+                    $this->runCommand('profile:import', ['path' => $path], $input, $output);
+                }
+                return 'continue';
             }
             return 'exit';
         }
 
-        $output->writeln('<info>Profiles disponibles:</info>');
+        $output->writeln('<fg=white;options=bold>Profiles disponibles:</>');
         $output->writeln('');
         
         $choices = [];
@@ -90,17 +100,19 @@ class MenuCommand extends Command
             $desc = $profile['description'] ?? 'Sin descripción';
             $isActive = ($activeProfile && $profile['name'] === $activeProfile);
             $activeTag = $isActive ? ' <fg=green;options=bold>(ACTIVO)</>' : '';
-            $output->writeln(" <info>[{$index}]</info> {$profile['name']} - {$desc}{$activeTag}");
+            $output->writeln(" <fg=cyan>[{$index}]</> <fg=white>{$profile['name']}</> <fg=gray>- {$desc}</>{$activeTag}");
             $choices[$index] = $profile['name'];
             $index++;
         }
         
         $output->writeln('');
-        $output->writeln('<info>[C]</info> Crear nuevo profile');
-        $output->writeln('<info>[0]</info> Volver al menú principal');
+        $output->writeln(' <fg=cyan>[C]</> 🆕 Crear nuevo profile');
+        $output->writeln(' <fg=cyan>[I]</> 📥 Importar desde JSON');
+        $output->writeln(' <fg=cyan>[L]</> 📊 Listar todos (detalles)');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Selecciona un profile (1-' . count($profiles) . ') o acción (C/0):</> ', '0');
+        $question = new Question('<fg=yellow>Opción [1-' . count($profiles) . ', C, I, L, 0]: </>', '0');
         $choice = strtoupper($helper->ask($input, $output, $question));
 
         if ($choice === '0') {
@@ -108,7 +120,28 @@ class MenuCommand extends Command
         }
 
         if ($choice === 'C') {
-            $this->runCommand('profile:create', [], $input, $output);
+            $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+            $newProfileName = $helper->ask($input, $output, $nameQuestion);
+            
+            if (!empty($newProfileName)) {
+                $this->runCommand('profile:create', ['name' => $newProfileName], $input, $output);
+            }
+            return 'continue';
+        }
+        
+        if ($choice === 'I') {
+            $pathQuestion = new Question('<fg=yellow>Path al archivo JSON:</> ');
+            $path = $helper->ask($input, $output, $pathQuestion);
+            if ($path) {
+                $this->runCommand('profile:import', ['path' => $path], $input, $output);
+                $this->waitForEnter($input, $output);
+            }
+            return 'continue';
+        }
+        
+        if ($choice === 'L') {
+            $this->runCommand('profile:list', [], $input, $output);
+            $this->waitForEnter($input, $output);
             return 'continue';
         }
 
@@ -129,30 +162,38 @@ class MenuCommand extends Command
         $isActive = ($activeProfile === $profileName);
         
         $output->writeln('');
-        $output->writeln('<fg=magenta;options=bold>╔════════════════════════════════════════╗</>');
-        $output->writeln('<fg=magenta;options=bold>║</>   <fg=yellow;options=bold>Profile: ' . str_pad($profileName, 24) . '</><fg=magenta;options=bold>║</>');
+        $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan>║</>   Profile: ' . str_pad($profileName, 24) . '<fg=cyan>║</>');
         if ($isActive) {
-            $output->writeln('<fg=magenta;options=bold>║</>   <fg=green;options=bold>📌 ACTIVO en proyecto actual</><fg=magenta;options=bold>       ║</>');
+            $output->writeln('<fg=cyan>║</>   <fg=cyan>📌 ACTIVO en proyecto actual</><fg=cyan>       ║</>');
         }
-        $output->writeln('<fg=magenta;options=bold>╚════════════════════════════════════════╝</>');
+        $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
-        $output->writeln('<info>¿Qué deseas hacer?</info>');
-        $output->writeln('');
-        $output->writeln(' <info>[1]</info> 👁️  Ver detalles (JSON completo)');
-        $output->writeln(' <info>[2]</info> ✏️  Editar (abrir en editor)');
+        $output->writeln(' <fg=cyan>[1]</> 👁️  Ver detalles (JSON completo)');
+        $output->writeln(' <fg=cyan>[2]</> ✏️  Editar (abrir en editor)');
+        $output->writeln(' <fg=cyan>[3]</> 🧙 Editar con wizard');
         
         if ($inProject) {
-            $output->writeln(' <info>[3]</info> 📥 Aplicar (a proyecto actual)');
+            $output->writeln(' <fg=cyan>[4]</> 📥 Aplicar (a proyecto actual)');
         } else {
-            $output->writeln(' <comment>[3]</comment> <fg=gray>📥 Aplicar (requiere proyecto)</>');
+            $output->writeln(' <comment>[4]</comment> <fg=gray>📥 Aplicar (requiere proyecto)</>');
         }
         
-        $output->writeln(' <info>[4]</info> 🗑️  Eliminar');
-        $output->writeln(' <info>[0]</info> ⬅️  Volver');
+        $output->writeln(' <fg=cyan>[5]</> 📤 Exportar a JSON');
+        $output->writeln(' <fg=cyan>[6]</> 📋 Duplicar profile');
+        $output->writeln(' <fg=cyan>[7]</> 🔢 Orden de activación');
+        $output->writeln(' <fg=cyan>[8]</> 🗑️  Eliminar');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
 
-        $question = new Question('<fg=yellow>Opción:</> ', '0');
+        $question = new Question('<fg=yellow>Opción [0-8]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
+        
+        if (!is_numeric($choice) || $choice < 0 || $choice > 8) {
+            $output->writeln('<error>Opción inválida</error>');
+            $this->waitForEnter($input, $output);
+            return;
+        }
 
         switch ($choice) {
             case '1':
@@ -163,15 +204,39 @@ class MenuCommand extends Command
                 $this->runCommand('profile:edit', ['name' => $profileName], $input, $output);
                 break;
             case '3':
-                if ($inProject) {
-                    $this->runCommand('profile:apply', ['name' => $profileName], $input, $output);
-                    $this->waitForEnter($input, $output);
-                } else {
-                    $output->writeln('<error>Debes estar en un proyecto Bedrock para aplicar un profile</error>');
-                    $this->waitForEnter($input, $output);
-                }
+                $this->runCommand('profile:edit-wizard', ['name' => $profileName], $input, $output);
+                $this->waitForEnter($input, $output);
                 break;
             case '4':
+                $this->runCommand('profile:apply', ['name' => $profileName], $input, $output);
+                $this->waitForEnter($input, $output);
+                break;
+            case '5':
+                $pathQuestion = new Question('<fg=yellow>Path destino (Enter = ./' . $profileName . '.json):</> ');
+                $exportPath = $helper->ask($input, $output, $pathQuestion);
+                $args = ['name' => $profileName];
+                if ($exportPath) {
+                    $args['path'] = $exportPath;
+                }
+                $this->runCommand('profile:export', $args, $input, $output);
+                $this->waitForEnter($input, $output);
+                break;
+            case '6':
+                $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                $newName = $helper->ask($input, $output, $nameQuestion);
+                if ($newName) {
+                    $profile = $this->profileService->loadProfile($profileName);
+                    $profile['name'] = $newName;
+                    $profile['description'] = ($profile['description'] ?? '') . ' (copia de ' . $profileName . ')';
+                    $this->profileService->saveProfile($newName, $profile);
+                    $output->writeln("<info>✓ Profile '{$newName}' creado como copia de '{$profileName}'</info>");
+                }
+                $this->waitForEnter($input, $output);
+                break;
+            case '7':
+                $this->manageActivationOrder($profileName, $input, $output);
+                break;
+            case '8':
                 $this->runCommand('profile:delete', ['name' => $profileName], $input, $output);
                 $this->waitForEnter($input, $output);
                 break;
@@ -221,6 +286,71 @@ class MenuCommand extends Command
         $output->write('<comment>Presiona Enter para continuar...</comment>');
         if ($input->isInteractive()) {
             fgets(STDIN);
+        }
+    }
+    
+    private function manageActivationOrder(string $profileName, InputInterface $input, OutputInterface $output): void
+    {
+        $helper = $this->getHelper('question');
+        $profile = $this->profileService->loadProfile($profileName);
+        
+        $output->writeln('');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('<fg=magenta;options=bold>  🔢 ORDEN DE ACTIVACIÓN</>');
+        $output->writeln('<fg=magenta;options=bold>════════════════════════════════════════</>');
+        $output->writeln('');
+        $output->writeln(' <fg=cyan>[1]</> 👁️  Ver orden guardado');
+        $output->writeln(' <fg=cyan>[2]</> ✏️  Editar orden (wizard)');
+        $output->writeln(' <fg=cyan>[3]</> 🗑️  Eliminar orden');
+        $output->writeln(' <fg=cyan>[0]</> ⬅️  Volver');
+        $output->writeln('');
+        
+        $question = new Question('<fg=yellow>Opción [0-3]: </>', '0');
+        $choice = $helper->ask($input, $output, $question);
+        
+        switch ($choice) {
+            case '1':
+                if (!isset($profile['activation_order'])) {
+                    $output->writeln('<comment>No hay orden guardado en este profile</comment>');
+                } else {
+                    $order = $profile['activation_order']['order'];
+                    $deps = $profile['activation_order']['dependencies'] ?? [];
+                    $updated = $profile['activation_order']['updated_at'] ?? 'N/A';
+                    
+                    $output->writeln('');
+                    $output->writeln('<fg=yellow;options=bold>Orden de activación:</>');
+                    $output->writeln('');
+                    
+                    asort($order);
+                    foreach ($order as $plugin => $position) {
+                        $depInfo = isset($deps[$plugin]) ? ' <fg=yellow>↳ ' . implode(', ', $deps[$plugin]) . '</>' : '';
+                        $output->writeln("  <fg=cyan>[{$position}]</> <fg=green>{$plugin}</>{$depInfo}");
+                    }
+                    
+                    $output->writeln('');
+                    $output->writeln("<fg=gray>Actualizado: {$updated}</>");
+                }
+                $this->waitForEnter($input, $output);
+                break;
+                
+            case '2':
+                $output->writeln('');
+                $output->writeln('<comment>Abriendo wizard de orden de activación...</comment>');
+                $output->writeln('<comment>Después de completar el wizard, guarda en este profile.</comment>');
+                $this->waitForEnter($input, $output);
+                $this->runCommand('plugins:order:build', [], $input, $output);
+                break;
+                
+            case '3':
+                if (!isset($profile['activation_order'])) {
+                    $output->writeln('<comment>No hay orden guardado</comment>');
+                } else {
+                    unset($profile['activation_order']);
+                    $this->profileService->saveProfile($profileName, $profile);
+                    $output->writeln('<info>✓ Orden eliminado del profile</info>');
+                }
+                $this->waitForEnter($input, $output);
+                break;
         }
     }
 }

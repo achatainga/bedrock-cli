@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Database;
 
+use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -12,9 +13,12 @@ use Symfony\Component\Console\Cursor;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\SecurityService;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class MenuCommand extends Command
 {
+    use ProjectSelectorTrait;
+    use SpinnerTrait;
     protected function configure(): void
     {
         $this
@@ -30,6 +34,10 @@ class MenuCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->ensureBedrockProject($input, $output)) {
+            return Command::FAILURE;
+        }
+
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
 
@@ -70,65 +78,66 @@ class MenuCommand extends Command
         $helper = $this->getHelper('question');
         
         while (true) {
-            $choices = [
-                1 => '<fg=green>Crear</>                - base de datos',
-                2 => '<fg=green>Eliminar</>             - base de datos',
-                3 => '<fg=green>Resetear</>             - base de datos',
-                4 => '<fg=green>Importar</>             - SQL',
-                5 => '<fg=green>Exportar</>             - SQL',
-                6 => '<fg=green>Buscar/Reemplazar</>    - en DB',
-                7 => '<fg=green>Cambiar Prefijo</>      - de tablas',
-                8 => '<fg=green>Ejecutar Query</>       - SQL',
-                9 => '<fg=green>Seeders</>              - Gestión de seeders',
-                0 => '<fg=yellow>Volver atrás</>         - Retroceder',
-            ];
+            $output->writeln('');
+            $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan>║</>   🗄️  DATABASE - Base de Datos     <fg=cyan>║</>');
+            $output->writeln('<fg=cyan>╚═══════════════════════════════════════╝</>');
+            $output->writeln('');
+            $output->writeln('<comment>Operaciones de base de datos: crear, importar, exportar, seeders.</comment>');
+            $output->writeln('');
             
-            $question = new ChoiceQuestion(
-                '<fg=cyan>Selecciona una opción:</>',
-                $choices,
-                1
-            );
-            $question->setAutocompleterValues(null);
-
-            $answer = $helper->ask($input, $output, $question);
-            $cursor = new Cursor($output);
-            $cursor->moveUp(1);
-            $cursor->clearLine();
+            $output->writeln(' <fg=cyan>[1]</> ➕ Crear base de datos');
+            $output->writeln(' <fg=cyan>[2]</> 🗑️  Eliminar base de datos');
+            $output->writeln(' <fg=cyan>[3]</> 🔄 Resetear base de datos');
+            $output->writeln(' <fg=cyan>[4]</> 📥 Importar SQL');
+            $output->writeln(' <fg=cyan>[5]</> 📤 Exportar SQL');
+            $output->writeln(' <fg=cyan>[6]</> 🔍 Buscar/Reemplazar en DB');
+            $output->writeln(' <fg=cyan>[7]</> 🏷️  Cambiar prefijo de tablas');
+            $output->writeln(' <fg=cyan>[8]</> ⚙️  Ejecutar Query SQL');
+            $output->writeln(' <fg=cyan>[9]</> 🌱 Seeders');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln('');
             
-            $index = is_numeric($answer) ? (int)$answer : array_search($answer, $choices);
+            $question = new Question('<fg=yellow>Opción [0-9]: </>', '0');
+            $index = $helper->ask($input, $output, $question);
             
-            if ($index === 0) {
+            if (!is_numeric($index) || $index < 0 || $index > 9) {
+                $output->writeln('<error>Opción inválida</error>');
+                continue;
+            }
+            
+            if ($index === '0') {
                 return Command::SUCCESS;
             }
 
             $output->writeln('');
             
             switch ($index) {
-                case 1:
+                case '1':
                     $this->create($wpcli, $output);
                     break;
-                case 2:
+                case '2':
                     $this->drop($wpcli, $output);
                     break;
-                case 3:
+                case '3':
                     $this->reset($wpcli, $output);
                     break;
-                case 4:
+                case '4':
                     $output->writeln('<comment>Función de importación interactiva pendiente</comment>');
                     break;
-                case 5:
+                case '5':
                     $output->writeln('<comment>Función de exportación interactiva pendiente</comment>');
                     break;
-                case 6:
+                case '6':
                     $this->searchReplace($input, $output, $wpcli);
                     break;
-                case 7:
+                case '7':
                     $this->prefixReplace($input, $output, $wpcli);
                     break;
-                case 8:
+                case '8':
                     $this->query($input, $output, $wpcli);
                     break;
-                case 9:
+                case '9':
                     $this->seedersMenu($input, $output, $wpcli);
                     break;
             }
@@ -360,19 +369,19 @@ class MenuCommand extends Command
             $output->writeln('');
             
             $choices = [
-                1 => '<fg=green>Ejecutar todos</> los seeders',
-                2 => '<fg=green>Ejecutar todos</> (fresh - resetea DB)',
+                1 => '<fg=cyan>Ejecutar todos</> los seeders',
+                2 => '<fg=cyan>Ejecutar todos</> (fresh - resetea DB)',
                 3 => '<fg=cyan>Crear nuevo</> seeder',
             ];
             
             $seederIndex = 4;
             foreach ($seeders as $seeder) {
                 $class = basename($seeder, '.php');
-                $choices[$seederIndex] = "<fg=yellow>Ejecutar:</> {$class}";
+                $choices[$seederIndex] = "<fg=cyan>Ejecutar:</> {$class}";
                 $seederIndex++;
             }
             
-            $choices[0] = '<fg=yellow>Volver</>';
+            $choices[0] = '<fg=cyan>Volver</>';
             
             $question = new ChoiceQuestion('<fg=cyan>Selecciona una opción:</>', $choices, 0);
             $question->setAutocompleterValues(null);
@@ -511,19 +520,5 @@ PHP;
         return Command::SUCCESS;
     }
 
-    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
+
 }

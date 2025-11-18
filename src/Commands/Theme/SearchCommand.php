@@ -4,16 +4,20 @@ namespace Roots\BedrockCli\Commands\Theme;
 
 use Roots\BedrockCli\Services\WordPressApiService;
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Traits\InteractiveSearchTrait;
+use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Question\Question;
 
 class SearchCommand extends Command
 {
+    use InteractiveSearchTrait;
+    use PremiumAssetsTrait;
+
     protected function configure(): void
     {
         $this->setName('theme:search')
@@ -46,28 +50,29 @@ class SearchCommand extends Command
 
         $output->writeln("<comment>Found {$total} themes (showing page {$page}):</comment>\n");
 
-        $table = new Table($output);
-        $table->setHeaders(['#', 'Name', 'Slug', 'Rating', 'Version']);
-
-        foreach ($themes as $index => $theme) {
-            $table->addRow([
-                $index + 1,
-                $theme['name'],
-                $theme['slug'],
-                ($theme['rating'] ?? 0) . '%',
-                $theme['version'] ?? 'N/A'
-            ]);
-        }
-
-        $table->render();
-
-        if (!$profileName) {
-            return Command::SUCCESS;
-        }
+        $this->displayThemesTable($themes, $output);
 
         $helper = $this->getHelper('question');
-        $question = new Question("\n<question>Select theme number to add or press Enter to skip:</question> ");
+        $output->writeln('');
+        $output->writeln('  <fg=cyan>[N]</> Siguiente página');
+        $output->writeln('  <fg=cyan>[P]</> Página anterior');
+        $output->writeln('  <fg=cyan>[0]</> Salir');
+        $question = new Question("\n<fg=yellow>Seleccionar número, N/P para navegar, o 0 para salir:</> ");
         $selection = $helper->ask($input, $output, $question);
+        
+        if (strtoupper($selection) === 'N') {
+            $input->setOption('page', $page + 1);
+            return $this->execute($input, $output);
+        }
+        
+        if (strtoupper($selection) === 'P' && $page > 1) {
+            $input->setOption('page', $page - 1);
+            return $this->execute($input, $output);
+        }
+        
+        if ($selection === '0') {
+            return Command::SUCCESS;
+        }
 
         if (empty($selection)) {
             return Command::SUCCESS;
@@ -75,27 +80,207 @@ class SearchCommand extends Command
 
         $index = (int) $selection - 1;
         if (!isset($themes[$index])) {
-            $output->writeln('<error>Invalid selection.</error>');
+            $output->writeln('<error>Selección inválida</error>');
             return Command::FAILURE;
         }
 
         $theme = $themes[$index];
         $slug = $theme['slug'];
+        $version = $this->selectThemeVersion($slug, $helper, $input, $output);
+        
+        $output->writeln("<info>✓ {$slug}:{$version}</info>");
 
-        $profileService = new ProfileService();
+        // Preguntar qué hacer
+        $output->writeln('');
+        $output->writeln('<fg=yellow>¿Qué deseas hacer con el tema seleccionado?</>');
+        $output->writeln(' <fg=cyan>[1]</> Agregar a un profile');
+        $output->writeln(' <fg=cyan>[2]</> Instalar en proyecto Bedrock');
+        $output->writeln(' <fg=cyan>[3]</> Buscar tema premium');
+        $output->writeln(' <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
+        
+        $actionQuestion = new Question('<fg=yellow>Opción [0]:</> ', '0');
+        $action = $helper->ask($input, $output, $actionQuestion);
 
-        if (!$profileService->profileExists($profileName)) {
-            $output->writeln("<error>Profile '{$profileName}' does not exist.</error>");
-            return Command::FAILURE;
+        if ($action === '1') {
+            // Agregar a profile
+            if (!$profileName) {
+                $profileService = new ProfileService();
+                $profiles = array_values($profileService->listProfiles());
+                
+                if (empty($profiles)) {
+                    $output->writeln('<comment>No hay profiles creados.</comment>');
+                    $output->writeln('');
+                    $createQuestion = new \Symfony\Component\Console\Question\ConfirmationQuestion(
+                        '<fg=yellow>¿Crear un nuevo profile? (Y/n):</> ',
+                        true
+                    );
+                    
+                    if ($helper->ask($input, $output, $createQuestion)) {
+                        $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                        $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                        
+                        if (!empty($newProfileName)) {
+                            $createCmd = $this->getApplication()->find('profile:create');
+                            $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
+                            $createCmd->run($createInput, $output);
+                        }
+                    }
+                    return Command::SUCCESS;
+                }
+                
+                $output->writeln('');
+                $output->writeln('<fg=cyan>Profiles disponibles:</>');
+                foreach ($profiles as $idx => $profileData) {
+                    $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$profileData['name']}");
+                }
+                $output->writeln('  <fg=cyan>[N]</> Crear nuevo profile');
+                $output->writeln('  <fg=cyan>[0]</> Cancelar');
+                $output->writeln('');
+                
+                $profileQuestion = new Question('<fg=yellow>Seleccionar profile [1]:</> ', '1');
+                $profileChoice = $helper->ask($input, $output, $profileQuestion);
+                
+                if (strtoupper($profileChoice) === 'N') {
+                    $nameQuestion = new Question('<fg=yellow>Nombre del nuevo profile:</> ');
+                    $newProfileName = $helper->ask($input, $output, $nameQuestion);
+                    
+                    if (empty($newProfileName)) {
+                        $output->writeln('<error>Nombre requerido</error>');
+                        return Command::FAILURE;
+                    }
+                    
+                    $createCmd = $this->getApplication()->find('profile:create');
+                    $createInput = new \Symfony\Component\Console\Input\ArrayInput(['name' => $newProfileName]);
+                    $createCmd->run($createInput, $output);
+                    return Command::SUCCESS;
+                }
+                
+                if ($profileChoice === '0') {
+                    return Command::SUCCESS;
+                }
+                
+                $profileIndex = (int)$profileChoice - 1;
+                if (!isset($profiles[$profileIndex])) {
+                    $output->writeln('<error>Selección inválida</error>');
+                    return Command::FAILURE;
+                }
+                
+                $profileName = $profiles[$profileIndex]['name'];
+            } else {
+                $profileService = new ProfileService();
+            }
+
+            if (!$profileService->profileExists($profileName)) {
+                $output->writeln("<error>Profile '{$profileName}' no existe.</error>");
+                return Command::FAILURE;
+            }
+
+            $profile = $profileService->loadProfile($profileName);
+            $profile['theme']['name'] = $slug;
+            $profile['theme']['version'] = $version;
+            $profile['theme']['type'] = 'public';
+            $profileService->saveProfile($profileName, $profile);
+            $output->writeln("\n<info>✓ Tema agregado al profile '{$profileName}'</info>");
+            
+        } elseif ($action === '3') {
+            // Buscar tema premium
+            $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
+            
+            if ($premiumTheme) {
+                $output->writeln('');
+                $output->writeln('<info>✓ Tema premium seleccionado:</info>');
+                $output->writeln("  • {$premiumTheme['name']} v{$premiumTheme['version']} ({$premiumTheme['source']})");
+            }
+            
+            return Command::SUCCESS;
+            
+        } elseif ($action === '2') {
+            // Instalar en proyecto
+            $projectPath = $this->findBedrockProject($output, $input);
+            
+            if (!$projectPath) {
+                $output->writeln('<error>No se encontró ningún proyecto Bedrock</error>');
+                return Command::FAILURE;
+            }
+            
+            $output->writeln("<info>Proyecto: {$projectPath}</info>");
+            $output->writeln('');
+            
+            $package = "wpackagist-theme/{$slug}";
+            $constraint = $version === '*' ? '' : ":{$version}";
+            $command = "composer require {$package}{$constraint} --working-dir={$projectPath}";
+            $output->writeln("<comment>$ {$command}</comment>");
+            passthru($command, $exitCode);
+            
+            if ($exitCode === 0) {
+                $output->writeln("<info>✓ {$slug} instalado</info>");
+            } else {
+                $output->writeln("<error>✗ Error instalando {$slug}</error>");
+            }
         }
 
-        $profile = $profileService->loadProfile($profileName);
-        $profile['theme']['name'] = $slug;
-        $profile['theme']['type'] = 'public';
-        $profileService->saveProfile($profileName, $profile);
-
-        $output->writeln("<info>✓ Theme '{$slug}' added to profile '{$profileName}'</info>");
-
         return Command::SUCCESS;
+    }
+
+    private function findBedrockProject(OutputInterface $output, ?InputInterface $input = null): ?string
+    {
+        if ($this->isBedrockProject(getcwd())) {
+            return getcwd();
+        }
+        
+        $output->writeln('<comment>Buscando proyectos Bedrock en subdirectorios...</comment>');
+        $subdirs = glob(getcwd() . '/*', GLOB_ONLYDIR);
+        $bedrockProjects = [];
+        
+        foreach ($subdirs as $dir) {
+            if ($this->isBedrockProject($dir)) {
+                $bedrockProjects[] = $dir;
+            }
+        }
+        
+        if (empty($bedrockProjects)) {
+            return null;
+        }
+        
+        if (count($bedrockProjects) === 1) {
+            return $bedrockProjects[0];
+        }
+        
+        $output->writeln('');
+        $output->writeln('<fg=cyan>Proyectos Bedrock encontrados:</>');
+        foreach ($bedrockProjects as $idx => $project) {
+            $name = basename($project);
+            $output->writeln("  <fg=cyan>[" . ($idx + 1) . "]</> {$name}");
+        }
+        $output->writeln('  <fg=cyan>[0]</> Cancelar');
+        $output->writeln('');
+        
+        $helper = $this->getHelper('question');
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Seleccionar proyecto [1]:</> ', '1');
+        $choice = $helper->ask($input, $output, $question);
+        
+        if ($choice === '0') {
+            return null;
+        }
+        
+        $index = (int)$choice - 1;
+        return $bedrockProjects[$index] ?? null;
+    }
+    
+    private function isBedrockProject(string $path): bool
+    {
+        $composerFile = $path . '/composer.json';
+        
+        if (!file_exists($composerFile)) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents($composerFile), true);
+        
+        return isset($composer['require']['roots/bedrock']) ||
+               isset($composer['require']['roots/wordpress']) ||
+               (isset($composer['extra']['installer-paths']) && 
+                isset($composer['extra']['installer-paths']['web/app/mu-plugins/{$name}/']));
     }
 }
