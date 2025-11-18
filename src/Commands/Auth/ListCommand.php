@@ -10,6 +10,14 @@ use Symfony\Component\Console\Helper\Table;
 
 class ListCommand extends Command
 {
+    private AuthService $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->setName('auth:list')
@@ -18,8 +26,7 @@ class ListCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $authService = new AuthService();
-        $auths = $authService->listAuth();
+        $auths = $this->authService->listAuth();
 
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -48,7 +55,7 @@ class ListCommand extends Command
 
         $table->render();
         $output->writeln('');
-        $output->writeln('<comment>Ubicación:</comment> ' . $authService->getAuthFile());
+        $output->writeln('<comment>Ubicación:</comment> ' . $this->authService->getAuthFile());
         $output->writeln('');
 
         return Command::SUCCESS;

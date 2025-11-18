@@ -315,9 +315,15 @@ class Application extends BaseApplication
             ),
             new RemoveDependencyCommand(),
             new AuthMenuCommand(),
-            new AuthAddCommand(),
-            new AuthListCommand(),
-            new AuthRemoveCommand(),
+            new AuthAddCommand(
+                $this->container->get('Roots\BedrockCli\Services\AuthService')
+            ),
+            new AuthListCommand(
+                $this->container->get('Roots\BedrockCli\Services\AuthService')
+            ),
+            new AuthRemoveCommand(
+                $this->container->get('Roots\BedrockCli\Services\AuthService')
+            ),
             new AICommand(),
             new InstallMuPluginCommand(),
             new UpdateMuPluginCommand(),
