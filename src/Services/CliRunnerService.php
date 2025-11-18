@@ -16,27 +16,39 @@ class CliRunnerService
         $this->errorLogger = $errorLogger;
     }
     
-    public function runCommand(string $executable, array $arguments = [], string $workingDirectory = null): ?string
+    public function runCommand(string $executable, array $arguments = [], string $workingDirectory = null, bool $silent = false): ?string
     {
         $executablePath = $this->executableFinder->find($executable);
         
         if (!$executablePath) {
-            $this->errorLogger->logPathError(__METHOD__, $executable, "Executable not found in PATH");
+            if (!$silent) {
+                $this->errorLogger->logPathError(__METHOD__, $executable, "Executable not found in PATH");
+            }
             return null;
         }
         
         try {
             $process = new Process(array_merge([$executablePath], $arguments), $workingDirectory);
+            $process->setTimeout(5);
+            
+            if ($silent) {
+                $process->disableOutput();
+            }
+            
             $process->run();
             
             if ($process->isSuccessful()) {
                 return trim($process->getOutput());
             }
             
-            $this->errorLogger->logPathError(__METHOD__, $executable, $process->getErrorOutput());
+            if (!$silent) {
+                $this->errorLogger->logPathError(__METHOD__, $executable, $process->getErrorOutput());
+            }
             return null;
         } catch (\Exception $e) {
-            $this->errorLogger->logPathError(__METHOD__, $executable, $e->getMessage());
+            if (!$silent) {
+                $this->errorLogger->logPathError(__METHOD__, $executable, $e->getMessage());
+            }
             return null;
         }
     }

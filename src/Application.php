@@ -97,6 +97,10 @@ class Application extends BaseApplication
         
         parent::__construct('bedrock', $this->getVersion());
 
+        // Usar CommandRegistryService para comandos principales
+        $commandRegistry = $this->container->get('Roots\BedrockCli\Services\CommandRegistryService');
+        $commandRegistry->registerCommands($this);
+
         $this->addCommands([
             new AcornCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
@@ -178,11 +182,7 @@ class Application extends BaseApplication
             new InitCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
-            new MainMenuCommand(
-                $this->container->get('Roots\BedrockCli\Services\StateService'),
-                $this->container->get('Roots\BedrockCli\Services\PremiumRepoService'),
-                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
-            ),
+            // MainMenuCommand ahora registrado via CommandRegistryService
             new InitMenuCommand(),
             new SearchMenuCommand(),
             new InfoCommand(
@@ -441,18 +441,18 @@ class Application extends BaseApplication
             }
         }
         
-        // 2. Git commands usando CliRunnerService
+        // 2. Git commands usando CliRunnerService (modo silencioso)
         if (is_dir(__DIR__ . '/../.git')) {
             $cliRunner = $this->container->get('Roots\BedrockCli\Services\CliRunnerService');
             
-            // Intentar git describe
-            $version = $cliRunner->runCommand('git', ['describe', '--tags', '--exact-match'], __DIR__ . '/..');
+            // Intentar git describe (silencioso para evitar stderr)
+            $version = $cliRunner->runCommand('git', ['describe', '--tags', '--exact-match'], __DIR__ . '/..', true);
             if ($version) {
                 return $version;
             }
             
-            // Fallback: contar commits
-            $commitCount = $cliRunner->runCommand('git', ['rev-list', '--count', 'HEAD'], __DIR__ . '/..');
+            // Fallback: contar commits (silencioso)
+            $commitCount = $cliRunner->runCommand('git', ['rev-list', '--count', 'HEAD'], __DIR__ . '/..', true);
             if ($commitCount) {
                 return "2.{$commitCount}.0-dev";
             }
