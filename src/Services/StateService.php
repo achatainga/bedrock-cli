@@ -76,6 +76,11 @@ class StateService
             ]);
         }
         
+        // CRITICAL FIX: Si estamos en bedrock-cli directory, retornar estado vacío para evitar crash del modo guía
+        if (!file_exists($file) && basename($projectPath) === 'bedrock-cli') {
+            return null; // Modo guía se desactiva correctamente
+        }
+        
         return file_exists($file) ? json_decode(file_get_contents($file), true) : null;
     }
 
