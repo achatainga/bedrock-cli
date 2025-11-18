@@ -216,8 +216,12 @@ class Application extends BaseApplication
             new ProfileDeleteCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
             ),
-            new ProfileEditCommand(),
-            new ProfileExportCommand(),
+            new ProfileEditCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileExportCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ProfileApplyCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService'),
                 $this->container->get('Roots\BedrockCli\Services\ComposerService'),
