@@ -230,9 +230,15 @@ class Application extends BaseApplication
             new ProfileEditWizardCommand(),
             new ProfileManagePluginsCommand(),
             new ProfileValidateVcsCommand(),
-            new PluginSearchCommand(),
+            new PluginSearchCommand(
+                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new PluginInfoCommand(),
-            new ThemeSearchCommand(),
+            new ThemeSearchCommand(
+                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ThemeInfoCommand(),
             new ManageCommand(
                 $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector')
