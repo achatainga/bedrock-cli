@@ -237,8 +237,16 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
             ),
             new AddDependencyCommand(),
-            new RemovePluginCommand(),
-            new RemoveThemeCommand(),
+            new RemovePluginCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
+            new RemoveThemeCommand(
+                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
+                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
+                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
+            ),
             new RemoveDependencyCommand(),
             new AuthMenuCommand(),
             new AuthAddCommand(),

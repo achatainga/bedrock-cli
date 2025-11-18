@@ -13,6 +13,18 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class PluginCommand extends Command
 {
+    private ManagementService $managementService;
+    private PluginManager $pluginManager;
+    private DependencyManager $dependencyManager;
+
+    public function __construct(ManagementService $managementService, PluginManager $pluginManager, DependencyManager $dependencyManager)
+    {
+        parent::__construct();
+        $this->managementService = $managementService;
+        $this->pluginManager = $pluginManager;
+        $this->dependencyManager = $dependencyManager;
+    }
+
     protected function configure(): void
     {
         $this->setName('remove:plugin')
@@ -22,32 +34,26 @@ class PluginCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $contextDetector = new ContextDetector();
-        $management = new ManagementService($contextDetector);
-
         try {
-            $management->requireBedrockProject();
+            $this->managementService->requireBedrockProject();
         } catch (\RuntimeException $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             return Command::FAILURE;
         }
 
         $slug = $input->getArgument('slug');
-        $pluginManager = new PluginManager($management);
 
-        if (!$pluginManager->exists($slug)) {
+        if (!$this->pluginManager->exists($slug)) {
             $output->writeln("<error>Plugin '{$slug}' no está instalado</error>");
             return Command::FAILURE;
         }
 
-        $dependencyManager = new DependencyManager($management);
-
         $output->writeln("<info>Removiendo plugin: {$slug}</info>");
 
-        $pluginManager->remove($slug);
+        $this->pluginManager->remove($slug);
 
         $package = "wpackagist-plugin/{$slug}";
-        $exitCode = $dependencyManager->update(
+        $exitCode = $this->dependencyManager->update(
             [$package],
             function($buffer) use ($output) {
                 $output->write($buffer);
