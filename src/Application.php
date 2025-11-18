@@ -109,16 +109,32 @@ class Application extends BaseApplication
             new OptionsManageCommand(),
             new PluginsMenuCommand(),
             new PluginsListCommand(),
-            new PluginsActivateCommand(),
-            new PluginsDeactivateCommand(),
+            new PluginsActivateCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
+                $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
+            new PluginsDeactivateCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new PluginsCompressCommand(),
-            new PluginsStatusCommand(),
+            new PluginsStatusCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new PluginsOrderCommand(),
             new PluginsOrderMenuCommand(),
             new PluginsOrderBuilderCommand(),
             new ThemesMenuCommand(),
-            new ThemesListCommand(),
-            new ThemesActivateCommand(),
+            new ThemesListCommand(
+                $this->container->get('Roots\BedrockCli\Services\UnzipService')
+            ),
+            new ThemesActivateCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
+                $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
             new ThemesCompressCommand(),
             new ThemesStatusCommand(),
             new SetupCommand(),
