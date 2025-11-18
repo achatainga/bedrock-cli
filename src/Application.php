@@ -150,7 +150,10 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')
             ),
-            new SeedCommand(),
+            new SeedCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new ExportConfigCommand(),
             new ImportCoreCommand(),
             new ProfileMenuCommand(),

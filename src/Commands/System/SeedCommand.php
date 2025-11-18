@@ -11,6 +11,16 @@ use Roots\BedrockCli\Services\WpCliService;
 
 class SeedCommand extends Command
 {
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+
+    public function __construct(DockerService $dockerService, WpCliService $wpCliService)
+    {
+        parent::__construct();
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+    }
+
     protected function configure(): void
     {
         $this
@@ -22,8 +32,6 @@ class SeedCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
         $projectRoot = getcwd();
         $seedersPath = $projectRoot . '/database/seeders';
         
@@ -34,7 +42,7 @@ class SeedCommand extends Command
         }
         
         if ($input->getOption('fresh')) {
-            $process = $wpcli->dbReset();
+            $process = $this->wpCliService->dbReset();
             $this->runWithLoader($process, $output, 'Reseteando base de datos');
             if (!$process->isSuccessful()) {
                 $output->writeln('<error>Error reseteando DB</error>');
@@ -47,10 +55,10 @@ class SeedCommand extends Command
         $class = $input->getOption('class');
         
         if ($class) {
-            return $this->runSeeder($output, $wpcli, $seedersPath, $class);
+            return $this->runSeeder($output, $this->wpCliService, $seedersPath, $class);
         }
         
-        return $this->runDatabaseSeeder($output, $wpcli, $seedersPath);
+        return $this->runDatabaseSeeder($output, $this->wpCliService, $seedersPath);
     }
     
     private function runSeeder(OutputInterface $output, WpCliService $wpcli, string $path, string $class): int
