@@ -13,10 +13,10 @@ class AddPluginCommand extends Command
 {
     private ProfileService $profileService;
 
-    public function __construct()
+    public function __construct(ProfileService $profileService)
     {
+        $this->profileService = $profileService;
         parent::__construct();
-        $this->profileService = new ProfileService();
     }
 
     protected function configure(): void

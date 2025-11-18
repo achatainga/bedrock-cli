@@ -201,7 +201,9 @@ class Application extends BaseApplication
             ),
             new ExportConfigCommand(),
             new ImportCoreCommand(),
-            new ProfileMenuCommand(),
+            new ProfileMenuCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ProfileCreateCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService'),
                 $this->container->get('Roots\BedrockCli\Services\PremiumCacheService'),
@@ -227,10 +229,18 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\ComposerService'),
                 $this->container->get('Roots\BedrockCli\Services\VcsValidator')
             ),
-            new ProfileAddPluginCommand(),
-            new ProfileRemovePluginCommand(),
-            new ProfileSetThemeCommand(),
-            new ProfileAddRepoCommand(),
+            new ProfileAddPluginCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileRemovePluginCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileSetThemeCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
+            new ProfileAddRepoCommand(
+                $this->container->get('Roots\BedrockCli\Services\ProfileService')
+            ),
             new ProfileEditWizardCommand(),
             new ProfileManagePluginsCommand(),
             new ProfileValidateVcsCommand(),
