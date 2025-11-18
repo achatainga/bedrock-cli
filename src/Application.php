@@ -82,6 +82,7 @@ use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
+use Roots\BedrockCli\Commands\UpdateCommand;
 use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
@@ -173,7 +174,9 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
             ),
             new NewWizardCommand(),
-            new InitCommand(),
+            new InitCommand(
+                $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
             new MainMenuCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService'),
                 $this->container->get('Roots\BedrockCli\Services\PremiumRepoService')
@@ -270,6 +273,10 @@ class Application extends BaseApplication
             new UpdateMuPluginCommand(),
             new CacheImportCommand(),
             new CacheUpdateVersionCommand(),
+            new UpdateCommand(
+                $this->container->get('Roots\BedrockCli\Services\DockerService'),
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
         ]);
     }
 

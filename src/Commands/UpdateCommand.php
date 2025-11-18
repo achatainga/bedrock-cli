@@ -12,6 +12,19 @@ use Roots\BedrockCli\Services\WpCliService;
 class UpdateCommand extends Command
 {
     use SpinnerTrait;
+    
+    private DockerService $dockerService;
+    private WpCliService $wpCliService;
+    
+    public function __construct(
+        DockerService $dockerService,
+        WpCliService $wpCliService
+    ) {
+        $this->dockerService = $dockerService;
+        $this->wpCliService = $wpCliService;
+        parent::__construct();
+    }
+    
     protected function configure(): void
     {
         $this
@@ -21,8 +34,8 @@ class UpdateCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $docker = new DockerService();
-        $wpcli = new WpCliService($docker);
+        $docker = $this->dockerService;
+        $wpcli = $this->wpCliService;
         
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>===== ACTUALIZACIÓN DEL SISTEMA =====</>');
