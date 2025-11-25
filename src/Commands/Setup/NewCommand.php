@@ -436,7 +436,8 @@ class NewCommand extends Command
         $composerService = new ComposerService();
 
         try {
-            $profile = $profileService->loadProfile($profileName)->toArray();
+            $profile = $profileService->loadProfile($profileName);
+            $profile = is_object($profile) ? $profile->toArray() : $profile;
             
             // Detectar Docker y actualizar profile si no está definido
             if (!isset($profile['docker_mode'])) {
@@ -476,7 +477,8 @@ class NewCommand extends Command
         $profileName = $input->getOption('profile');
 
         try {
-            $profile = $profileService->loadProfile($profileName)->toArray();
+            $profile = $profileService->loadProfile($profileName);
+            $profile = is_object($profile) ? $profile->toArray() : $profile;
             $blueprintService->generateBlueprints($profile, $name);
             $output->writeln('<info>✓ Blueprints generados (production, staging, development)</info>');
         } catch (\RuntimeException $e) {
