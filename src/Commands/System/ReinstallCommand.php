@@ -127,11 +127,11 @@ class ReinstallCommand extends Command
         $docker = new DockerService();
         $wpcli = new WpCliService($docker);
         
-        $process = $wpcli->execute(['option', 'get', 'blogname']);
+        $process = $wpcli->exec(['option', 'get', 'blogname']);
         $process->run();
         $title = $process->isSuccessful() ? trim($process->getOutput()) : 'Mi Sitio';
         
-        $process = $wpcli->execute(['option', 'get', 'admin_email']);
+        $process = $wpcli->exec(['option', 'get', 'admin_email']);
         $process->run();
         $email = $process->isSuccessful() ? trim($process->getOutput()) : 'admin@example.com';
 
@@ -184,13 +184,13 @@ class ReinstallCommand extends Command
 
     private function reinstallWordPress(WpCliService $wpcli, array $data, OutputInterface $output): void
     {
-        $process = $wpcli->coreInstall(
-            $data['url'],
-            $data['title'],
-            'admin',
-            'admin',
-            $data['email']
-        );
+        $process = $wpcli->coreInstall([
+            'url' => $data['url'],
+            'title' => $data['title'],
+            'admin_user' => 'admin',
+            'admin_password' => 'admin',
+            'admin_email' => $data['email']
+        ]);
         
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
