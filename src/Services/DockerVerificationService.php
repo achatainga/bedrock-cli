@@ -100,10 +100,15 @@ class DockerVerificationService
         
         $process = new Process(['docker-compose', 'up', '-d'], $projectPath);
         $process->setTimeout(300);
-        $process->run();
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
         
         if ($process->isSuccessful()) {
             $output->writeln('<info>  ✓ Contenedores iniciados</info>');
+        } else {
+            $output->writeln('<error>  ✗ Error al iniciar contenedores</error>');
+            $output->writeln($process->getErrorOutput());
         }
     }
     

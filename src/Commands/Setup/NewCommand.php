@@ -36,6 +36,7 @@ class NewCommand extends Command
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
+            ->addOption('verify', null, InputOption::VALUE_NONE, 'Verificar y auto-reparar proyecto después de crearlo')
             ->addOption('profile', null, InputOption::VALUE_REQUIRED, 'Profile a usar', 'default');
     }
 
@@ -78,8 +79,8 @@ class NewCommand extends Command
         $this->initGit($name, $output);
         $this->generateWizardState($name, $input, $profile, $output);
         
-        // Verificación y auto-fix post-creación
-        if (!$input->getOption('no-docker')) {
+        // Verificación y auto-fix post-creación (solo si --verify está presente)
+        if ($input->getOption('verify') && !$input->getOption('no-docker')) {
             $this->verifyAndFixProject($name, $output);
         }
 
