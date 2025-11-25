@@ -414,6 +414,14 @@ class AcornCommand extends Command
 
     private function publishConfigs(OutputInterface $output): int
     {
+        // Ensure storage exists before publishing (Acorn needs it to boot)
+        if (!is_dir('storage')) {
+            $output->writeln('<comment>Storage no existe, inicializando primero...</comment>');
+            if ($this->initStorage($output) === Command::FAILURE) {
+                return Command::FAILURE;
+            }
+        }
+        
         $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn vendor:publish --tag=acorn');
         $process->setTimeout(60);
         $process->run(function ($type, $buffer) use ($output) {
