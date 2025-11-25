@@ -17,8 +17,8 @@ class WpCliService
     {
         // Escapar argumentos para evitar problemas con espacios y caracteres especiales
         $escapedArgs = array_map(function($arg) {
-            // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas
-            if (preg_match('/[\s\$\&\|\;\(\)\<\>]/', $arg)) {
+            // Si el argumento contiene espacios, caracteres especiales, o es numérico, envolverlo en comillas
+            if (is_numeric($arg) || preg_match('/[\s\$\&\|\;\(\)\<\>]/', $arg)) {
                 return "'" . str_replace("'", "'\\''" , $arg) . "'";
             }
             return $arg;
