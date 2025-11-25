@@ -248,10 +248,6 @@ class NewCommand extends Command
 
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        // Add db_ prefix if name is purely numeric to avoid WP-CLI parsing issues
-        if (is_numeric($dbName)) {
-            $dbName = 'db_' . $dbName;
-        }
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
         
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
