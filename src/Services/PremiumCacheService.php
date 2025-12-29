@@ -423,14 +423,29 @@ class PremiumCacheService
     public function extractTheme(string $name, string $version): string
     {
         $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        $zipPath = $themeDir . "/{$name}.zip";
         $extractPath = $themeDir . "/extracted";
 
         if (is_dir($extractPath)) {
             return $extractPath;
         }
 
-        if (!file_exists($zipPath)) {
+        // Try both name.zip and slug.zip
+        $possibleNames = [$name . '.zip'];
+        $slug = str_replace('-theme', '', $name);
+        if ($slug !== $name) {
+            $possibleNames[] = $slug . '.zip';
+        }
+        
+        $zipPath = null;
+        foreach ($possibleNames as $zipName) {
+            $testPath = $themeDir . '/' . $zipName;
+            if (file_exists($testPath)) {
+                $zipPath = $testPath;
+                break;
+            }
+        }
+        
+        if (!$zipPath) {
             throw new RuntimeException("Theme {$name} v{$version} no está en caché");
         }
 
