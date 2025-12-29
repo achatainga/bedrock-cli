@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.web
     container_name: {{PROJECT_NAME}}_web
     working_dir: /var/www/html
+    env_file: .env
     environment:
       - MYSQL_PWD={{DB_PASSWORD}}
       - WP_CLI_ALLOW_ROOT=1
