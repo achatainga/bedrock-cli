@@ -2,15 +2,15 @@
 
 namespace Roots\BedrockCli\DTOs;
 
-class Profile
+class Profile implements \ArrayAccess
 {
     public function __construct(
-        public readonly string $name,
-        public readonly string $description,
-        public readonly array $plugins = [],
-        public readonly array $themes = [],
-        public readonly array $repositories = [],
-        public readonly array $config = []
+        public string $name,
+        public string $description,
+        public array $plugins = [],
+        public array $themes = [],
+        public array $repositories = [],
+        public array $config = []
     ) {}
 
     public static function fromArray(array $data): self
@@ -35,5 +35,28 @@ class Profile
             'repositories' => $this->repositories,
             'config' => $this->config
         ];
+    }
+    
+    // ArrayAccess implementation for backward compatibility
+    public function offsetExists(mixed $offset): bool
+    {
+        return property_exists($this, $offset);
+    }
+    
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->$offset ?? null;
+    }
+    
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        if (property_exists($this, $offset)) {
+            $this->$offset = $value;
+        }
+    }
+    
+    public function offsetUnset(mixed $offset): void
+    {
+        // Not supported for DTO
     }
 }
