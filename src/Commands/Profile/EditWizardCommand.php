@@ -283,15 +283,19 @@ class EditWizardCommand extends Command
         } elseif ($type === '2') {
             $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
             if ($premiumTheme) {
-                $profile['themes']['premium'][] = $premiumTheme;
+                $themes = $profile['themes'];
+                $themes['premium'][] = $premiumTheme;
+                $profile['themes'] = $themes;
                 $output->writeln("<info>✓ Theme premium agregado</info>");
             }
         } elseif ($type === '3') {
             $imported = $this->importLocalZip($input, $output, $helper, 'theme');
             if (!empty($imported)) {
+                $themes = $profile['themes'];
                 foreach ($imported as $theme) {
-                    $profile['themes']['premium'][] = $theme;
+                    $themes['premium'][] = $theme;
                 }
+                $profile['themes'] = $themes;
                 $output->writeln("<info>✓ Theme importado</info>");
             }
         } elseif ($type === '4') {
