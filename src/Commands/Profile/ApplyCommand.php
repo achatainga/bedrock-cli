@@ -179,7 +179,7 @@ class ApplyCommand extends Command
         }
     }
     
-    private function hasVcsPlugins(array $profile): bool
+    private function hasVcsPlugins(\Roots\BedrockCli\DTOs\Profile|array $profile): bool
     {
         if (empty($profile['plugins']['premium'])) {
             return false;
@@ -194,7 +194,7 @@ class ApplyCommand extends Command
         return false;
     }
     
-    private function validateVcsPlugins(array $profile, OutputInterface $output): array
+    private function validateVcsPlugins(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): array
     {
         $updated = 0;
         

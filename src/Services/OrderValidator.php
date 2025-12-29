@@ -19,7 +19,7 @@ class OrderValidator
         ];
     }
     
-    private function extractProfilePlugins(array $profile): array
+    private function extractProfilePlugins(\Roots\BedrockCli\DTOs\Profile|array $profile): array
     {
         $plugins = [];
         

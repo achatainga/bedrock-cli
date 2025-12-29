@@ -11,7 +11,7 @@ class BlueprintService
         $this->stubsPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'blueprints';
     }
 
-    public function generateBlueprints(array $profile, string $projectPath): void
+    public function generateBlueprints(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
     {
         $blueprintsDir = $projectPath . DIRECTORY_SEPARATOR . 'blueprints';
         

@@ -181,7 +181,7 @@ class ComposerService
         }
     }
 
-    public function copyProfileToProject(array $profile, string $projectPath): void
+    public function copyProfileToProject(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
     {
         $bedrockDir = $projectPath . '/.bedrock';
         
@@ -200,7 +200,7 @@ class ComposerService
         $this->copyCustomZipFiles($profile, $projectPath);
     }
     
-    public function copyCustomZipFiles(array $profile, string $projectPath): void
+    public function copyCustomZipFiles(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
     {
         // Copiar plugins .zip
         if (!empty($profile['plugins']['custom'])) {
