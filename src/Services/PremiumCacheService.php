@@ -493,7 +493,6 @@ class PremiumCacheService
         }
         return $legacyPath;
     }
-}
 
     public function themeExists(string $name, string $version): bool
     {
@@ -566,3 +565,5 @@ class PremiumCacheService
             $this->deleteDirectory($themeDir);
         }
     }
+}
+
