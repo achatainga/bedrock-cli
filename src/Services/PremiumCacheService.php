@@ -494,3 +494,75 @@ class PremiumCacheService
         return $legacyPath;
     }
 }
+
+    public function themeExists(string $name, string $version): bool
+    {
+        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
+        return is_dir($themeDir);
+    }
+
+    public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
+    {
+        $authService = new AuthService();
+        $domain = parse_url($repoUrl, PHP_URL_HOST);
+        $auth = $authService->loadAuthForDomain($domain);
+        
+        if (!$auth) {
+            throw new \RuntimeException("No hay credenciales para {$domain}");
+        }
+
+        $tempZip = sys_get_temp_dir() . "/{$name}-{$version}.zip";
+        
+        if (str_contains($domain, 'gitlab')) {
+            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $projectPath = urlencode($matches[1] ?? '');
+            $encodedPath = urlencode($repoPath);
+            $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/archive.zip?path={$encodedPath}";
+            $headers = ["Authorization: Bearer {$auth['token']}"];
+        } else {
+            throw new \RuntimeException("Repositorio no soportado: {$domain}");
+        }
+
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+        
+        $zipContent = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || !$zipContent) {
+            throw new \RuntimeException("Error descargando theme: HTTP {$httpCode}");
+        }
+        
+        file_put_contents($tempZip, $zipContent);
+        
+        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
+        if (!is_dir($themeDir)) {
+            mkdir($themeDir, 0755, true);
+        }
+        
+        $zip = new \ZipArchive();
+        if ($zip->open($tempZip) !== true) {
+            throw new \RuntimeException("No se pudo abrir el ZIP descargado");
+        }
+        
+        $zip->extractTo($themeDir);
+        $zip->close();
+        unlink($tempZip);
+        
+        $this->ensureThemeComposerJson($name, $version);
+        
+        return $themeDir;
+    }
+
+    public function clearThemeCache(string $name, string $version): void
+    {
+        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
+        if (is_dir($themeDir)) {
+            $this->deleteDirectory($themeDir);
+        }
+    }
