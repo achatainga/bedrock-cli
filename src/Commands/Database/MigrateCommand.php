@@ -11,7 +11,7 @@ use Symfony\Component\Process\Process;
 
 class MigrateCommand extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('migrate')
