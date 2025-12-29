@@ -504,60 +504,52 @@ class PremiumCacheService
 
     public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
     {
-        $authService = new AuthService();
+        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
+        $zipPath = $themeDir . "/{$name}.zip";
+
+        if (file_exists($zipPath)) {
+            return $zipPath;
+        }
+
+        if (!is_dir($themeDir)) {
+            mkdir($themeDir, 0755, true);
+        }
+
         $domain = parse_url($repoUrl, PHP_URL_HOST);
-        $auth = $authService->loadAuthForDomain($domain);
+        $auth = $this->authService->loadAuthForDomain($domain);
         
         if (!$auth) {
             throw new \RuntimeException("No hay credenciales para {$domain}");
         }
 
-        $tempZip = sys_get_temp_dir() . "/{$name}-{$version}.zip";
-        
-        if (str_contains($domain, 'gitlab')) {
-            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
-            $projectPath = urlencode($matches[1] ?? '');
-            $encodedPath = urlencode($repoPath);
-            $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/archive.zip?path={$encodedPath}";
-            $headers = ["Authorization: Bearer {$auth['token']}"];
-        } else {
-            throw new \RuntimeException("Repositorio no soportado: {$domain}");
-        }
+        // Build file URL for the theme ZIP
+        $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $name . '.zip', $domain);
 
-        $ch = curl_init($apiUrl);
+        $ch = curl_init($fileUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
         
-        $zipContent = curl_exec($ch);
+        if (str_contains($domain, 'gitlab')) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer {$auth['token']}"
+            ]);
+        }
+
+        $content = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
-        if ($httpCode !== 200 || !$zipContent) {
+
+        if ($httpCode !== 200 || $content === false) {
             throw new \RuntimeException("Error descargando theme: HTTP {$httpCode}");
         }
-        
-        file_put_contents($tempZip, $zipContent);
-        
-        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        if (!is_dir($themeDir)) {
-            mkdir($themeDir, 0755, true);
-        }
-        
-        $zip = new \ZipArchive();
-        if ($zip->open($tempZip) !== true) {
-            throw new \RuntimeException("No se pudo abrir el ZIP descargado");
-        }
-        
-        $zip->extractTo($themeDir);
-        $zip->close();
-        unlink($tempZip);
-        
-        $this->ensureThemeComposerJson($name, $version);
-        
-        return $themeDir;
+
+        file_put_contents($zipPath, $content);
+        return $zipPath;
     }
 
     public function clearThemeCache(string $name, string $version): void
