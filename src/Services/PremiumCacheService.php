@@ -522,29 +522,30 @@ class PremiumCacheService
             throw new \RuntimeException("No hay credenciales para {$domain}");
         }
 
-        // Build file URL for the theme ZIP
-        $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $name . '.zip', $domain);
+        // Download folder as archive from GitLab
+        if (str_contains($domain, 'gitlab')) {
+            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
+            $projectPath = urlencode($matches[1] ?? '');
+            // Extract branch from repoPath (e.g., packages/motta-theme/1.5.4/)
+            $branch = 'develop'; // Default branch
+            $folderPath = urlencode(rtrim($repoPath, '/'));
+            $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/archive.zip?sha={$branch}&path={$folderPath}";
+        } else {
+            throw new \RuntimeException("Repositorio no soportado: {$domain}");
+        }
 
-        $ch = curl_init($fileUrl);
+        $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$auth['token']}"]);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
         curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-        
-        if (str_contains($domain, 'gitlab')) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Authorization: Bearer {$auth['token']}"
-            ]);
-        }
 
         $content = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200 || $content === false) {
+        if ($httpCode !== 200 || $content === false || empty($content)) {
             throw new \RuntimeException("Error descargando theme: HTTP {$httpCode}");
         }
 
