@@ -66,7 +66,7 @@ trait PremiumAssetsTrait
         $branch = $helper->ask($input, $output, $branchQuestion);
         
         // Verificar acceso
-        $service = new PremiumRepoService($repoUrl, $branch);
+        $service = new PremiumRepoService(null, $repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
