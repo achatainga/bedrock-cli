@@ -157,6 +157,7 @@ class EditWizardCommand extends Command
         if ($type === '1') {
             $plugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
             $added = 0;
+            $pluginsData = $profile['plugins'];
             foreach ($plugins as $plugin) {
                 $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
                 $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'public');
@@ -164,9 +165,10 @@ class EditWizardCommand extends Command
                     $output->writeln("<error>{$validation['message']}</error>");
                     continue;
                 }
-                $profile['plugins']['public'][] = $plugin;
+                $pluginsData['public'][] = $plugin;
                 $added++;
             }
+            $profile['plugins'] = $pluginsData;
             if ($added > 0) {
                 $output->writeln("<info>✓ {$added} plugin(s) público(s) agregado(s)</info>");
             }
@@ -174,15 +176,17 @@ class EditWizardCommand extends Command
             $plugins = $this->selectPremiumPlugins($input, $output, $helper);
             $plugins = $this->downloadPremiumPluginsToCache($plugins, $input, $output);
             $added = 0;
+            $pluginsData = $profile['plugins'];
             foreach ($plugins as $plugin) {
                 $validation = $this->validateNoDuplicatePlugin($profile, $plugin['name'], 'premium');
                 if (!$validation['valid']) {
                     $output->writeln("<error>{$validation['message']}</error>");
                     continue;
                 }
-                $profile['plugins']['premium'][] = $plugin;
+                $pluginsData['premium'][] = $plugin;
                 $added++;
             }
+            $profile['plugins'] = $pluginsData;
             if ($added > 0) {
                 $output->writeln("<info>✓ {$added} plugin(s) premium agregado(s)</info>");
             }
