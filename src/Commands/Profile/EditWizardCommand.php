@@ -283,6 +283,50 @@ class EditWizardCommand extends Command
         } elseif ($type === '2') {
             $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
             if ($premiumTheme) {
+                // Download to cache if from VCS
+                if ($premiumTheme['source'] === 'vcs' && !empty($premiumTheme['path'])) {
+                    $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+                    
+                    if ($cacheService->themeExists($premiumTheme['name'], $premiumTheme['version'])) {
+                        $question = new ConfirmationQuestion(
+                            "<fg=yellow>{$premiumTheme['name']} v{$premiumTheme['version']} ya existe en caché. ¿Redescargar? (Y/n):</> ",
+                            false
+                        );
+                        
+                        if ($helper->ask($input, $output, $question)) {
+                            $cacheService->clearThemeCache($premiumTheme['name'], $premiumTheme['version']);
+                            $output->writeln("<info>✓ Caché de {$premiumTheme['name']} limpiado</info>");
+                        } else {
+                            $output->writeln("<comment>✓ Usando {$premiumTheme['name']} v{$premiumTheme['version']} desde caché</comment>");
+                            $premiumTheme['source'] = 'cache';
+                            $premiumTheme['original_url'] = $premiumTheme['url'];
+                            unset($premiumTheme['url']);
+                        }
+                    }
+                    
+                    if ($premiumTheme['source'] === 'vcs') {
+                        $output->writeln("<comment>📥 Descargando {$premiumTheme['name']} v{$premiumTheme['version']} a caché...</comment>");
+                        
+                        try {
+                            $cacheService->downloadTheme(
+                                $premiumTheme['url'],
+                                $premiumTheme['name'],
+                                $premiumTheme['version'],
+                                $premiumTheme['path']
+                            );
+                            
+                            $premiumTheme['source'] = 'cache';
+                            $premiumTheme['original_url'] = $premiumTheme['url'];
+                            unset($premiumTheme['url']);
+                            
+                            $output->writeln("<info>✓ {$premiumTheme['name']} descargado</info>");
+                        } catch (\Exception $e) {
+                            $output->writeln("<error>✗ Error: {$e->getMessage()}</error>");
+                            return;
+                        }
+                    }
+                }
+                
                 $themes = $profile['themes'];
                 $themes['premium'][] = $premiumTheme;
                 $profile['themes'] = $themes;
