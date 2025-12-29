@@ -211,8 +211,10 @@ trait ThemeManagementTrait
         
         foreach ($profile['themes']['premium'] ?? [] as $key => $theme) {
             if ($index === $num) {
-                unset($profile['themes']['premium'][$key]);
-                $profile['themes']['premium'] = array_values($profile['themes']['premium']);
+                $themes = $profile['themes'];
+                unset($themes['premium'][$key]);
+                $themes['premium'] = array_values($themes['premium']);
+                $profile['themes'] = $themes;
                 $output->writeln("<info>✓ Theme '{$theme['name']}' eliminado</info>");
                 return;
             }
