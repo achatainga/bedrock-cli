@@ -422,7 +422,7 @@ class PremiumCacheService
 
     public function extractTheme(string $name, string $version): string
     {
-        $themeDir = $this->cachePath . "/themes/{$name}/{$version}";
+        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
         $zipPath = $themeDir . "/{$name}.zip";
         $extractPath = $themeDir . "/extracted";
 
@@ -447,7 +447,7 @@ class PremiumCacheService
 
     public function clearThemeComposerJson(string $name, string $version): void
     {
-        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
         $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
         $composerPath = $themePath . '/composer.json';
         
@@ -458,7 +458,7 @@ class PremiumCacheService
 
     public function ensureThemeComposerJson(string $name, string $version, string $vendor = 'cached'): void
     {
-        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
         $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
         $composerPath = $themePath . '/composer.json';
 
@@ -481,19 +481,15 @@ class PremiumCacheService
 
     public function getThemeCachePath(string $name, string $version): string
     {
-        $newPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
-        if (is_dir($newPath)) {
-            if (is_dir($newPath . '/' . $name)) {
-                return $newPath . '/' . $name;
+        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
+        if (is_dir($extractPath)) {
+            if (is_dir($extractPath . '/' . $name)) {
+                return $extractPath . '/' . $name;
             }
-            return $newPath;
+            return $extractPath;
         }
         
-        $legacyPath = $this->cachePath . "/{$name}/{$version}/extracted";
-        if (is_dir($legacyPath . '/' . $name)) {
-            return $legacyPath . '/' . $name;
-        }
-        return $legacyPath;
+        return $extractPath;
     }
 
     public function themeExists(string $name, string $version): bool

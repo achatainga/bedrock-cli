@@ -676,12 +676,16 @@ class NewCommand extends Command
         $output->writeln('');
         $output->writeln('<info>Verificando proyecto...</info>');
         
-        // Esperar a que los contenedores se inicialicen
-        sleep(3);
-        
         $projectPath = realpath($name);
         
-        if ($projectPath && $this->validationService->validateProject($projectPath)) {
+        if (!$projectPath) {
+            $output->writeln('<comment>⚠ No se pudo verificar el proyecto</comment>');
+            return;
+        }
+        
+        $inconsistencies = $this->validationService->detectInconsistencies($projectPath);
+        
+        if (empty($inconsistencies)) {
             $output->writeln('<info>✓ Proyecto verificado y listo</info>');
         } else {
             $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');
