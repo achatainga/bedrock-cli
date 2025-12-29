@@ -519,10 +519,20 @@ class PremiumCacheService
     public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
     {
         $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        $zipPath = $themeDir . "/{$name}.zip";
-
-        if (file_exists($zipPath)) {
-            return $zipPath;
+        
+        // Try both name.zip and slug.zip (e.g., motta-theme.zip and motta.zip)
+        $possibleNames = [$name . '.zip'];
+        $slug = str_replace('-theme', '', $name);
+        if ($slug !== $name) {
+            $possibleNames[] = $slug . '.zip';
+        }
+        
+        // Check if already downloaded
+        foreach ($possibleNames as $zipName) {
+            $zipPath = $themeDir . "/{$zipName}";
+            if (file_exists($zipPath)) {
+                return $zipPath;
+            }
         }
 
         if (!is_dir($themeDir)) {
@@ -536,26 +546,29 @@ class PremiumCacheService
             throw new \RuntimeException("No hay credenciales para {$domain}");
         }
 
-        // Download the actual ZIP file (not archive API)
-        $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $name . '.zip', $domain);
+        // Try downloading with each possible name
+        foreach ($possibleNames as $zipName) {
+            $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $zipName, $domain);
+            $zipPath = $themeDir . "/{$zipName}";
 
-        $ch = curl_init($fileUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$auth['token']}"]);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+            $ch = curl_init($fileUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$auth['token']}"]);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 
-        $content = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            $content = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
 
-        if ($httpCode !== 200 || $content === false || empty($content)) {
-            throw new \RuntimeException("Error descargando theme {$name}.zip: HTTP {$httpCode}");
+            if ($httpCode === 200 && $content !== false && !empty($content)) {
+                file_put_contents($zipPath, $content);
+                return $zipPath;
+            }
         }
-
-        file_put_contents($zipPath, $content);
-        return $zipPath;
+        
+        throw new \RuntimeException("Error descargando theme: probado " . implode(', ', $possibleNames));
     }
 
     public function clearThemeCache(string $name, string $version): void
