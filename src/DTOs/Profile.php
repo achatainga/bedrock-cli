@@ -10,7 +10,8 @@ class Profile implements \ArrayAccess
         public array $plugins = [],
         public array $themes = [],
         public array $repositories = [],
-        public array $config = []
+        public array $config = [],
+        public bool $docker_mode = false
     ) {}
 
     public static function fromArray(array $data): self
@@ -21,7 +22,8 @@ class Profile implements \ArrayAccess
             plugins: $data['plugins'] ?? [],
             themes: $data['themes'] ?? [],
             repositories: $data['repositories'] ?? [],
-            config: $data['config'] ?? []
+            config: $data['config'] ?? [],
+            docker_mode: $data['docker_mode'] ?? false
         );
     }
 
