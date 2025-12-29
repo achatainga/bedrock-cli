@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Profile;
 
+use Roots\BedrockCli\DTOs\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
@@ -58,7 +59,7 @@ class ManagePluginsCommand extends Command
         return $this->profileService;
     }
     
-    protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewPlugin(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $typeQuestion = new ChoiceQuestion(
             '<fg=yellow>Tipo de plugin:</> ',
