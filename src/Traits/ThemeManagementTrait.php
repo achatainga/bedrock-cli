@@ -2,13 +2,14 @@
 
 namespace Roots\BedrockCli\Traits;
 
+use Roots\BedrockCli\DTOs\Profile;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 
 trait ThemeManagementTrait
 {
-    protected function manageThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function manageThemesInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         while (true) {
             $this->displayThemesList($profile, $output);

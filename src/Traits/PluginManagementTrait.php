@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Traits;
 
+use Roots\BedrockCli\DTOs\Profile;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
@@ -13,7 +14,7 @@ trait PluginManagementTrait
      * Número → Abre submenú de ese plugin
      * [A] → Agregar nuevo
      */
-    protected function managePluginsInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function managePluginsInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         while (true) {
             $this->displayPluginsList($profile, $output);

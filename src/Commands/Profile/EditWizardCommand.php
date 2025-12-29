@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Profile;
 
+use Roots\BedrockCli\DTOs\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\VcsValidator;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
@@ -92,7 +93,7 @@ class EditWizardCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function displayMainMenu(array $profile, OutputInterface $output): void
+    private function displayMainMenu(Profile|array $profile, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -111,7 +112,7 @@ class EditWizardCommand extends Command
         $output->writeln('');
     }
 
-    private function editDescription(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    private function editDescription(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $current = $profile['description'] ?? 'Sin descripción';
@@ -123,7 +124,7 @@ class EditWizardCommand extends Command
         $output->writeln('<info>✓ Descripción actualizada</info>');
     }
     
-    private function editDockerMode(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    private function editDockerMode(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $current = $profile['docker_mode'] ?? false;
@@ -137,7 +138,7 @@ class EditWizardCommand extends Command
         $output->writeln('<info>✓ Docker Mode actualizado</info>');
     }
 
-    protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewPlugin(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
@@ -252,7 +253,7 @@ class EditWizardCommand extends Command
         return $processedPlugins;
     }
     
-    protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewTheme(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
@@ -301,7 +302,7 @@ class EditWizardCommand extends Command
         }
     }
     
-    protected function regenerateRequire(array &$profile): void
+    protected function regenerateRequire(Profile|array &$profile): void
     {
         // Limpiar require completamente
         $newRequire = [];
