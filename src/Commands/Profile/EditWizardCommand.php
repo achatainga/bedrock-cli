@@ -134,7 +134,16 @@ class EditWizardCommand extends Command
         $output->writeln('<fg=yellow>Docker Mode controla si los assets premium se copian o usan symlinks.</>');        $output->writeln('<fg=yellow>• SÍ (Docker): Copia archivos (compatible con contenedores)</>');        $output->writeln('<fg=yellow>• NO (Nativo): Usa symlinks (más rápido en desarrollo local)</>');        $output->writeln('');
         
         $question = new ConfirmationQuestion('¿Habilitar Docker Mode? (Y/n): ', $current);
-        $profile['docker_mode'] = $helper->ask($input, $output, $question);
+        $newValue = $helper->ask($input, $output, $question);
+        
+        if ($profile instanceof \Roots\BedrockCli\DTOs\Profile) {
+            $data = $profile->toArray();
+            $data['docker_mode'] = $newValue;
+            $profile = \Roots\BedrockCli\DTOs\Profile::fromArray($data);
+        } else {
+            $profile['docker_mode'] = $newValue;
+        }
+        
         $output->writeln('<info>✓ Docker Mode actualizado</info>');
     }
 
