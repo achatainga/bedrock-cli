@@ -37,7 +37,7 @@ class BlueprintService
         }
     }
 
-    private function replaceVariables(string $content, array $profile, string $projectName, string $env): string
+    private function replaceVariables(string $content, \Roots\BedrockCli\DTOs\Profile|array $profile, string $projectName, string $env): string
     {
         $replacements = [
             '{{PROJECT_NAME}}' => $projectName,

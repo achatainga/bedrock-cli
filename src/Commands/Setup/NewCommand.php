@@ -557,7 +557,7 @@ class NewCommand extends Command
         return dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'stubs';
     }
 
-    private function installPremiumAssets(string $name, ?array $profile, InputInterface $input, OutputInterface $output): void
+    private function installPremiumAssets(string $name, \Roots\BedrockCli\DTOs\Profile|array|null $profile, InputInterface $input, OutputInterface $output): void
     {
         if (!$profile || empty($profile['plugins']['premium'])) {
             return;
@@ -595,7 +595,7 @@ class NewCommand extends Command
         $output->writeln('<info>✓ auth.json copiado al proyecto</info>');
     }
 
-    private function configureComposerRepositories(string $name, array $profile, OutputInterface $output): void
+    private function configureComposerRepositories(string $name, \Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
     {
         $composerFile = "{$name}/composer.json";
         $composer = json_decode(file_get_contents($composerFile), true);
@@ -616,7 +616,7 @@ class NewCommand extends Command
         }
     }
 
-    private function requirePremiumPlugins(string $name, array $profile, OutputInterface $output): void
+    private function requirePremiumPlugins(string $name, \Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
     {
         foreach ($profile['plugins']['premium'] as $plugin) {
             $package = $plugin['source'] === 'vcs' 
@@ -639,7 +639,7 @@ class NewCommand extends Command
         }
     }
 
-    private function generateWizardState(string $name, InputInterface $input, ?array $profile, OutputInterface $output): void
+    private function generateWizardState(string $name, InputInterface $input, \Roots\BedrockCli\DTOs\Profile|array|null $profile, OutputInterface $output): void
     {
         $output->writeln('<info>Generando wizard de configuración...</info>');
 

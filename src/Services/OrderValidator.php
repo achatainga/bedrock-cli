@@ -4,7 +4,7 @@ namespace Roots\BedrockCli\Services;
 
 class OrderValidator
 {
-    public function validateAgainstProfile(array $order, array $profile): array
+    public function validateAgainstProfile(array $order, \Roots\BedrockCli\DTOs\Profile|array $profile): array
     {
         $profilePlugins = $this->extractProfilePlugins($profile);
         $orderPlugins = array_keys($order);

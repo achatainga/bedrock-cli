@@ -130,7 +130,7 @@ class ApplyCommand extends Command
         return Command::SUCCESS;
     }
     
-    private function applyActivationOrder(InputInterface $input, OutputInterface $output, array $profile, string $projectRoot): void
+    private function applyActivationOrder(InputInterface $input, OutputInterface $output, \Roots\BedrockCli\DTOs\Profile|array $profile, string $projectRoot): void
     {
         $orderData = $profile['activation_order'];
         
