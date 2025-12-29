@@ -9,12 +9,14 @@ use Symfony\Component\Filesystem\Filesystem;
 class PremiumCacheService
 {
     private string $cachePath;
+    private string $themeCachePath;
     private AuthService $authService;
 
     public function __construct()
     {
         $home = $this->getHomeDirectory();
         $this->cachePath = $home . '/.bedrock-cli/cache/premium';
+        $this->themeCachePath = $home . '/.bedrock-cli/cache/themes';
         $this->authService = new AuthService();
         $this->ensureCacheDirectory();
     }
