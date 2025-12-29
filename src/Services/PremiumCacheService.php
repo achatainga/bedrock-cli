@@ -513,7 +513,24 @@ class PremiumCacheService
     public function themeExists(string $name, string $version): bool
     {
         $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        return is_dir($themeDir);
+        if (!is_dir($themeDir)) {
+            return false;
+        }
+        
+        // Check if ZIP file exists (either name.zip or slug.zip)
+        $possibleNames = [$name . '.zip'];
+        $slug = str_replace('-theme', '', $name);
+        if ($slug !== $name) {
+            $possibleNames[] = $slug . '.zip';
+        }
+        
+        foreach ($possibleNames as $zipName) {
+            if (file_exists($themeDir . '/' . $zipName)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
