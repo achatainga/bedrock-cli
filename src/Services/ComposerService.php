@@ -102,6 +102,16 @@ class ComposerService
         if (!empty($profile['themes']['premium'])) {
             foreach ($profile['themes']['premium'] as $theme) {
                 if ($theme['source'] === 'cache') {
+                    // Download theme if not in cache
+                    if (!$this->cacheService->themeExists($theme['name'], $theme['version'])) {
+                        $this->cacheService->downloadTheme(
+                            $theme['original_url'],
+                            $theme['name'],
+                            $theme['version'],
+                            $theme['path']
+                        );
+                    }
+                    
                     $this->cacheService->extractTheme($theme['name'], $theme['version']);
                     $vendor = 'cached';
                     $this->cacheService->clearThemeComposerJson($theme['name'], $theme['version']);
