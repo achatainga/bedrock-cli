@@ -194,7 +194,7 @@ class ApplyCommand extends Command
         return false;
     }
     
-    private function validateVcsPlugins(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): array
+    private function validateVcsPlugins(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): \Roots\BedrockCli\DTOs\Profile|array
     {
         $updated = 0;
         
@@ -209,8 +209,10 @@ class ApplyCommand extends Command
                 $info = $this->vcsValidator->getPackageInfo($plugin['url'], $branch);
                 
                 if ($info) {
-                    // Usar la rama del plugin, no la del validator
-                    $profile['require'][$info['name']] = "dev-{$branch}";
+                    // Extract, modify, reassign pattern for ArrayAccess
+                    $require = $profile['require'];
+                    $require[$info['name']] = "dev-{$branch}";
+                    $profile['require'] = $require;
                     $updated++;
                 }
             }
