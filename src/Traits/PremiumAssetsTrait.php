@@ -67,6 +67,11 @@ trait PremiumAssetsTrait
         
         // Verificar acceso
         $authService = new AuthService();
+        $output->writeln("<comment>[DEBUG] AuthService created, checking domain...</comment>");
+        $domain = parse_url($repoUrl, PHP_URL_HOST);
+        $output->writeln("<comment>[DEBUG] Domain: {$domain}</comment>");
+        $hasAuth = $authService->hasAuth($domain);
+        $output->writeln("<comment>[DEBUG] hasAuth result: " . ($hasAuth ? 'YES' : 'NO') . "</comment>");
         $service = new PremiumRepoService($authService, $repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
@@ -267,7 +272,12 @@ trait PremiumAssetsTrait
         
         // Verificar acceso
         $authService = new AuthService();
-        $service = new PremiumRepoService($authService);
+        $output->writeln("<comment>[DEBUG] AuthService created, checking domain...</comment>");
+        $domain = parse_url($repoUrl, PHP_URL_HOST);
+        $output->writeln("<comment>[DEBUG] Domain: {$domain}</comment>");
+        $hasAuth = $authService->hasAuth($domain);
+        $output->writeln("<comment>[DEBUG] hasAuth result: " . ($hasAuth ? 'YES' : 'NO') . "</comment>");
+        $service = new PremiumRepoService($authService, $repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
