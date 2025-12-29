@@ -463,7 +463,19 @@ class PremiumCacheService
     public function clearThemeComposerJson(string $name, string $version): void
     {
         $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
-        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        
+        // Try exact name first
+        $themePath = $extractPath . '/' . $name;
+        if (!is_dir($themePath)) {
+            // Try slug (e.g., motta-theme -> motta)
+            $slug = str_replace('-theme', '', $name);
+            if ($slug !== $name && is_dir($extractPath . '/' . $slug)) {
+                $themePath = $extractPath . '/' . $slug;
+            } else {
+                $themePath = $extractPath;
+            }
+        }
+        
         $composerPath = $themePath . '/composer.json';
         
         if (file_exists($composerPath)) {
@@ -474,7 +486,19 @@ class PremiumCacheService
     public function ensureThemeComposerJson(string $name, string $version, string $vendor = 'cached'): void
     {
         $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
-        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
+        
+        // Try exact name first
+        $themePath = $extractPath . '/' . $name;
+        if (!is_dir($themePath)) {
+            // Try slug (e.g., motta-theme -> motta)
+            $slug = str_replace('-theme', '', $name);
+            if ($slug !== $name && is_dir($extractPath . '/' . $slug)) {
+                $themePath = $extractPath . '/' . $slug;
+            } else {
+                $themePath = $extractPath;
+            }
+        }
+        
         $composerPath = $themePath . '/composer.json';
 
         if (file_exists($composerPath)) {
