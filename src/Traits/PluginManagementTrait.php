@@ -278,8 +278,10 @@ trait PluginManagementTrait
         foreach ($profile['plugins']['public'] as $key => $plugin) {
             if ($index === $num) {
                 $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
-                unset($profile['plugins']['public'][$key]);
-                $profile['plugins']['public'] = array_values($profile['plugins']['public']);
+                $plugins = $profile['plugins'];
+                unset($plugins['public'][$key]);
+                $plugins['public'] = array_values($plugins['public']);
+                $profile['plugins'] = $plugins;
                 $output->writeln("<info>✓ Plugin '{$slug}' eliminado</info>");
                 return;
             }
@@ -288,8 +290,10 @@ trait PluginManagementTrait
         
         foreach ($profile['plugins']['premium'] as $key => $plugin) {
             if ($index === $num) {
-                unset($profile['plugins']['premium'][$key]);
-                $profile['plugins']['premium'] = array_values($profile['plugins']['premium']);
+                $plugins = $profile['plugins'];
+                unset($plugins['premium'][$key]);
+                $plugins['premium'] = array_values($plugins['premium']);
+                $profile['plugins'] = $plugins;
                 $output->writeln("<info>✓ Plugin '{$plugin['name']}' eliminado</info>");
                 return;
             }
@@ -298,8 +302,10 @@ trait PluginManagementTrait
         
         foreach ($profile['plugins']['custom'] as $key => $slug) {
             if ($index === $num) {
-                unset($profile['plugins']['custom'][$key]);
-                $profile['plugins']['custom'] = array_values($profile['plugins']['custom']);
+                $plugins = $profile['plugins'];
+                unset($plugins['custom'][$key]);
+                $plugins['custom'] = array_values($plugins['custom']);
+                $profile['plugins'] = $plugins;
                 $output->writeln("<info>✓ Plugin '{$slug}' eliminado</info>");
                 return;
             }
