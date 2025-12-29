@@ -319,14 +319,38 @@ class ProjectValidationService
 
     private function isDockerRunning(): bool
     {
-        // Skip Docker validation to prevent path errors in non-Docker environments
-        return false;
+        $process = proc_open('docker info', [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w']
+        ], $pipes);
+        
+        if (!is_resource($process)) {
+            return false;
+        }
+        
+        $exitCode = proc_close($process);
+        return $exitCode === 0;
     }
 
     private function areContainersRunning(string $projectPath): bool
     {
-        // Skip container validation to prevent path errors
-        return false;
+        $projectName = basename($projectPath);
+        
+        $process = proc_open("docker ps --filter name={$projectName} --format '{{.Names}}'", [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w']
+        ], $pipes);
+        
+        if (!is_resource($process)) {
+            return false;
+        }
+        
+        $output = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+        
+        return !empty(trim($output));
     }
 
     private function hasWordPressTables(string $projectPath): bool
@@ -342,8 +366,10 @@ class ProjectValidationService
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
         $prefix = trim($env['DB_PREFIX'] ?? 'wp_', '"\'');
         
-        // Skip WordPress tables validation to prevent shell_exec errors
-        $output = null;
+        $projectName = basename($projectPath);
+        $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e 'SHOW TABLES LIKE \"{$prefix}options\"' 2>/dev/null";
+        
+        $output = shell_exec($cmd);
         
         return $output && strpos($output, $prefix . 'options') !== false;
     }
