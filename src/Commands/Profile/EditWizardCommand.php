@@ -120,7 +120,16 @@ class EditWizardCommand extends Command
         $output->writeln('');
         
         $question = new Question('Nueva descripción [Enter para mantener]: ', $current);
-        $profile['description'] = $helper->ask($input, $output, $question);
+        $newDesc = $helper->ask($input, $output, $question);
+        
+        if ($profile instanceof \Roots\BedrockCli\DTOs\Profile) {
+            $data = $profile->toArray();
+            $data['description'] = $newDesc;
+            $profile = \Roots\BedrockCli\DTOs\Profile::fromArray($data);
+        } else {
+            $profile['description'] = $newDesc;
+        }
+        
         $output->writeln('<info>✓ Descripción actualizada</info>');
     }
     
