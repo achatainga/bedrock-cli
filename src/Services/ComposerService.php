@@ -10,7 +10,7 @@ class ComposerService
     {
         $this->cacheService = new PremiumCacheService();
     }
-    public function generateFromProfile(array $profile, string $projectPath): void
+    public function generateFromProfile(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
     {
         $composerJsonPath = $projectPath . '/composer.json';
         
