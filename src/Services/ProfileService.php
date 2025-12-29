@@ -115,7 +115,7 @@ class ProfileService
                 $profile = $this->loadProfile($name);
                 $profiles[$name] = [
                     'name' => $name,
-                    'description' => $profile['description'] ?? 'Sin descripción',
+                    'description' => $profile->description ?? 'Sin descripción',
                     'file' => $file
                 ];
             } catch (RuntimeException $e) {
