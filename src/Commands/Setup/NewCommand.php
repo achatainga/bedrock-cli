@@ -452,7 +452,7 @@ class NewCommand extends Command
         }
     }
 
-    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): ?array
+    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): \Roots\BedrockCli\DTOs\Profile|array|null
     {
         $profileName = $input->getOption('profile');
         $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
