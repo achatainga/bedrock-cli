@@ -66,7 +66,8 @@ trait PremiumAssetsTrait
         $branch = $helper->ask($input, $output, $branchQuestion);
         
         // Verificar acceso
-        $service = new PremiumRepoService(null, $repoUrl, $branch);
+        $authService = new \Roots\BedrockCli\Services\AuthService();
+        $service = new PremiumRepoService($authService, $repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
@@ -265,7 +266,8 @@ trait PremiumAssetsTrait
         }
         
         // Verificar acceso
-        $service = new PremiumRepoService();
+        $authService = new \Roots\BedrockCli\Services\AuthService();
+        $service = new PremiumRepoService($authService, $repoUrl, 'main');
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
