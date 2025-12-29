@@ -32,7 +32,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function displayThemesList(array $profile, OutputInterface $output): void
+    private function displayThemesList(Profile|array $profile, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -85,7 +85,7 @@ trait ThemeManagementTrait
         $output->writeln('');
     }
     
-    private function editThemeByNumber(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function editThemeByNumber(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $theme = $this->getThemeByNumber($profile, $num);
         
@@ -118,7 +118,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function getThemeByNumber(array $profile, int $num): ?array
+    private function getThemeByNumber(Profile|array $profile, int $num): ?array
     {
         $index = 1;
         
@@ -163,7 +163,7 @@ trait ThemeManagementTrait
         return null;
     }
     
-    private function changeThemeVersion(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function changeThemeVersion(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $theme = $this->getThemeByNumber($profile, $num);
         $question = new Question("Nueva versión [{$theme['version']}]: ", $theme['version']);
@@ -194,7 +194,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function deleteThemeByNumber(array &$profile, int $num, OutputInterface $output): void
+    private function deleteThemeByNumber(Profile|array &$profile, int $num, OutputInterface $output): void
     {
         $index = 1;
         
@@ -230,7 +230,7 @@ trait ThemeManagementTrait
         }
     }
     
-    protected function selectCustomThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
+    protected function selectCustomThemesInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): int
     {
         $pathQuestion = new Question('<fg=yellow>Path a carpeta de themes custom:</> ');
         $path = $helper->ask($input, $output, $pathQuestion);
@@ -302,6 +302,6 @@ trait ThemeManagementTrait
         return $added;
     }
     
-    abstract protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
+    abstract protected function addNewTheme(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
     abstract protected function getProfileService();
 }

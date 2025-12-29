@@ -40,7 +40,7 @@ trait PluginManagementTrait
     /**
      * Muestra lista numerada de todos los plugins
      */
-    private function displayPluginsList(array $profile, OutputInterface $output): void
+    private function displayPluginsList(Profile|array $profile, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -98,7 +98,7 @@ trait PluginManagementTrait
     /**
      * Edita un plugin específico por su número
      */
-    private function editPluginByNumber(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function editPluginByNumber(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $plugin = $this->getPluginByNumber($profile, $num);
         
@@ -151,7 +151,7 @@ trait PluginManagementTrait
     /**
      * Obtiene plugin por número de índice
      */
-    private function getPluginByNumber(array $profile, int $num): ?array
+    private function getPluginByNumber(Profile|array $profile, int $num): ?array
     {
         $index = 1;
         
@@ -203,7 +203,7 @@ trait PluginManagementTrait
     /**
      * Cambia versión de un plugin
      */
-    private function changePluginVersion(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function changePluginVersion(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $plugin = $this->getPluginByNumber($profile, $num);
         $question = new Question("Nueva versión [{$plugin['version']}]: ", $plugin['version']);
@@ -244,7 +244,7 @@ trait PluginManagementTrait
     /**
      * Marca/desmarca plugin como MU-Plugin
      */
-    private function toggleMUPlugin(array &$profile, int $num): void
+    private function toggleMUPlugin(Profile|array &$profile, int $num): void
     {
         $index = 1;
         
@@ -271,7 +271,7 @@ trait PluginManagementTrait
     /**
      * Elimina plugin por número
      */
-    private function deletePluginByNumber(array &$profile, int $num, OutputInterface $output): void
+    private function deletePluginByNumber(Profile|array &$profile, int $num, OutputInterface $output): void
     {
         $index = 1;
         
@@ -311,7 +311,7 @@ trait PluginManagementTrait
      * Valida que no exista duplicado del plugin en otras secciones
      * Retorna array con ['valid' => bool, 'message' => string, 'section' => string]
      */
-    protected function validateNoDuplicatePlugin(array $profile, string $pluginName, string $targetSection): array
+    protected function validateNoDuplicatePlugin(Profile|array $profile, string $pluginName, string $targetSection): array
     {
         $found = [];
         
@@ -352,7 +352,7 @@ trait PluginManagementTrait
     /**
      * Selector interactivo de plugins custom
      */
-    protected function selectCustomPluginsInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
+    protected function selectCustomPluginsInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): int
     {
         $pathQuestion = new Question('<fg=yellow>Path a carpeta o archivo .zip de plugins custom:</> ');
         $path = $helper->ask($input, $output, $pathQuestion);
@@ -439,7 +439,7 @@ trait PluginManagementTrait
     /**
      * Agrega nuevo plugin (debe implementarse en el comando que use el trait)
      */
-    abstract protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
+    abstract protected function addNewPlugin(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
     
     /**
      * ProfileService getter (debe implementarse en el comando)
