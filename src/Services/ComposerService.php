@@ -61,6 +61,14 @@ class ComposerService
             }
         }
 
+        // Agregar plugins públicos desde wpackagist
+        if (!empty($profile['plugins']['public'])) {
+            foreach ($profile['plugins']['public'] as $plugin) {
+                $package = "wpackagist-plugin/{$plugin['slug']}";
+                $composerData['require'][$package] = $plugin['version'];
+            }
+        }
+
         // Agregar repositorios para plugins premium
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
@@ -85,8 +93,12 @@ class ComposerService
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
                     }
-                    // NO construir package name desde URL - composer lo resuelve desde composer.json del repo
-                    // El profile debe tener el package name correcto en require
+                    
+                    // Extraer vendor/name del composer.json del repo
+                    $packageName = $this->getPackageNameFromVcsRepo($plugin['url'], $plugin['name']);
+                    if ($packageName) {
+                        $composerData['require'][$packageName] = $plugin['version'];
+                    }
                 } elseif ($plugin['source'] === 'path') {
                     $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => $useSymlink]];
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
@@ -308,6 +320,31 @@ class ComposerService
     {
         // Normalizar a forward slashes para comparación consistente
         return str_replace('\\', '/', $path);
+    }
+    
+    private function getPackageNameFromVcsRepo(string $repoUrl, string $pluginName): ?string
+    {
+        // Intentar clonar temporalmente el repo para leer composer.json
+        $tempDir = sys_get_temp_dir() . '/bedrock-cli-vcs-' . md5($repoUrl);
+        
+        // Si ya existe el temp dir, usarlo
+        if (is_dir($tempDir . '/.git')) {
+            $composerPath = $tempDir . '/composer.json';
+            if (file_exists($composerPath)) {
+                $composer = json_decode(file_get_contents($composerPath), true);
+                if (isset($composer['name'])) {
+                    return $composer['name'];
+                }
+            }
+        }
+        
+        // Fallback: construir desde URL (detodo24dev/plugin-name)
+        if (preg_match('#/([^/]+)/([^/]+?)(?:\.git)?$#', $repoUrl, $matches)) {
+            $vendor = $matches[1];
+            return "{$vendor}/{$pluginName}";
+        }
+        
+        return null;
     }
     
     private function extractVendorFromPluginComposer(string $pluginPath): string
