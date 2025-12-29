@@ -99,9 +99,9 @@ class Application extends BaseApplication
 
         // Usar CommandRegistryService para comandos principales
         $commandRegistry = $this->container->get('Roots\BedrockCli\Services\CommandRegistryService');
-        $commandRegistry->registerCommands($this);
-
-        $this->addCommands([
+        $registryCommands = $commandRegistry->registerCommands();
+        
+        $this->addCommands(array_merge($registryCommands, [
             new AcornCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
@@ -353,7 +353,7 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\ErrorLoggerService'),
                 $this->container->get('Roots\BedrockCli\Services\CliRunnerService')
             ),
-        ]);
+        ]));
     }
 
     private function configureServices(): void

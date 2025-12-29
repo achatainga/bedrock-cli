@@ -3,7 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\Console\Application;
+use Roots\BedrockCli\Application;
 
 class CommandRegistryService
 {
@@ -14,7 +14,7 @@ class CommandRegistryService
         $this->container = $container;
     }
     
-    public function registerCommands(Application $app): void
+    public function registerCommands(): array
     {
         $commands = [
             'Roots\BedrockCli\Commands\Acorn\AcornCommand' => ['StateService'],
@@ -25,9 +25,12 @@ class CommandRegistryService
             'Roots\BedrockCli\Commands\System\DiagnosticsCommand' => ['ErrorLoggerService', 'CliRunnerService'],
         ];
         
+        $commandInstances = [];
         foreach ($commands as $commandClass => $dependencies) {
             $deps = array_map(fn($dep) => $this->container->get("Roots\\BedrockCli\\Services\\{$dep}"), $dependencies);
-            $app->add(new $commandClass(...$deps));
+            $commandInstances[] = new $commandClass(...$deps);
         }
+        
+        return $commandInstances;
     }
 }
