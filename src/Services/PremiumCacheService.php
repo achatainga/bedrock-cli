@@ -519,42 +519,7 @@ class PremiumCacheService
     public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
     {
         $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        
-        // Extract actual ZIP filename from repoPath (e.g., packages/motta-theme/1.5.4/ contains motta.zip)
-        // Try to find the ZIP file in the directory
-        $zipFilename = $name . '.zip'; // Default to name
-        
-        // Check if there's a different ZIP file in the path
-        $domain = parse_url($repoUrl, PHP_URL_HOST);
-        if (str_contains($domain, 'gitlab')) {
-            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
-            $projectPath = urlencode($matches[1] ?? '');
-            $encodedPath = urlencode(rtrim($repoPath, '/'));
-            
-            // Try to list files in the directory to find the actual ZIP name
-            $auth = $this->authService->loadAuthForDomain($domain);
-            if ($auth) {
-                $listUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/tree?path={$encodedPath}&ref=develop";
-                $ch = curl_init($listUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$auth['token']}"]);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $listContent = curl_exec($ch);
-                curl_close($ch);
-                
-                if ($listContent) {
-                    $files = json_decode($listContent, true);
-                    foreach ($files as $file) {
-                        if (isset($file['name']) && str_ends_with($file['name'], '.zip')) {
-                            $zipFilename = $file['name'];
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        $zipPath = $themeDir . "/{$zipFilename}";
+        $zipPath = $themeDir . "/{$name}.zip";
 
         if (file_exists($zipPath)) {
             return $zipPath;
@@ -564,14 +529,15 @@ class PremiumCacheService
             mkdir($themeDir, 0755, true);
         }
 
+        $domain = parse_url($repoUrl, PHP_URL_HOST);
         $auth = $this->authService->loadAuthForDomain($domain);
         
         if (!$auth) {
             throw new \RuntimeException("No hay credenciales para {$domain}");
         }
 
-        // Download the specific ZIP file
-        $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $zipFilename, $domain);
+        // Download the actual ZIP file (not archive API)
+        $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $name . '.zip', $domain);
 
         $ch = curl_init($fileUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -585,7 +551,7 @@ class PremiumCacheService
         curl_close($ch);
 
         if ($httpCode !== 200 || $content === false || empty($content)) {
-            throw new \RuntimeException("Error descargando theme {$zipFilename}: HTTP {$httpCode}");
+            throw new \RuntimeException("Error descargando theme {$name}.zip: HTTP {$httpCode}");
         }
 
         file_put_contents($zipPath, $content);
