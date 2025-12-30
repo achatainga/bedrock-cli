@@ -52,13 +52,14 @@ class AcornCommand extends Command
         $output->writeln('<fg=cyan>[9]</> 🚨 Desinstalar completo (7+8)');
         $output->writeln('<fg=cyan>[10]</> ❓ ¿Qué es Acorn? (Ayuda)');
         $output->writeln('<fg=cyan>[11]</> ⚖️  Ventajas y desventajas');
+        $output->writeln('<fg=cyan>[12]</> 🔧 Reparar tema actual (hacer compatible)');
         $output->writeln('<fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
         
-        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Opción [0-11]: </>', '0');
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Opción [0-12]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
         
-        if (!is_numeric($choice) || $choice < 0 || $choice > 11) {
+        if (!is_numeric($choice) || $choice < 0 || $choice > 12) {
             $output->writeln('<error>Opción inválida</error>');
             return Command::SUCCESS;
         }
@@ -86,6 +87,8 @@ class AcornCommand extends Command
                 return $this->showHelp($output);
             case '11':
                 return $this->showProsAndCons($output);
+            case '12':
+                return $this->repairCurrentTheme($output);
             case '0':
                 return Command::SUCCESS;
         }
@@ -161,6 +164,128 @@ class AcornCommand extends Command
         }
         
         $output->writeln('');
+        return Command::SUCCESS;
+    }
+
+    private function repairCurrentTheme(OutputInterface $output): int
+    {
+        $output->writeln('');
+        $output->writeln('<info>🔧 Reparando tema actual para Acorn...</info>');
+        $output->writeln('');
+        
+        // Obtener tema activo
+        $process = Process::fromShellCommandline('docker-compose exec -T web wp theme list --status=active --field=name');
+        $process->run();
+        
+        if (!$process->isSuccessful()) {
+            $output->writeln('<error>No se pudo obtener el tema activo</error>');
+            return Command::FAILURE;
+        }
+        
+        $themeName = trim($process->getOutput());
+        if (empty($themeName)) {
+            $output->writeln('<error>No hay tema activo</error>');
+            return Command::FAILURE;
+        }
+        
+        $output->writeln("<comment>Tema activo: {$themeName}</comment>");
+        $themePath = getcwd() . '/web/app/themes/' . $themeName;
+        
+        if (!is_dir($themePath)) {
+            $output->writeln('<error>Carpeta del tema no encontrada</error>');
+            return Command::FAILURE;
+        }
+        
+        // 1. Crear app/Providers
+        $providersDir = $themePath . '/app/Providers';
+        if (!is_dir($providersDir)) {
+            mkdir($providersDir, 0755, true);
+            $output->writeln('✓ Creado: app/Providers/');
+        } else {
+            $output->writeln('✓ app/Providers/ ya existe');
+        }
+        
+        // 2. Crear ThemeServiceProvider.php
+        $providerFile = $providersDir . '/ThemeServiceProvider.php';
+        if (!file_exists($providerFile)) {
+            $providerContent = <<<'PHP'
+<?php
+
+namespace App\Providers;
+
+use Roots\Acorn\ServiceProvider;
+
+class ThemeServiceProvider extends ServiceProvider
+{
+    public function register()
+    {
+        //
+    }
+
+    public function boot()
+    {
+        //
+    }
+}
+
+PHP;
+            file_put_contents($providerFile, $providerContent);
+            $output->writeln('✓ Creado: ThemeServiceProvider.php');
+        } else {
+            $output->writeln('✓ ThemeServiceProvider.php ya existe');
+        }
+        
+        // 3. Actualizar composer.json del tema
+        $themeComposerPath = $themePath . '/composer.json';
+        if (file_exists($themeComposerPath)) {
+            $themeComposer = json_decode(file_get_contents($themeComposerPath), true);
+            
+            if (!isset($themeComposer['autoload']['psr-4']['App\\'])) {
+                $themeComposer['autoload'] = $themeComposer['autoload'] ?? [];
+                $themeComposer['autoload']['psr-4'] = $themeComposer['autoload']['psr-4'] ?? [];
+                $themeComposer['autoload']['psr-4']['App\\'] = 'app/';
+                
+                file_put_contents(
+                    $themeComposerPath,
+                    json_encode($themeComposer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                );
+                $output->writeln('✓ Actualizado: composer.json (autoload PSR-4)');
+            } else {
+                $output->writeln('✓ composer.json ya tiene autoload PSR-4');
+            }
+        } else {
+            $output->writeln('<comment>⚠ composer.json no encontrado en el tema</comment>');
+        }
+        
+        // 4. Regenerar autoload
+        $output->writeln('');
+        $output->writeln('<comment>Regenerando autoload...</comment>');
+        $process = Process::fromShellCommandline('composer dump-autoload');
+        $process->run();
+        if ($process->isSuccessful()) {
+            $output->writeln('✓ Autoload regenerado');
+        }
+        
+        // 5. Limpiar cache de Acorn
+        $output->writeln('<comment>Limpiando cache de Acorn...</comment>');
+        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn optimize:clear');
+        $process->run();
+        if ($process->isSuccessful()) {
+            $output->writeln('✓ Cache limpiado');
+        }
+        
+        // 6. Arreglar permisos
+        $output->writeln('<comment>Ajustando permisos...</comment>');
+        $process = Process::fromShellCommandline('docker-compose exec -T web chown -R www-data:www-data /var/www/html/web/app/cache');
+        $process->run();
+        $process = Process::fromShellCommandline('docker-compose exec -T web chmod -R 755 /var/www/html/web/app/cache');
+        $process->run();
+        $output->writeln('✓ Permisos ajustados');
+        
+        $output->writeln('');
+        $output->writeln('<info>✅ Tema reparado y compatible con Acorn</info>');
+        $output->writeln('');
+        
         return Command::SUCCESS;
     }
 
