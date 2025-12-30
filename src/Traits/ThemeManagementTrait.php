@@ -187,6 +187,11 @@ trait ThemeManagementTrait
         foreach ($profile['themes']['premium'] as &$t) {
             if ($index === $num) {
                 $t['version'] = $newVersion;
+                // Actualizar path si es cache
+                if ($t['source'] === 'cache' && isset($t['path'])) {
+                    $themeSlug = basename(dirname($t['path']));
+                    $t['path'] = "packages/{$themeSlug}/{$newVersion}/";
+                }
                 $output->writeln('<info>✓ Versión actualizada</info>');
                 return;
             }

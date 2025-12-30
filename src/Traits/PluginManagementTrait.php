@@ -231,6 +231,11 @@ trait PluginManagementTrait
             foreach ($plugins['premium'] as $key => $p) {
                 if ($index === $num) {
                     $p['version'] = $newVersion;
+                    // Actualizar path si es cache
+                    if ($p['source'] === 'cache' && isset($p['path'])) {
+                        $pluginSlug = basename(dirname($p['path']));
+                        $p['path'] = "packages/{$pluginSlug}/{$newVersion}/";
+                    }
                     $plugins['premium'][$key] = $p;
                     $updated = true;
                     break;
