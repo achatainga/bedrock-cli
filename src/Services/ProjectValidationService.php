@@ -319,17 +319,8 @@ class ProjectValidationService
 
     private function isDockerRunning(): bool
     {
-        $process = proc_open('docker info', [
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
-        ], $pipes);
-        
-        if (!is_resource($process)) {
-            return false;
-        }
-        
-        $exitCode = proc_close($process);
-        return $exitCode === 0;
+        exec('docker info 2>/dev/null', $output, $returnCode);
+        return $returnCode === 0;
     }
 
     private function areContainersRunning(string $projectPath): bool
