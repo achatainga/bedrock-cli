@@ -83,8 +83,7 @@ class MenuCommand extends Command
                 '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues(null);
+            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
 
             $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
