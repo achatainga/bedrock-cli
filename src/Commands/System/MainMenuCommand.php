@@ -463,43 +463,26 @@ class MainMenuCommand extends Command
     
     private function getMainOptionForStep(array $step): ?array
     {
-        // Use step title instead of hardcoded ID mapping
+        // Dynamic step options based on actual validation state
         $projectPath = getcwd();
-        $title = strtolower($step['title']);
         
-        if (strpos($title, 'profile') !== false) {
-            return ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'];
-        }
+        // Check actual WordPress installation status
+        $wordpressInstalled = $this->stateService->validateWordPressInstalled($projectPath);
         
-        if (strpos($title, 'credenciales') !== false || strpos($title, 'auth') !== false) {
-            return ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'];
-        }
+        $stepOptions = [
+            1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
+            2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
+            3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
+            4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
+            5 => $wordpressInstalled ? 
+                ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'] :
+                ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress (CRÍTICO)'],
+            6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
+            7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
+            8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
+        ];
         
-        if (strpos($title, 'docker') !== false) {
-            return ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'];
-        }
-        
-        if (strpos($title, 'wordpress') !== false || strpos($title, 'instalar') !== false) {
-            return ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'];
-        }
-        
-        if (strpos($title, 'tema') !== false || strpos($title, 'theme') !== false) {
-            return ['key' => 'T', 'label' => '🎨 Themes   - Activar tema'];
-        }
-        
-        if (strpos($title, 'plugin') !== false) {
-            return ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'];
-        }
-        
-        if (strpos($title, 'acorn') !== false) {
-            return ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'];
-        }
-        
-        if (strpos($title, 'seed') !== false) {
-            return ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders'];
-        }
-        
-        return null;
+        return $stepOptions[$step['id']] ?? null;
     }
     
     private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int
