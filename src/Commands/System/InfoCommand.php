@@ -303,13 +303,14 @@ class InfoCommand extends Command
                 'docker-compose exec -T web wp theme list --status=active --field=name 2>/dev/null',
                 getcwd()
             );
+            $process->setTimeout(10);
             $process->run();
             
             if ($process->isSuccessful()) {
                 return trim($process->getOutput()) ?: null;
             }
         } catch (\Exception $e) {
-            // Silently fail
+            return null;
         }
         
         return null;
@@ -322,6 +323,7 @@ class InfoCommand extends Command
                 'docker-compose exec -T web wp plugin list --status=active --field=name 2>/dev/null',
                 getcwd()
             );
+            $process->setTimeout(10);
             $process->run();
             
             if ($process->isSuccessful()) {
@@ -329,7 +331,7 @@ class InfoCommand extends Command
                 return $output ? explode("\n", $output) : [];
             }
         } catch (\Exception $e) {
-            // Silently fail
+            return [];
         }
         
         return [];

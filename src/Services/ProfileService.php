@@ -84,6 +84,11 @@ class ProfileService
             throw new RuntimeException("Profile '{$name}' contiene JSON inválido: " . json_last_error_msg());
         }
 
+        // Asegurar que docker_mode existe (default: false para compatibilidad)
+        if (!isset($data['docker_mode'])) {
+            $data['docker_mode'] = false;
+        }
+
         return Profile::fromArray($data);
     }
 
