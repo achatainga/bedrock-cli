@@ -370,9 +370,10 @@ PHP;
                         
                         foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
                             if ($plugin['source'] === 'cache') {
-                                $sourceZip = $repoPath . '/' . $plugin['path'] . basename($plugin['path'], '/') . '.zip';
+                                $pluginSlug = basename(dirname($plugin['path']));
+                                $sourceZip = $repoPath . '/' . $plugin['path'] . $pluginSlug . '.zip';
                                 $targetDir = $cacheDir . '/' . $plugin['path'];
-                                $targetZip = $targetDir . basename($plugin['path'], '/') . '.zip';
+                                $targetZip = $targetDir . $pluginSlug . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
                                     if (!is_dir($targetDir)) {
@@ -386,9 +387,10 @@ PHP;
                         
                         foreach ($profile['themes']['premium'] ?? [] as $theme) {
                             if ($theme['source'] === 'cache') {
-                                $sourceZip = $repoPath . '/' . $theme['path'] . basename($theme['path'], '/') . '.zip';
+                                $themeSlug = basename(dirname($theme['path']));
+                                $sourceZip = $repoPath . '/' . $theme['path'] . $themeSlug . '.zip';
                                 $targetDir = $cacheDir . '/' . $theme['path'];
-                                $targetZip = $targetDir . basename($theme['path'], '/') . '.zip';
+                                $targetZip = $targetDir . $themeSlug . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
                                     if (!is_dir($targetDir)) {
