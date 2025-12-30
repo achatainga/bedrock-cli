@@ -336,21 +336,9 @@ class ProjectValidationService
     {
         $projectName = basename($projectPath);
         
-        $process = proc_open("docker ps --filter name={$projectName} --format '{{.Names}}'", [
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
-        ], $pipes);
+        exec("docker ps --filter name={$projectName} --format '{{.Names}}' 2>/dev/null", $output, $returnCode);
         
-        if (!is_resource($process)) {
-            return false;
-        }
-        
-        $output = stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
-        
-        return !empty(trim($output));
+        return $returnCode === 0 && !empty($output);
     }
 
     private function hasWordPressTables(string $projectPath): bool
