@@ -120,12 +120,119 @@ class ApplyCommand extends Command
         $output->writeln('<info>✓ Profile aplicado y dependencias instaladas</info>');
         $output->writeln('');
         
+        // Configurar child theme para Acorn si es necesario
+        $this->configureChildThemeForAcorn($profile, $projectRoot, $output);
+        
         // Verificar si profile tiene activation_order
         if (isset($profile['activation_order'])) {
             $this->applyActivationOrder($input, $output, $profile, $projectRoot);
         }
 
         return Command::SUCCESS;
+    }
+    
+    private function configureChildThemeForAcorn(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectRoot, OutputInterface $output): void
+    {
+        // Verificar si Acorn está instalado
+        $composerJson = json_decode(file_get_contents($projectRoot . '/composer.json'), true);
+        if (!isset($composerJson['require']['roots/acorn'])) {
+            return; // Acorn no instalado, skip
+        }
+        
+        // Obtener tema del profile
+        $themes = $profile['themes']['premium'] ?? [];
+        if (empty($themes)) {
+            return;
+        }
+        
+        foreach ($themes as $theme) {
+            $themeName = $theme['name'];
+            $themePath = $projectRoot . '/web/app/themes/' . $themeName;
+            
+            // Verificar si es child theme (contiene 'child' en el nombre)
+            if (!str_contains($themeName, 'child')) {
+                continue;
+            }
+            
+            if (!is_dir($themePath)) {
+                continue;
+            }
+            
+            $output->writeln('<info>🔧 Configurando child theme para Acorn...</info>');
+            
+            // 1. Crear estructura app/Providers
+            $providersDir = $themePath . '/app/Providers';
+            if (!is_dir($providersDir)) {
+                mkdir($providersDir, 0755, true);
+                $output->writeln('  ✓ Creado: app/Providers/');
+            }
+            
+            // 2. Crear ThemeServiceProvider.php
+            $providerFile = $providersDir . '/ThemeServiceProvider.php';
+            if (!file_exists($providerFile)) {
+                $providerContent = <<<'PHP'
+<?php
+
+namespace App\Providers;
+
+use Roots\Acorn\ServiceProvider;
+
+class ThemeServiceProvider extends ServiceProvider
+{
+    public function register()
+    {
+        //
+    }
+
+    public function boot()
+    {
+        //
+    }
+}
+
+PHP;
+                file_put_contents($providerFile, $providerContent);
+                $output->writeln('  ✓ Creado: ThemeServiceProvider.php');
+            }
+            
+            // 3. Actualizar composer.json del tema
+            $themeComposerPath = $themePath . '/composer.json';
+            if (file_exists($themeComposerPath)) {
+                $themeComposer = json_decode(file_get_contents($themeComposerPath), true);
+                
+                if (!isset($themeComposer['autoload']['psr-4']['App\\'])) {
+                    $themeComposer['autoload'] = $themeComposer['autoload'] ?? [];
+                    $themeComposer['autoload']['psr-4'] = $themeComposer['autoload']['psr-4'] ?? [];
+                    $themeComposer['autoload']['psr-4']['App\\'] = 'app/';
+                    
+                    file_put_contents(
+                        $themeComposerPath,
+                        json_encode($themeComposer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                    );
+                    $output->writeln('  ✓ Actualizado: composer.json (autoload PSR-4)');
+                    
+                    // 4. Regenerar autoload
+                    $process = new \Symfony\Component\Process\Process(['composer', 'dump-autoload'], $projectRoot);
+                    $process->run();
+                    if ($process->isSuccessful()) {
+                        $output->writeln('  ✓ Autoload regenerado');
+                    }
+                    
+                    // 5. Limpiar cache de Acorn
+                    $process = new \Symfony\Component\Process\Process(
+                        ['docker-compose', 'exec', '-T', 'web', 'wp', 'acorn', 'optimize:clear'],
+                        $projectRoot
+                    );
+                    $process->run();
+                    if ($process->isSuccessful()) {
+                        $output->writeln('  ✓ Cache de Acorn limpiado');
+                    }
+                }
+            }
+            
+            $output->writeln('<info>✓ Child theme configurado para Acorn</info>');
+            $output->writeln('');
+        }
     }
     
     private function applyActivationOrder(InputInterface $input, OutputInterface $output, \Roots\BedrockCli\DTOs\Profile|array $profile, string $projectRoot): void
