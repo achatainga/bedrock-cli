@@ -466,6 +466,9 @@ class NewCommand extends Command
                 $output->writeln('<fg=yellow>⚠️  Docker detectado. Forzando modo copia para assets premium.</>');                $profile['docker_mode'] = true;
             }
             
+            // Descargar assets premium a caché si no existen
+            $this->downloadPremiumAssetsToCache($profile, $output);
+            
             $this->composerService->generateFromProfile($profile, $name);
             $this->composerService->copyProfileToProject($profile, $name);
             
@@ -686,6 +689,57 @@ class NewCommand extends Command
             $output->writeln('<info>✓ Proyecto verificado y listo</info>');
         } else {
             $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');
+        }
+    }
+    
+    private function downloadPremiumAssetsToCache(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
+    {
+        $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+        
+        // Descargar plugins premium
+        if (!empty($profile['plugins']['premium'])) {
+            foreach ($profile['plugins']['premium'] as $plugin) {
+                if ($plugin['source'] === 'cache' && !empty($plugin['path'])) {
+                    try {
+                        if (!$cacheService->pluginExists($plugin['name'], $plugin['version'])) {
+                            $output->writeln("<comment>📥 Descargando {$plugin['name']} v{$plugin['version']}...</comment>");
+                            $cacheService->downloadPlugin(
+                                $plugin['original_url'] ?? $plugin['url'],
+                                $plugin['name'],
+                                $plugin['version'],
+                                $plugin['path']
+                            );
+                            $output->writeln("<info>✓ {$plugin['name']} descargado</info>");
+                        }
+                    } catch (\Exception $e) {
+                        $output->writeln("<error>✗ Error descargando {$plugin['name']}: {$e->getMessage()}</error>");
+                        throw $e;
+                    }
+                }
+            }
+        }
+        
+        // Descargar themes premium
+        if (!empty($profile['themes']['premium'])) {
+            foreach ($profile['themes']['premium'] as $theme) {
+                if ($theme['source'] === 'cache' && !empty($theme['path'])) {
+                    try {
+                        if (!$cacheService->themeExists($theme['name'], $theme['version'])) {
+                            $output->writeln("<comment>📥 Descargando {$theme['name']} v{$theme['version']}...</comment>");
+                            $cacheService->downloadTheme(
+                                $theme['original_url'] ?? $theme['url'],
+                                $theme['name'],
+                                $theme['version'],
+                                $theme['path']
+                            );
+                            $output->writeln("<info>✓ {$theme['name']} descargado</info>");
+                        }
+                    } catch (\Exception $e) {
+                        $output->writeln("<error>✗ Error descargando {$theme['name']}: {$e->getMessage()}</error>");
+                        throw $e;
+                    }
+                }
+            }
         }
     }
 }
