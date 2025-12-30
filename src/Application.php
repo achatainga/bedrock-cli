@@ -135,7 +135,7 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
             new PluginsActivateMultipleCommand(
-                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+                $this->container->get('Roots\BedrockCli\Services\PluginActivationService')
             ),
             new PluginsDeactivateCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
@@ -388,6 +388,8 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\PremiumCacheService', 'Roots\BedrockCli\Services\PremiumCacheService');
         $this->container->register('Roots\BedrockCli\Services\UnzipService', 'Roots\BedrockCli\Services\UnzipService');
         $this->container->register('Roots\BedrockCli\Services\ZipService', 'Roots\BedrockCli\Services\ZipService');
+        $this->container->register('Roots\BedrockCli\Services\PluginActivationService', 'Roots\BedrockCli\Services\PluginActivationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\WpCliService'));
         $this->container->register('Roots\BedrockCli\Services\ProgressService', 'Roots\BedrockCli\Services\ProgressService');
         $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
         $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');

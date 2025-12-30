@@ -687,27 +687,17 @@ class SetupCommand extends Command
         $output->writeln('');
         $output->writeln('<comment>Configurando plugins...</comment>');
         
-        // Si hay flag --plugins, usarlo
         if ($input->getOption('plugins')) {
             $pluginsToActivate = explode(',', $input->getOption('plugins'));
         } else {
-            // Listar plugins disponibles
-            $pluginsDir = getcwd() . '/web/app/plugins';
-            if (!is_dir($pluginsDir)) {
-                $output->writeln('<comment>No hay plugins disponibles</comment>');
-                return;
-            }
-            
-            $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
-                return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
-            });
+            $pluginService = new \Roots\BedrockCli\Services\PluginActivationService($wpcli);
+            $projectRoot = getcwd();
+            $plugins = $pluginService->getAvailablePlugins($projectRoot);
             
             if (empty($plugins)) {
                 $output->writeln('<comment>No hay plugins disponibles</comment>');
                 return;
             }
-            
-            $plugins = array_values($plugins);
             
             $output->writeln('<fg=cyan>Plugins disponibles:</>');
             foreach ($plugins as $idx => $p) {
@@ -715,34 +705,17 @@ class SetupCommand extends Command
             }
             $output->writeln('');
             
-            $question = new Question('¿Qué plugins deseas activar? (nombres separados por coma, o Enter para omitir): ', '');
+            $question = new Question('¿Qué plugins deseas activar? (números separados por coma, o Enter para omitir): ', '');
             $answer = $helper->ask($input, $output, $question);
             
             if (empty($answer)) {
                 return;
             }
             
-            $pluginsToActivate = array_map('trim', explode(',', $answer));
+            $pluginsToActivate = $pluginService->parsePluginSelection($answer, $plugins);
         }
         
-        // Convertir números a slugs
-        $pluginsList = array_values($plugins);
-        $resolvedPlugins = [];
         foreach ($pluginsToActivate as $plugin) {
-            if (empty($plugin)) continue;
-            
-            // Si es número, convertir a slug
-            if (is_numeric($plugin)) {
-                $index = (int)$plugin - 1;
-                if (isset($pluginsList[$index])) {
-                    $resolvedPlugins[] = $pluginsList[$index];
-                }
-            } else {
-                $resolvedPlugins[] = $plugin;
-            }
-        }
-        
-        foreach ($resolvedPlugins as $plugin) {
             if (empty($plugin)) continue;
             
             $process = $wpcli->custom("plugin activate {$plugin}");
