@@ -460,13 +460,10 @@ class NewCommand extends Command
         try {
             $profile = $this->profileService->loadProfile($profileName);
             
-            // Detectar Docker y actualizar profile si no está definido
-            if (!isset($profile['docker_mode'])) {
-                $dockerMode = !$input->getOption('no-docker');
-                if ($dockerMode) {
-                    $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados.</>');                    $profile['docker_mode'] = true;
-                    $this->profileService->saveProfile($profileName, $profile);
-                }
+            // SIEMPRE detectar Docker mode en tiempo real
+            $dockerMode = !$input->getOption('no-docker');
+            if ($dockerMode) {
+                $output->writeln('<fg=yellow>⚠️  Docker detectado. Forzando modo copia para assets premium.</>');                $profile['docker_mode'] = true;
             }
             
             $this->composerService->generateFromProfile($profile, $name);
