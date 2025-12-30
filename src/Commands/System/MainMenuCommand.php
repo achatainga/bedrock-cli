@@ -401,6 +401,19 @@ class MainMenuCommand extends Command
                 '4' => 'docker',
                 '8' => 'info',
                 'D' => 'docker',
+                'P' => 'plugins:activate',
+                'T' => 'themes:menu',
+                'A' => 'acorn',
+                'S' => 'seed'
+            ];
+
+            // Ejecutar comando seleccionado
+            $commandMap = [
+                '1' => 'doctor',
+                '2' => 'setup', 
+                '4' => 'docker',
+                '8' => 'info',
+                'D' => 'docker',
                 'P' => 'plugins',
                 'T' => 'themes:menu',
                 'A' => 'acorn',
@@ -411,23 +424,24 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                // FASE 3: Fix propagación de flags - crear input limpio
                 $cleanInput = new ArrayInput([]);
                 $command->run($cleanInput, $output);
                 
-                // Recargar estado después de ejecutar comando (con validación rápida)
-                $stateService = new StateService();
+                // Recargar estado después de ejecutar comando
                 if (!$skipValidation) {
                     $output->writeln('<fg=cyan>🔄 Actualizando estado...</>');
-                    $stateService->updateStepValidations(getcwd());
+                    $this->stateService->updateStepValidations(getcwd());
                 }
-                $state = $stateService->loadState(getcwd());
-                $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+                $state = $this->stateService->loadState(getcwd());
+                $currentStep = $state && $state['wizard_mode'] ? $this->stateService->getCurrentStep($state) : null;
                 
                 if (!$currentStep) {
                     $output->writeln('<info>🎉 ¡Todos los pasos completados! El proyecto está listo.</info>');
                     return Command::SUCCESS;
                 }
+                
+                // Continue loop to show menu again
+                continue;
             } else {
                 $output->writeln('<error>Opción inválida.</error>');
                 sleep(1);
