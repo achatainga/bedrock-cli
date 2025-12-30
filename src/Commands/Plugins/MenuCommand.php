@@ -57,19 +57,19 @@ class MenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
-            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  🔌 PLUGINS - Gestión          </> <fg=cyan;options=bold>║</>');
-            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
+            $output->writeln('<cyan>║</cyan>   🔌 PLUGINS - Gestión              <cyan>║</cyan>');
+            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
             $output->writeln('');
             
-            $output->writeln(' <fg=cyan>[1]</> ⚙️  Gestionar plugin específico');
-            $output->writeln(' <fg=cyan>[2]</> 📋 Listar desde WordPress');
-            $output->writeln(' <fg=cyan>[3]</> ⬇️  Instalar desde repositorio');
-            $output->writeln(' <fg=cyan>[4]</> 🔄 Actualizar todos');
-            $output->writeln(' <fg=cyan>[5]</> 📦 Descomprimir ZIPs');
-            $output->writeln(' <fg=cyan>[6]</> 🔢 Orden de activación');
-            $output->writeln(' <fg=cyan>[7]</> 🛠️  Constructor de orden');
-            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
+            $output->writeln(' <cyan>[1]</cyan> ⚙️  Gestionar plugin específico');
+            $output->writeln(' <cyan>[2]</cyan> 📋 Listar desde WordPress');
+            $output->writeln(' <cyan>[3]</cyan> ⬇️  Instalar desde repositorio');
+            $output->writeln(' <cyan>[4]</cyan> 🔄 Actualizar todos');
+            $output->writeln(' <cyan>[5]</cyan> 📦 Descomprimir ZIPs');
+            $output->writeln(' <cyan>[6]</cyan> 🔢 Orden de activación');
+            $output->writeln(' <cyan>[7]</cyan> 🛠️  Constructor de orden');
+            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
             $output->writeln('');
             
             $choices = [
