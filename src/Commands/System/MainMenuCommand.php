@@ -401,7 +401,7 @@ class MainMenuCommand extends Command
                 '4' => 'docker',
                 '8' => 'info',
                 'D' => 'docker',
-                'P' => 'plugins',
+                'P' => 'plugins:menu',
                 'T' => 'themes:menu',
                 'A' => 'acorn',
                 'S' => 'seed'
