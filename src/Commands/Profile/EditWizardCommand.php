@@ -86,6 +86,19 @@ class EditWizardCommand extends Command
         $this->regenerateRequire($profile);
         
         $this->profileService->saveProfile($name, $profile);
+        
+        // Si estamos en un proyecto, actualizar también .bedrock/profile.json
+        $projectProfilePath = getcwd() . '/.bedrock/profile.json';
+        if (file_exists($projectProfilePath)) {
+            $projectProfile = json_decode(file_get_contents($projectProfilePath), true);
+            if ($projectProfile && $projectProfile['name'] === $name) {
+                file_put_contents(
+                    $projectProfilePath,
+                    json_encode($profile->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                );
+            }
+        }
+        
         $output->writeln('');
         $output->writeln("<info>✅ Profile '{$name}' actualizado</info>");
         $output->writeln('');
