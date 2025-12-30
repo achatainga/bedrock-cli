@@ -267,16 +267,7 @@ class MainMenuCommand extends Command
                     $result = $this->stateService->validateWordPressInstalled($projectPath);
                     break;
                 case 'validateThemeActive':
-                    // Get actual theme from profile
-                    $profileFile = $projectPath . '/.bedrock/profile.json';
-                    $themeName = 'twentytwentyfive'; // default
-                    if (file_exists($profileFile)) {
-                        $profile = json_decode(file_get_contents($profileFile), true);
-                        if (isset($profile['themes'][0]['name'])) {
-                            $themeName = $profile['themes'][0]['name'];
-                        }
-                    }
-                    $result = $this->stateService->validateThemeActive($projectPath, $themeName);
+                    $result = $this->stateService->validateThemeActive($projectPath, 'twentytwentyfive');
                     break;
                 case 'validatePluginsActive':
                     $result = $this->stateService->validatePluginsActive($projectPath);
