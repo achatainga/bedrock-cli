@@ -88,6 +88,9 @@ class ApplyCommand extends Command
         $output->writeln('');
         $output->writeln('<info>Aplicando profile...</info>');
         
+        // Verificar si hay plugins en cache que no existen y actualizar cache automáticamente
+        $this->ensureCacheUpdated($profile, $output);
+        
         // IMPORTANTE: Regenerar composer.json ANTES de copiar el nuevo profile
         // para que cleanPreviousProfilePackages() pueda leer el profile anterior
         $this->composerService->generateFromProfile($profile, $projectRoot);
@@ -295,6 +298,88 @@ PHP;
                 } else {
                     $output->writeln('<error>Error al activar plugins</error>');
                 }
+            }
+        }
+    }
+    
+    private function ensureCacheUpdated(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
+    {
+        $cacheDir = $_SERVER['HOME'] . '/.bedrock/cache';
+        $missingPlugins = [];
+        
+        // Verificar plugins premium en cache
+        foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
+            if ($plugin['source'] === 'cache') {
+                $zipPath = $cacheDir . '/' . $plugin['path'] . basename($plugin['path'], '/') . '.zip';
+                if (!file_exists($zipPath)) {
+                    $missingPlugins[] = $plugin['name'] . ' v' . $plugin['version'];
+                }
+            }
+        }
+        
+        // Verificar themes premium en cache
+        foreach ($profile['themes']['premium'] ?? [] as $theme) {
+            if ($theme['source'] === 'cache') {
+                $zipPath = $cacheDir . '/' . $theme['path'] . basename($theme['path'], '/') . '.zip';
+                if (!file_exists($zipPath)) {
+                    $missingPlugins[] = $theme['name'] . ' v' . $theme['version'];
+                }
+            }
+        }
+        
+        if (!empty($missingPlugins)) {
+            $output->writeln('');
+            $output->writeln('<fg=yellow>⚠️  Plugins/themes no encontrados en cache:</>');            foreach ($missingPlugins as $missing) {
+                $output->writeln("  • {$missing}");
+            }
+            $output->writeln('');
+            $output->writeln('<info>🔄 Actualizando desde repositorio premium...</info>');
+            
+            // Buscar repo de premium assets
+            $premiumRepo = null;
+            foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
+                if (isset($plugin['original_url'])) {
+                    $premiumRepo = $plugin['original_url'];
+                    break;
+                }
+            }
+            
+            if ($premiumRepo) {
+                // Extraer path del repo clonado
+                $repoName = basename($premiumRepo, '.git');
+                $possiblePaths = [
+                    $_SERVER['HOME'] . '/code/dt24/' . $repoName,
+                    $_SERVER['HOME'] . '/code/' . $repoName,
+                    getcwd() . '/../' . $repoName
+                ];
+                
+                foreach ($possiblePaths as $repoPath) {
+                    if (is_dir($repoPath . '/.git')) {
+                        // Hacer git pull para obtener nuevas versiones
+                        $output->writeln("<comment>Actualizando repositorio: {$repoPath}</comment>");
+                        $process = new \Symfony\Component\Process\Process(['git', 'pull'], $repoPath);
+                        $process->run();
+                        
+                        if ($process->isSuccessful()) {
+                            $output->writeln('<info>✓ Repositorio actualizado</info>');
+                        }
+                        
+                        // Ejecutar cache:import
+                        $output->writeln('<comment>Importando al cache...</comment>');
+                        $command = $this->getApplication()->find('cache:import');
+                        $importInput = new \Symfony\Component\Console\Input\ArrayInput([
+                            'repo-path' => $repoPath
+                        ]);
+                        $command->run($importInput, $output);
+                        $output->writeln('<info>✓ Cache actualizado</info>');
+                        $output->writeln('');
+                        return;
+                    }
+                }
+                
+                $output->writeln('<error>No se encontró el repositorio de premium assets</error>');
+                $output->writeln("<comment>Clona el repo: git clone {$premiumRepo}</comment>");
+                throw new \Exception("Repositorio premium no encontrado");
             }
         }
     }
