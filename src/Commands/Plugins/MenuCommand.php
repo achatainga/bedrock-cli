@@ -44,6 +44,7 @@ class MenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        $wpcli = $this->wpCliService;
         
         $plugin = $input->getArgument('plugin');
         
