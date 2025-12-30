@@ -724,7 +724,24 @@ class SetupCommand extends Command
             $pluginsToActivate = array_map('trim', explode(',', $answer));
         }
         
+        // Convertir números a slugs
+        $pluginsList = array_values($plugins);
+        $resolvedPlugins = [];
         foreach ($pluginsToActivate as $plugin) {
+            if (empty($plugin)) continue;
+            
+            // Si es número, convertir a slug
+            if (is_numeric($plugin)) {
+                $index = (int)$plugin - 1;
+                if (isset($pluginsList[$index])) {
+                    $resolvedPlugins[] = $pluginsList[$index];
+                }
+            } else {
+                $resolvedPlugins[] = $plugin;
+            }
+        }
+        
+        foreach ($resolvedPlugins as $plugin) {
             if (empty($plugin)) continue;
             
             $process = $wpcli->custom("plugin activate {$plugin}");
