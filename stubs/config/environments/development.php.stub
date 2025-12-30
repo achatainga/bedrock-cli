@@ -5,12 +5,13 @@
  */
 
 use Roots\WPConfig\Config;
+use function Env\env;
 
 if (!defined('SAVEQUERIES'))                    Config::define('SAVEQUERIES', true);
-if (!defined('WP_DEBUG'))                       Config::define('WP_DEBUG', true);
-if (!defined('WP_DEBUG_DISPLAY'))               Config::define('WP_DEBUG_DISPLAY', true);
-if (!defined('WP_DEBUG_LOG'))                   Config::define('WP_DEBUG_LOG', false);
+if (!defined('WP_DEBUG'))                       Config::define('WP_DEBUG', env('WP_DEBUG') ?: false);
+if (!defined('WP_DEBUG_DISPLAY'))               Config::define('WP_DEBUG_DISPLAY', env('WP_DEBUG_DISPLAY') ?: false);
+if (!defined('WP_DEBUG_LOG'))                   Config::define('WP_DEBUG_LOG', env('WP_DEBUG_LOG') ?: false);
 if (!defined('WP_DISABLE_FATAL_ERROR_HANDLER')) Config::define('WP_DISABLE_FATAL_ERROR_HANDLER', true);
-if (!defined('SCRIPT_DEBUG'))                   Config::define('SCRIPT_DEBUG', true);
+if (!defined('SCRIPT_DEBUG'))                   Config::define('SCRIPT_DEBUG', false);
 
-ini_set('display_errors', '1');
+ini_set('display_errors', '0');
