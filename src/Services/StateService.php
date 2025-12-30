@@ -501,23 +501,24 @@ class StateService
                     break;
                     
                 case 'theme':
-                    // Get theme from profile
-                    $profileFile = $projectPath . '/.bedrock/profile.json';
-                    if (file_exists($profileFile)) {
-                        $profile = json_decode(file_get_contents($profileFile), true);
-                        $themeName = $profile['themes'][0]['name'] ?? null;
-                        if ($themeName) {
-                            $step['completed'] = $this->validateThemeActive($projectPath, $themeName);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        // Extraer nombre del tema del comando
+                        if (preg_match('/wp theme activate (\w+)/', $step['command'] ?? '', $matches)) {
+                            $step['completed'] = $this->validateThemeActive($projectPath, $matches[1]);
                         }
                     }
                     break;
                     
                 case 'plugins':
-                    $step['completed'] = $this->validatePluginsActive($projectPath);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validatePluginsActive($projectPath);
+                    }
                     break;
                     
                 case 'acorn':
-                    $step['completed'] = $this->validateAcornConfigured($projectPath);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validateAcornConfigured($projectPath);
+                    }
                     break;
                     
                 case 'seeders':
