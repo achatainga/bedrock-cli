@@ -212,14 +212,17 @@ trait PluginManagementTrait
         $index = 1;
         $updated = false;
         
-        foreach ($profile['plugins']['public'] as $key => $p) {
+        // Extract-modify-reassign pattern for ArrayAccess
+        $plugins = $profile['plugins'];
+        
+        foreach ($plugins['public'] as $key => $p) {
             if ($index === $num) {
                 if (is_array($p)) {
                     $p['version'] = $newVersion;
                 } else {
                     $p = ['slug' => $p, 'version' => $newVersion];
                 }
-                $profile['plugins']['public'][$key] = $p;
+                $plugins['public'][$key] = $p;
                 $updated = true;
                 break;
             }
@@ -227,7 +230,7 @@ trait PluginManagementTrait
         }
         
         if (!$updated) {
-            foreach ($profile['plugins']['premium'] as $key => $p) {
+            foreach ($plugins['premium'] as $key => $p) {
                 if ($index === $num) {
                     $p['version'] = $newVersion;
                     // Actualizar path si es cache
@@ -235,13 +238,16 @@ trait PluginManagementTrait
                         $pluginSlug = basename(dirname($p['path']));
                         $p['path'] = "packages/{$pluginSlug}/{$newVersion}/";
                     }
-                    $profile['plugins']['premium'][$key] = $p;
+                    $plugins['premium'][$key] = $p;
                     $updated = true;
                     break;
                 }
                 $index++;
             }
         }
+        
+        // Reassign to persist changes
+        $profile['plugins'] = $plugins;
         
         if ($updated) {
             $output->writeln('<info>✓ Versión actualizada</info>');

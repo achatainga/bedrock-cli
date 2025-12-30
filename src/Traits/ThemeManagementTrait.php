@@ -171,20 +171,25 @@ trait ThemeManagementTrait
         
         $index = 1;
         
-        foreach ($profile['themes']['public'] as &$t) {
+        // Extract-modify-reassign pattern for ArrayAccess
+        $themes = $profile['themes'];
+        
+        foreach ($themes['public'] as $key => $t) {
             if ($index === $num) {
                 if (is_array($t)) {
                     $t['version'] = $newVersion;
                 } else {
                     $t = ['slug' => $t, 'version' => $newVersion];
                 }
+                $themes['public'][$key] = $t;
+                $profile['themes'] = $themes;
                 $output->writeln('<info>✓ Versión actualizada</info>');
                 return;
             }
             $index++;
         }
         
-        foreach ($profile['themes']['premium'] as &$t) {
+        foreach ($themes['premium'] as $key => $t) {
             if ($index === $num) {
                 $t['version'] = $newVersion;
                 // Actualizar path si es cache
@@ -192,6 +197,8 @@ trait ThemeManagementTrait
                     $themeSlug = basename(dirname($t['path']));
                     $t['path'] = "packages/{$themeSlug}/{$newVersion}/";
                 }
+                $themes['premium'][$key] = $t;
+                $profile['themes'] = $themes;
                 $output->writeln('<info>✓ Versión actualizada</info>');
                 return;
             }
