@@ -372,8 +372,10 @@ PHP;
                             if ($plugin['source'] === 'cache') {
                                 $pluginSlug = basename(dirname($plugin['path']));
                                 $sourceZip = $repoPath . '/' . $plugin['path'] . $pluginSlug . '.zip';
-                                $targetDir = $cacheDir . '/' . $plugin['path'];
-                                $targetZip = $targetDir . $pluginSlug . '.zip';
+                                
+                                // Copiar a estructura de PremiumCacheService: {name}/{version}/{name}.zip
+                                $targetDir = $cacheDir . '/' . $plugin['name'] . '/' . $plugin['version'];
+                                $targetZip = $targetDir . '/' . $plugin['name'] . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
                                     if (!is_dir($targetDir)) {
@@ -389,8 +391,10 @@ PHP;
                             if ($theme['source'] === 'cache') {
                                 $themeSlug = basename(dirname($theme['path']));
                                 $sourceZip = $repoPath . '/' . $theme['path'] . $themeSlug . '.zip';
-                                $targetDir = $cacheDir . '/' . $theme['path'];
-                                $targetZip = $targetDir . $themeSlug . '.zip';
+                                
+                                // Copiar a estructura de PremiumCacheService: {name}/{version}/{name}.zip
+                                $targetDir = $cacheDir . '/' . $theme['name'] . '/' . $theme['version'];
+                                $targetZip = $targetDir . '/' . $theme['name'] . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
                                     if (!is_dir($targetDir)) {
