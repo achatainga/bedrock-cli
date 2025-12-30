@@ -158,6 +158,9 @@ if (!defined('DISALLOW_FILE_EDIT')) Config::define('DISALLOW_FILE_EDIT', true);
 // Disable plugin and theme updates and installation from the admin
 if (!defined('DISALLOW_FILE_MODS')) Config::define('DISALLOW_FILE_MODS', true);
 
+// Force direct filesystem method to avoid "Could not access filesystem" errors in Docker
+if (!defined('FS_METHOD')) Config::define('FS_METHOD', 'direct');
+
 // Limit the number of post revisions
 if (!defined('WP_POST_REVISIONS')) Config::define('WP_POST_REVISIONS', env('WP_POST_REVISIONS') ?? true);
 
