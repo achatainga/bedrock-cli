@@ -19,6 +19,7 @@ use Roots\BedrockCli\Commands\Options\ManageCommand as OptionsManageCommand;
 use Roots\BedrockCli\Commands\Plugins\MenuCommand as PluginsMenuCommand;
 use Roots\BedrockCli\Commands\Plugins\ListCommand as PluginsListCommand;
 use Roots\BedrockCli\Commands\Plugins\ActivateCommand as PluginsActivateCommand;
+use Roots\BedrockCli\Commands\Plugins\ActivateMultipleCommand as PluginsActivateMultipleCommand;
 use Roots\BedrockCli\Commands\Plugins\DeactivateCommand as PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\Plugins\CompressCommand as PluginsCompressCommand;
 use Roots\BedrockCli\Commands\Plugins\StatusCommand as PluginsStatusCommand;
@@ -132,6 +133,9 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
+            new PluginsActivateMultipleCommand(
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
             ),
             new PluginsDeactivateCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
