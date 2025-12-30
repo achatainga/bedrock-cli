@@ -232,6 +232,21 @@ PHP;
             
             $output->writeln('<info>✓ Child theme configurado para Acorn</info>');
             $output->writeln('');
+            
+            // 6. Ajustar permisos de cache
+            $output->writeln('<comment>Ajustando permisos de cache...</comment>');
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'chown', '-R', 'www-data:www-data', '/var/www/html/web/app/cache'],
+                $projectRoot
+            );
+            $process->run();
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'chmod', '-R', '755', '/var/www/html/web/app/cache'],
+                $projectRoot
+            );
+            $process->run();
+            $output->writeln('  ✓ Permisos de cache ajustados');
+            $output->writeln('');
         }
     }
     

@@ -444,6 +444,13 @@ class SetupCommand extends Command
             $process = $wpcli->custom('acorn vendor:publish --tag=acorn');
             $this->runWithLoader($process, $output, 'Publicando configs');
             
+            // Ajustar permisos de cache
+            $output->writeln('<comment>Ajustando permisos de cache...</comment>');
+            $process = Process::fromShellCommandline('docker-compose exec -T web chown -R www-data:www-data /var/www/html/web/app/cache');
+            $process->run();
+            $process = Process::fromShellCommandline('docker-compose exec -T web chmod -R 755 /var/www/html/web/app/cache');
+            $process->run();
+            
             $output->writeln('<info>✓ Acorn configurado</info>');
         }
         
