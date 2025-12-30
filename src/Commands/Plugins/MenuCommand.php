@@ -44,6 +44,7 @@ class MenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        $wpcli = $this->wpCliService;
         
         $plugin = $input->getArgument('plugin');
         
@@ -124,6 +125,10 @@ class MenuCommand extends Command
             }
             
             $output->writeln('');
+            $output->writeln('<comment>Presiona Enter para continuar...</comment>');
+            if ($input->isInteractive()) {
+                fgets(STDIN);
+            }
         }
 
         return Command::SUCCESS;
@@ -148,7 +153,16 @@ class MenuCommand extends Command
                 $output->writeln('');
                 
                 // Detectar tipo de error
-                if (str_contains($errorOutput, 'Error establishing a database connection')) {
+                if (str_contains($errorOutput, 'Could not access filesystem') || str_contains($errorOutput, 'functions.php')) {
+                    $output->writeln('<fg=red>⚠️  Error de permisos o filesystem</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Permisos incorrectos en archivos de WordPress');
+                    $output->writeln('  2. Error en functions.php del tema');
+                    $output->writeln('  3. Plugin o tema con código incompatible');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  Revisar logs: docker-compose logs web');
+                } elseif (str_contains($errorOutput, 'Error establishing a database connection')) {
                     $output->writeln('<fg=red>⚠️  Error de conexión a la base de datos</>');
                     $output->writeln('<comment>Posibles causas:</comment>');
                     $output->writeln('  1. Docker no está corriendo');
