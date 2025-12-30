@@ -364,14 +364,43 @@ PHP;
                             $output->writeln('<info>✓ Repositorio actualizado</info>');
                         }
                         
-                        // Ejecutar cache:import
-                        $output->writeln('<comment>Importando al cache...</comment>');
-                        $command = $this->getApplication()->find('cache:import');
-                        $importInput = new \Symfony\Component\Console\Input\ArrayInput([
-                            'repo-path' => $repoPath
-                        ]);
-                        $command->run($importInput, $output);
-                        $output->writeln('<info>✓ Cache actualizado</info>');
+                        // Copiar archivos faltantes del repo al cache
+                        $output->writeln('<comment>Copiando al cache...</comment>');
+                        $copied = 0;
+                        
+                        foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
+                            if ($plugin['source'] === 'cache') {
+                                $sourceZip = $repoPath . '/' . $plugin['path'] . basename($plugin['path'], '/') . '.zip';
+                                $targetDir = $cacheDir . '/' . $plugin['path'];
+                                $targetZip = $targetDir . basename($plugin['path'], '/') . '.zip';
+                                
+                                if (file_exists($sourceZip) && !file_exists($targetZip)) {
+                                    if (!is_dir($targetDir)) {
+                                        mkdir($targetDir, 0755, true);
+                                    }
+                                    copy($sourceZip, $targetZip);
+                                    $copied++;
+                                }
+                            }
+                        }
+                        
+                        foreach ($profile['themes']['premium'] ?? [] as $theme) {
+                            if ($theme['source'] === 'cache') {
+                                $sourceZip = $repoPath . '/' . $theme['path'] . basename($theme['path'], '/') . '.zip';
+                                $targetDir = $cacheDir . '/' . $theme['path'];
+                                $targetZip = $targetDir . basename($theme['path'], '/') . '.zip';
+                                
+                                if (file_exists($sourceZip) && !file_exists($targetZip)) {
+                                    if (!is_dir($targetDir)) {
+                                        mkdir($targetDir, 0755, true);
+                                    }
+                                    copy($sourceZip, $targetZip);
+                                    $copied++;
+                                }
+                            }
+                        }
+                        
+                        $output->writeln("<info>✓ {$copied} archivos copiados al cache</info>");
                         $output->writeln('');
                         return;
                     }
