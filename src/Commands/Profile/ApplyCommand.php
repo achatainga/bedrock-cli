@@ -373,8 +373,8 @@ PHP;
                                 $pluginSlug = basename(dirname($plugin['path']));
                                 $sourceZip = $repoPath . '/' . $plugin['path'] . $pluginSlug . '.zip';
                                 
-                                // Copiar a estructura de PremiumCacheService: {name}/{version}/{name}.zip
-                                $targetDir = $cacheDir . '/' . $plugin['name'] . '/' . $plugin['version'];
+                                // Copiar a estructura de PremiumCacheService: ~/.bedrock-cli/cache/premium/{name}/{version}/{name}.zip
+                                $targetDir = $_SERVER['HOME'] . '/.bedrock-cli/cache/premium/' . $plugin['name'] . '/' . $plugin['version'];
                                 $targetZip = $targetDir . '/' . $plugin['name'] . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
@@ -392,8 +392,8 @@ PHP;
                                 $themeSlug = basename(dirname($theme['path']));
                                 $sourceZip = $repoPath . '/' . $theme['path'] . $themeSlug . '.zip';
                                 
-                                // Copiar a estructura de PremiumCacheService: {name}/{version}/{name}.zip
-                                $targetDir = $cacheDir . '/' . $theme['name'] . '/' . $theme['version'];
+                                // Copiar a estructura de PremiumCacheService: ~/.bedrock-cli/cache/themes/{name}/{version}/{name}.zip
+                                $targetDir = $_SERVER['HOME'] . '/.bedrock-cli/cache/themes/' . $theme['name'] . '/' . $theme['version'];
                                 $targetZip = $targetDir . '/' . $theme['name'] . '.zip';
                                 
                                 if (file_exists($sourceZip) && !file_exists($targetZip)) {
