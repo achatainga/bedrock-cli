@@ -114,6 +114,46 @@ class ProjectValidationService
         );
     }
 
+    public function validateTheme(string $projectPath, string $themeName): object
+    {
+        if (!$this->areContainersRunning($projectPath)) {
+            return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+        }
+
+        $cmd = "cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null";
+        exec($cmd, $output, $returnCode);
+        
+        $isActive = false;
+        foreach ($output as $line) {
+            if (stripos($line, 'Status') !== false && stripos($line, 'Active') !== false) {
+                $isActive = true;
+                break;
+            }
+        }
+        
+        return (object)[
+            'isValid' => $isActive,
+            'message' => $isActive ? "Theme '{$themeName}' is active" : "Theme '{$themeName}' is not active"
+        ];
+    }
+
+    public function validatePlugins(string $projectPath): object
+    {
+        if (!$this->areContainersRunning($projectPath)) {
+            return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+        }
+
+        $cmd = "cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null";
+        exec($cmd, $output, $returnCode);
+        
+        $count = isset($output[0]) ? (int)trim($output[0]) : 0;
+        
+        return (object)[
+            'isValid' => $count > 0,
+            'message' => $count > 0 ? "{$count} active plugins" : "No active plugins"
+        ];
+    }
+
     public function detectInconsistencies(string $projectPath): array
     {
         $inconsistencies = [];

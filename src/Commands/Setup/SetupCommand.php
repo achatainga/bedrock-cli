@@ -410,7 +410,8 @@ class SetupCommand extends Command
             $output->writeln('<comment>Configurando usuario admin...</comment>');
             
             // Get table prefix from env
-            $env = $validationService->readEnvFile($projectPath);
+            $projectPath = getcwd();
+            $env = $this->validationService->readEnvFile($projectPath);
             $prefix = $env['DB_PREFIX'] ?? 'wp_';
             
             // Verificar si usuario existe

@@ -285,10 +285,7 @@ class StateService
      */
     public function validateThemeActive(string $projectPath, string $themeName): bool
     {
-        $projectName = basename($projectPath);
-        $activeTheme = shell_exec("cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null");
-        
-        return $activeTheme && strpos($activeTheme, 'Active') !== false;
+        return $this->validationService->validateTheme($projectPath, $themeName)->isValid;
     }
 
     /**
@@ -296,10 +293,7 @@ class StateService
      */
     public function validatePluginsActive(string $projectPath): bool
     {
-        $projectName = basename($projectPath);
-        $plugins = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null");
-        
-        return $plugins && (int)trim($plugins) > 0;
+        return $this->validationService->validatePlugins($projectPath)->isValid;
     }
 
     /**
