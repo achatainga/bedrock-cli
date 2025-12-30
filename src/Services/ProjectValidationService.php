@@ -47,11 +47,15 @@ class ProjectValidationService
         $dbUser = trim($env['DB_USER'], '"\'');
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
         
-        // Skip database validation to prevent shell_exec errors
-        $output = null;
+        $projectName = basename($projectPath);
+        exec("docker-compose -f {$projectPath}/docker-compose.yml exec -T mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>/dev/null", $output, $returnCode);
         
-        if ($output && strpos($output, $dbName) !== false) {
-            return new DatabaseValidation(true, 'Database connection successful');
+        if ($returnCode === 0 && !empty($output)) {
+            foreach ($output as $line) {
+                if (strpos($line, $dbName) !== false) {
+                    return new DatabaseValidation(true, 'Database connection successful');
+                }
+            }
         }
         
         return new DatabaseValidation(false, 'Database connection failed or database does not exist');
