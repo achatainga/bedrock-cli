@@ -123,7 +123,8 @@ class NewCommand extends Command
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
             $output->writeln('    --admin_password=admin \\');
-            $output->writeln('    --admin_email=admin@example.com');
+            $output->writeln('    --admin_email=admin@example.com \\');
+            $output->writeln('    --locale=es_ES');
             $output->writeln('');
             
             // Mostrar instrucciones de Acorn si fue instalado

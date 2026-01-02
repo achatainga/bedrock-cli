@@ -146,7 +146,7 @@ class StateService
             [
                 'id' => 2,
                 'title' => 'Instalar WordPress',
-                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com",
+                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --locale=es_ES",
                 'menu_item' => 'I',
                 'completed' => false,
                 'skippable' => false
