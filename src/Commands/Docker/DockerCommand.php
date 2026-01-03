@@ -54,8 +54,20 @@ class DockerCommand extends Command
         
         // Verificar si Docker está corriendo
         if (!$docker->isRunning()) {
+            $isLinux = DIRECTORY_SEPARATOR === '/';
+            $dockerName = $isLinux ? 'Docker Engine' : 'Docker Desktop';
+            
             $output->writeln('');
-            $output->writeln('<fg=yellow>Docker Desktop no está en ejecución.</>');
+            $output->writeln("<fg=yellow>{$dockerName} no está en ejecución.</>");
+            
+            if ($isLinux) {
+                $output->writeln('<fg=yellow>Verifica que Docker esté instalado y el servicio activo:</>');
+                $output->writeln('<fg=cyan>  sudo systemctl status docker</>');
+                $output->writeln('<fg=cyan>  sudo systemctl start docker</>');
+                $output->writeln('');
+                return Command::FAILURE;
+            }
+            
             $output->writeln('<fg=cyan>Ejecutando bedrock doctor para verificar/iniciar Docker...</>');
             $output->writeln('');
             
