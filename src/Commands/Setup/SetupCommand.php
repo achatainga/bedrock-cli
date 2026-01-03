@@ -524,6 +524,11 @@ class SetupCommand extends Command
         $env = $state['config']['env'] ?? [];
         $docker = $state['config']['docker_compose'] ?? [];
         
+        // BUG FIX 1: Corregir inconsistencias de puertos antes de continuar
+        if (!empty($state['inconsistencies'])) {
+            $this->fixPortInconsistencies($output, $state['inconsistencies']);
+        }
+        
         $currentUrl = $env['WP_HOME'] ?? '';
         $newUrl = $config['url'];
         
@@ -781,5 +786,44 @@ class SetupCommand extends Command
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
+    
+    private function fixPortInconsistencies(OutputInterface $output, array $inconsistencies): void
+    {
+        $envPath = getcwd() . '/.env';
+        if (!file_exists($envPath)) {
+            return;
+        }
+        
+        $envContent = file_get_contents($envPath);
+        $modified = false;
+        
+        foreach ($inconsistencies as $issue) {
+            // Detectar inconsistencia de DB_PORT
+            if (strpos($issue['message'], 'DB_PORT missing') !== false) {
+                // Extraer puerto de mensaje (formato: "Docker MySQL uses port 3307")
+                if (preg_match('/port (\d+)/', $issue['message'], $matches)) {
+                    $dbPort = $matches[1];
+                    
+                    // Agregar DB_PORT al .env si no existe
+                    if (strpos($envContent, 'DB_PORT=') === false) {
+                        // Buscar línea DB_HOST para insertar después
+                        if (preg_match('/(DB_HOST=.*)/', $envContent, $hostMatch)) {
+                            $envContent = str_replace(
+                                $hostMatch[1],
+                                $hostMatch[1] . "\nDB_PORT={$dbPort}",
+                                $envContent
+                            );
+                            $modified = true;
+                            $output->writeln("<info>✓ DB_PORT={$dbPort} agregado al .env</info>");
+                        }
+                    }
+                }
+            }
+        }
+        
+        if ($modified) {
+            file_put_contents($envPath, $envContent);
+        }
     }
 }

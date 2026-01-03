@@ -108,9 +108,12 @@ class MainMenuCommand extends Command
             
             // Mostrar wizard si está activo
             if ($currentStep) {
-                $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
-                $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
-                $output->writeln('');
+                // BUG FIX 2: No mostrar paso si ya está completado
+                if (!($currentStep['completed'] ?? false)) {
+                    $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
+                    $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+                    $output->writeln('');
+                }
             }
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
