@@ -387,11 +387,27 @@ class NewCommand extends Command
 
     private function isPortFree(int $port): bool
     {
+        // Verificar localhost
         $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
-        
         if (is_resource($connection)) {
             fclose($connection);
             return false;
+        }
+        
+        // Verificar 0.0.0.0 (all interfaces)
+        $connection = @fsockopen('0.0.0.0', $port, $errno, $errstr, 1);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        // Verificar con netstat/ss si está disponible (más confiable)
+        if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
+            $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\s'";
+            exec($cmd, $output, $returnCode);
+            if (!empty($output)) {
+                return false; // Puerto en uso
+            }
         }
         
         return true;
