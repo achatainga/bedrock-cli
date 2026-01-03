@@ -260,8 +260,8 @@ class SetupCommand extends Command
         $docker = $state['config']['docker_compose'] ?? [];
         
         // Defaults desde archivos existentes
-        // Usar puerto de docker-compose si existe, sino usar el de .env
-        $dockerPort = $docker['web_port'] ?? null;
+        // Leer puerto actual de docker-compose.yml directamente
+        $dockerPort = $this->readDockerComposePort();
         $defaultUrl = $dockerPort ? "http://localhost:{$dockerPort}" : ($env['WP_HOME'] ?? 'http://localhost:8080');
         $defaultDbName = $env['DB_NAME'] ?? $docker['db_name'] ?? 'bedrock';
         
@@ -537,9 +537,16 @@ class SetupCommand extends Command
         $output->writeln("  Nueva: <fg=white>{$newUrl}</>");
         $output->writeln('');
         
-        // Extraer puerto de URL
+        // Leer puerto actual de docker-compose.yml
+        $currentPort = $this->readDockerComposePort();
+        
+        // Extraer puerto de URL (si tiene puerto explícito)
         $newPort = $this->extractPort($newUrl);
-        $currentPort = $docker['web_port'] ?? 8080;
+        
+        // Si URL no tiene puerto explícito, mantener puerto actual
+        if (!$this->hasExplicitPort($newUrl)) {
+            $newPort = $currentPort;
+        }
         
         // Actualizar .env
         $this->updateEnvFile($newUrl);
@@ -565,6 +572,9 @@ class SetupCommand extends Command
             
             sleep(3);
             $output->writeln('<info>✓ Contenedores reconstruidos</info>');
+        } else {
+            $output->writeln("<info>Puerto actual: {$currentPort} (sin cambios)</info>");
+            $output->writeln('<info>✓ docker-compose.yml sin cambios</info>');
         }
         
         $output->writeln('');
@@ -600,7 +610,30 @@ class SetupCommand extends Command
             return (int)$matches[1];
         }
         
-        return 80; // Default
+        // Si es https, puerto 443, si es http, puerto 80
+        return str_starts_with($url, 'https://') ? 443 : 80;
+    }
+    
+    private function hasExplicitPort(string $url): bool
+    {
+        // Verificar si URL tiene puerto explícito :PUERTO
+        return preg_match('/:\d+/', $url) === 1;
+    }
+    
+    private function readDockerComposePort(): int
+    {
+        $dockerPath = getcwd() . '/docker-compose.yml';
+        if (!file_exists($dockerPath)) {
+            return 80;
+        }
+        
+        $content = file_get_contents($dockerPath);
+        // Buscar puerto en formato "PUERTO:80"
+        if (preg_match('/-\s*"(\d+):80"/', $content, $matches)) {
+            return (int)$matches[1];
+        }
+        
+        return 80;
     }
     
     private function updateEnvFile(string $newUrl): void
