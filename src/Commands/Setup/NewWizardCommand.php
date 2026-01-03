@@ -138,13 +138,29 @@ class NewWizardCommand extends Command
             $output->writeln('');
             $output->writeln('<fg=cyan>═══ CONFIGURACIÓN DE PUERTOS ═══</>');
             
-            $httpPortQuestion = new Question('<fg=yellow>Puerto HTTP [80]:</> ', '80');
+            // Detectar puertos libres
+            $freeHttpPort = $this->findFreePort(80);
+            $freeMysqlPort = $this->findFreePort(3306);
+            $freeRedisPort = $this->findFreePort(6379);
+            
+            // Mostrar advertencia si puerto está ocupado
+            if ($freeHttpPort !== 80) {
+                $output->writeln("<comment>⚠️  Puerto 80 ocupado, sugerido: {$freeHttpPort}</comment>");
+            }
+            if ($freeMysqlPort !== 3306) {
+                $output->writeln("<comment>⚠️  Puerto 3306 ocupado, sugerido: {$freeMysqlPort}</comment>");
+            }
+            if ($freeRedisPort !== 6379) {
+                $output->writeln("<comment>⚠️  Puerto 6379 ocupado, sugerido: {$freeRedisPort}</comment>");
+            }
+            
+            $httpPortQuestion = new Question("<fg=yellow>Puerto HTTP [{$freeHttpPort}]:</> ", (string)$freeHttpPort);
             $httpPort = $helper->ask($input, $output, $httpPortQuestion);
             
-            $mysqlPortQuestion = new Question('<fg=yellow>Puerto MySQL [3306]:</> ', '3306');
+            $mysqlPortQuestion = new Question("<fg=yellow>Puerto MySQL [{$freeMysqlPort}]:</> ", (string)$freeMysqlPort);
             $mysqlPort = $helper->ask($input, $output, $mysqlPortQuestion);
             
-            $redisPortQuestion = new Question('<fg=yellow>Puerto Redis [6379]:</> ', '6379');
+            $redisPortQuestion = new Question("<fg=yellow>Puerto Redis [{$freeRedisPort}]:</> ", (string)$freeRedisPort);
             $redisPort = $helper->ask($input, $output, $redisPortQuestion);
         }
 
@@ -208,5 +224,48 @@ class NewWizardCommand extends Command
         
         $newInput = new ArrayInput($arguments);
         return $newCommand->run($newInput, $output);
+    }
+    
+    private function findFreePort(int $preferred): int
+    {
+        $port = $preferred;
+        $maxAttempts = 100;
+        
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($this->isPortFree($port)) {
+                return $port;
+            }
+            $port++;
+        }
+        
+        return $preferred;
+    }
+    
+    private function isPortFree(int $port): bool
+    {
+        // Verificar localhost
+        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        // Verificar 0.0.0.0 (all interfaces)
+        $connection = @fsockopen('0.0.0.0', $port, $errno, $errstr, 1);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        // Verificar con netstat/ss si está disponible (más confiable)
+        if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
+            $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\\s'";
+            exec($cmd, $output, $returnCode);
+            if (!empty($output)) {
+                return false; // Puerto en uso
+            }
+        }
+        
+        return true;
     }
 }
