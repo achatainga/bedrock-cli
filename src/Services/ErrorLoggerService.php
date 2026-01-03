@@ -8,7 +8,8 @@ class ErrorLoggerService
     
     public function __construct()
     {
-        $this->logPath = getcwd() . '/.bedrock/error.log';
+        $homeDir = $_SERVER['HOME'] ?? getenv('HOME') ?? getcwd();
+        $this->logPath = $homeDir . '/.bedrock-cli/error.log';
         $this->ensureLogDirectory();
     }
     
