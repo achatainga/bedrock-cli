@@ -767,7 +767,26 @@ class SetupCommand extends Command
             $this->runWithLoader($process, $output, "Activando plugin {$plugin}");
             
             if ($process->isSuccessful()) {
-                $output->writeln("<info>✓ Plugin '{$plugin}' activado</info>");
+                // Verificar si realmente se activó
+                $checkProcess = $wpcli->custom("plugin is-active {$plugin}");
+                $checkProcess->run();
+                
+                if ($checkProcess->isSuccessful()) {
+                    $output->writeln("<info>✓ Plugin '{$plugin}' activado</info>");
+                } else {
+                    $output->writeln("<error>✗ Plugin '{$plugin}' falló al activar</error>");
+                    // Mostrar error si existe
+                    $errorOutput = trim($process->getErrorOutput());
+                    if (!empty($errorOutput)) {
+                        $output->writeln("<comment>  Error: {$errorOutput}</comment>");
+                    }
+                }
+            } else {
+                $output->writeln("<error>✗ Plugin '{$plugin}' falló al activar</error>");
+                $errorOutput = trim($process->getErrorOutput());
+                if (!empty($errorOutput)) {
+                    $output->writeln("<comment>  Error: {$errorOutput}</comment>");
+                }
             }
         }
     }
