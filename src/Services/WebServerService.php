@@ -309,6 +309,128 @@ APACHE;
     }
     
     /**
+     * Detecta el document root del web server
+     * 
+     * @return string|null Ruta base donde se sirven proyectos
+     */
+    public function detectDocumentRoot(): ?string
+    {
+        $webServer = $this->detectWebServer();
+        
+        if ($webServer === 'nginx') {
+            return $this->detectNginxDocumentRoot();
+        }
+        
+        if ($webServer === 'apache') {
+            return $this->detectApacheDocumentRoot();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Detecta document root de nginx
+     */
+    private function detectNginxDocumentRoot(): ?string
+    {
+        $sitesEnabled = '/etc/nginx/sites-enabled';
+        
+        if (!is_dir($sitesEnabled)) {
+            return null;
+        }
+        
+        // Leer todos los archivos de configuración
+        $configs = glob($sitesEnabled . '/*');
+        $roots = [];
+        
+        foreach ($configs as $config) {
+            if (!is_file($config) || is_link($config)) {
+                $config = readlink($config);
+            }
+            
+            $content = @file_get_contents($config);
+            if (!$content) continue;
+            
+            // Buscar directivas root
+            if (preg_match_all('/root\s+([^;]+);/i', $content, $matches)) {
+                foreach ($matches[1] as $root) {
+                    $root = trim($root);
+                    // Extraer directorio base (ej: /var/www/proyecto -> /var/www)
+                    $baseDir = dirname($root);
+                    if ($baseDir && $baseDir !== '.') {
+                        $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+        
+        // Retornar el más común
+        if (!empty($roots)) {
+            arsort($roots);
+            return key($roots);
+        }
+        
+        // Fallback a /var/www si existe
+        return is_dir('/var/www') ? '/var/www' : null;
+    }
+    
+    /**
+     * Detecta document root de apache
+     */
+    private function detectApacheDocumentRoot(): ?string
+    {
+        $sitesEnabled = '/etc/apache2/sites-enabled';
+        
+        if (!is_dir($sitesEnabled)) {
+            // Intentar con httpd.conf
+            $sitesEnabled = '/etc/httpd/conf.d';
+            if (!is_dir($sitesEnabled)) {
+                return null;
+            }
+        }
+        
+        // Leer todos los archivos de configuración
+        $configs = glob($sitesEnabled . '/*');
+        $roots = [];
+        
+        foreach ($configs as $config) {
+            if (!is_file($config) || is_link($config)) {
+                $config = readlink($config);
+            }
+            
+            $content = @file_get_contents($config);
+            if (!$content) continue;
+            
+            // Buscar DocumentRoot
+            if (preg_match_all('/DocumentRoot\s+["\']?([^"\'
+]+)["\']?/i', $content, $matches)) {
+                foreach ($matches[1] as $root) {
+                    $root = trim($root);
+                    // Extraer directorio base
+                    $baseDir = dirname($root);
+                    if ($baseDir && $baseDir !== '.') {
+                        $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+        
+        // Retornar el más común
+        if (!empty($roots)) {
+            arsort($roots);
+            return key($roots);
+        }
+        
+        // Fallback común en cPanel/GoDaddy
+        $homeDir = getenv('HOME');
+        if ($homeDir && is_dir($homeDir . '/public_html')) {
+            return $homeDir . '/public_html';
+        }
+        
+        return is_dir('/var/www') ? '/var/www' : null;
+    }
+    
+    /**
      * Instala configuración Apache
      * 
      * @param string $projectName
