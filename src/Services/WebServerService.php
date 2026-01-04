@@ -355,10 +355,15 @@ APACHE;
             if (preg_match_all('/root\s+([^;]+);/i', $content, $matches)) {
                 foreach ($matches[1] as $root) {
                     $root = trim($root);
-                    // Extraer directorio base (ej: /var/www/proyecto -> /var/www)
-                    $baseDir = dirname($root);
-                    if ($baseDir && $baseDir !== '.') {
-                        $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                    // Extraer directorio base común (ej: /var/www/proyecto -> /var/www)
+                    // Subir 1 nivel para obtener el directorio padre
+                    $parts = explode('/', trim($root, '/'));
+                    if (count($parts) >= 2) {
+                        // Tomar solo los primeros 2 niveles: /var/www
+                        $baseDir = '/' . $parts[0] . '/' . $parts[1];
+                        if ($baseDir && is_dir($baseDir)) {
+                            $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                        }
                     }
                 }
             }
