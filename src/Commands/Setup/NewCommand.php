@@ -110,6 +110,17 @@ class NewCommand extends Command
         // Verificación y auto-fix post-creación
         if (!$input->getOption('no-docker')) {
             $this->verifyAndFixProject($name, $output);
+            
+            // Manejar ubicación del proyecto si usó reverse proxy
+            $httpPortInfo = $this->determineHttpPort($input->getOption('http-port'), $output);
+            if ($httpPortInfo['strategy'] === 'reverse-proxy') {
+                $movedPath = $this->handleProjectLocation($name, 'reverse-proxy', $output);
+                
+                // Si se movió, actualizar nombre para mensajes
+                if ($movedPath) {
+                    $name = basename($movedPath);
+                }
+            }
         }
 
         $output->writeln('');

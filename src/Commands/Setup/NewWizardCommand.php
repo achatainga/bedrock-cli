@@ -292,7 +292,17 @@ class NewWizardCommand extends Command
         $newInput = new ArrayInput($arguments);
         $result = $newCommand->run($newInput, $output);
         
-        // 10. Generar y activar configuración web server si se solicitó
+        // 10. Manejar ubicación del proyecto si usó reverse proxy
+        if ($result === Command::SUCCESS && $useReverseProxy) {
+            $movedPath = $this->handleProjectLocation($name, 'reverse-proxy', $output);
+            
+            // Si se movió, actualizar nombre para config nginx
+            if ($movedPath) {
+                $name = basename($movedPath);
+            }
+        }
+        
+        // 11. Generar y activar configuración web server si se solicitó
         if ($result === Command::SUCCESS && $generateWebServerConfig && $webServer && $useReverseProxy) {
             $output->writeln('');
             $output->writeln('<fg=cyan;options=bold>═══ CONFIGURANDO WEB SERVER ═══</>');
