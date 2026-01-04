@@ -17,6 +17,7 @@ use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\SpinnerTrait;
 use Roots\BedrockCli\Traits\ProjectCreationTrait;
+use Roots\BedrockCli\Services\WebServerService;
 
 class NewCommand extends Command
 {
@@ -44,6 +45,7 @@ class NewCommand extends Command
         $this->authService = $authService;
         $this->stateService = $stateService;
         $this->validationService = $validationService;
+        $this->webServerService = new WebServerService();
     }
 
     protected function configure(): void
