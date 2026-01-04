@@ -16,6 +16,12 @@ use Roots\BedrockCli\Traits\ProjectCreationTrait;
 class NewWizardCommand extends Command
 {
     use ProjectCreationTrait;
+    
+    public function __construct()
+    {
+        parent::__construct();
+        $this->webServerService = new WebServerService();
+    }
     protected function configure(): void
     {
         $this->setName('new:wizard')
