@@ -180,9 +180,12 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\BlueprintService'),
                 $this->container->get('Roots\BedrockCli\Services\AuthService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService'),
-                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService'),
+                $this->container->get('Roots\BedrockCli\Services\WebServerService')
             ),
-            new NewWizardCommand(),
+            new NewWizardCommand(
+                $this->container->get('Roots\BedrockCli\Services\WebServerService')
+            ),
             new InitCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
@@ -413,6 +416,9 @@ class Application extends BaseApplication
         // Add CliRunnerService with ErrorLoggerService dependency
         $this->container->register('Roots\BedrockCli\Services\CliRunnerService', 'Roots\BedrockCli\Services\CliRunnerService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\ErrorLoggerService'));
+        
+        // Add WebServerService
+        $this->container->register('Roots\BedrockCli\Services\WebServerService', 'Roots\BedrockCli\Services\WebServerService');
         
         // Add CommandRegistryService
         $this->container->register('Roots\BedrockCli\Services\CommandRegistryService', 'Roots\BedrockCli\Services\CommandRegistryService')
