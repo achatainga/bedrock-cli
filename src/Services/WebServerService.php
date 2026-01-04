@@ -411,10 +411,14 @@ APACHE;
 ]+)["\']?/i', $content, $matches)) {
                 foreach ($matches[1] as $root) {
                     $root = trim($root);
-                    // Extraer directorio base
-                    $baseDir = dirname($root);
-                    if ($baseDir && $baseDir !== '.') {
-                        $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                    // Extraer directorio base común
+                    $parts = explode('/', trim($root, '/'));
+                    if (count($parts) >= 2) {
+                        // Tomar solo los primeros 2 niveles: /var/www o /home/user
+                        $baseDir = '/' . $parts[0] . '/' . $parts[1];
+                        if ($baseDir && is_dir($baseDir)) {
+                            $roots[$baseDir] = ($roots[$baseDir] ?? 0) + 1;
+                        }
                     }
                 }
             }

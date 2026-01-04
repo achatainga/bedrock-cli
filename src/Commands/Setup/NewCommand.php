@@ -114,7 +114,7 @@ class NewCommand extends Command
             // Manejar ubicación del proyecto si usó reverse proxy
             $httpPortInfo = $this->determineHttpPort($input->getOption('http-port'), $output);
             if ($httpPortInfo['strategy'] === 'reverse-proxy') {
-                $movedPath = $this->handleProjectLocation($name, 'reverse-proxy', $output);
+                $movedPath = $this->handleProjectLocation($name, 'reverse-proxy', $input, $output);
                 
                 // Si se movió, actualizar nombre para mensajes
                 if ($movedPath) {

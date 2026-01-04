@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Traits;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Roots\BedrockCli\Services\WebServerService;
 
@@ -64,12 +65,14 @@ trait ProjectCreationTrait
      * 
      * @param string $projectName
      * @param string $strategy 'direct' o 'reverse-proxy'
+     * @param InputInterface $input
      * @param OutputInterface $output
      * @return string Ruta final del proyecto
      */
     protected function handleProjectLocation(
         string $projectName,
         string $strategy,
+        InputInterface $input,
         OutputInterface $output
     ): ?string {
         // Solo si usó reverse proxy
@@ -105,7 +108,7 @@ trait ProjectCreationTrait
             true
         );
         
-        if (!$helper->ask($this->input ?? new \Symfony\Component\Console\Input\ArrayInput([]), $output, $question)) {
+        if (!$helper->ask($input, $output, $question)) {
             $output->writeln('<comment>Proyecto permanecerá en ubicación actual</comment>');
             $output->writeln('<comment>Recuerda moverlo manualmente después:</comment>');
             $output->writeln("<comment>  sudo mv {$currentDir}/{$projectName} {$documentRoot}/</comment>");
