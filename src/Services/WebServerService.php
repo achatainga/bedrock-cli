@@ -1,0 +1,380 @@
+<?php
+
+namespace Roots\BedrockCli\Services;
+
+class WebServerService
+{
+    private const NGINX_PATHS = ['/usr/sbin/nginx', '/usr/bin/nginx'];
+    private const APACHE_PATHS = ['/usr/sbin/apache2', '/usr/bin/apache2', '/usr/sbin/httpd'];
+    
+    /**
+     * Detecta qué web server está instalado en el sistema
+     * 
+     * @return string|null 'nginx', 'apache', o null si ninguno
+     */
+    public function detectWebServer(): ?string
+    {
+        // Verificar nginx
+        foreach (self::NGINX_PATHS as $path) {
+            if (file_exists($path)) {
+                return 'nginx';
+            }
+        }
+        
+        // Verificar con which
+        exec('which nginx 2>/dev/null', $output, $returnCode);
+        if ($returnCode === 0 && !empty($output)) {
+            return 'nginx';
+        }
+        
+        // Verificar apache
+        foreach (self::APACHE_PATHS as $path) {
+            if (file_exists($path)) {
+                return 'apache';
+            }
+        }
+        
+        exec('which apache2 2>/dev/null || which httpd 2>/dev/null', $output, $returnCode);
+        if ($returnCode === 0 && !empty($output)) {
+            return 'apache';
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Verifica si hay otros proyectos en /var/www
+     * 
+     * @return array Lista de directorios en /var/www
+     */
+    public function detectExistingProjects(): array
+    {
+        $projects = [];
+        $wwwPath = '/var/www';
+        
+        if (!is_dir($wwwPath)) {
+            return $projects;
+        }
+        
+        $dirs = scandir($wwwPath);
+        foreach ($dirs as $dir) {
+            if ($dir === '.' || $dir === '..' || $dir === 'html') {
+                continue;
+            }
+            
+            $fullPath = $wwwPath . '/' . $dir;
+            if (is_dir($fullPath)) {
+                $projects[] = $dir;
+            }
+        }
+        
+        return $projects;
+    }
+    
+    /**
+     * Determina la estrategia recomendada
+     * 
+     * @param string|null $webServer
+     * @param int $httpPort
+     * @return array ['strategy' => 'direct'|'reverse-proxy', 'reason' => string]
+     */
+    public function recommendStrategy(?string $webServer, int $httpPort): array
+    {
+        // Sin web server del sistema: usar Docker directo
+        if ($webServer === null) {
+            return [
+                'strategy' => 'direct',
+                'reason' => 'No hay web server del sistema instalado'
+            ];
+        }
+        
+        // Puerto 80 libre y sin otros proyectos: puede usar directo
+        $existingProjects = $this->detectExistingProjects();
+        if ($httpPort === 80 && empty($existingProjects)) {
+            return [
+                'strategy' => 'direct',
+                'reason' => 'Puerto 80 libre y sin otros proyectos',
+                'alternative' => 'reverse-proxy para escalabilidad futura'
+            ];
+        }
+        
+        // Puerto diferente a 80 o hay otros proyectos: reverse proxy
+        if ($httpPort !== 80 || !empty($existingProjects)) {
+            return [
+                'strategy' => 'reverse-proxy',
+                'reason' => $httpPort !== 80 
+                    ? "Puerto {$httpPort} requiere reverse proxy para acceso en puerto 80"
+                    : 'Servidor multi-proyecto detectado',
+                'projects' => $existingProjects
+            ];
+        }
+        
+        return [
+            'strategy' => 'reverse-proxy',
+            'reason' => 'Recomendado para escalabilidad'
+        ];
+    }
+    
+    /**
+     * Genera configuración nginx para reverse proxy
+     * 
+     * @param string $projectName
+     * @param string $domain
+     * @param int $dockerPort
+     * @return string Contenido del archivo de configuración
+     */
+    public function generateNginxConfig(string $projectName, string $domain, int $dockerPort): string
+    {
+        return <<<NGINX
+server {
+    listen 80;
+    server_name {$domain};
+    
+    # Logging
+    access_log /var/log/nginx/{$projectName}-access.log;
+    error_log /var/log/nginx/{$projectName}-error.log;
+    
+    # Reverse proxy to Docker nginx
+    location / {
+        proxy_pass http://127.0.0.1:{$dockerPort};
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_buffering off;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+NGINX;
+    }
+    
+    /**
+     * Genera configuración Apache para reverse proxy
+     * 
+     * @param string $projectName
+     * @param string $domain
+     * @param int $dockerPort
+     * @return string Contenido del archivo de configuración
+     */
+    public function generateApacheConfig(string $projectName, string $domain, int $dockerPort): string
+    {
+        return <<<APACHE
+<VirtualHost *:80>
+    ServerName {$domain}
+    
+    # Logging
+    ErrorLog \${APACHE_LOG_DIR}/{$projectName}-error.log
+    CustomLog \${APACHE_LOG_DIR}/{$projectName}-access.log combined
+    
+    # Reverse proxy to Docker nginx
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:{$dockerPort}/
+    ProxyPassReverse / http://127.0.0.1:{$dockerPort}/
+    
+    # WebSocket support
+    RewriteEngine on
+    RewriteCond %{HTTP:Upgrade} websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/?(.*) "ws://127.0.0.1:{$dockerPort}/\$1" [P,L]
+</VirtualHost>
+
+APACHE;
+    }
+    
+    /**
+     * Instala configuración nginx
+     * 
+     * @param string $projectName
+     * @param string $configContent
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function installNginxConfig(string $projectName, string $configContent): array
+    {
+        $availablePath = "/etc/nginx/sites-available/{$projectName}";
+        $enabledPath = "/etc/nginx/sites-enabled/{$projectName}";
+        
+        // Crear archivo en sites-available
+        $tempFile = tempnam(sys_get_temp_dir(), 'nginx_');
+        file_put_contents($tempFile, $configContent);
+        
+        // Copiar con sudo
+        exec("sudo cp {$tempFile} {$availablePath} 2>&1", $output, $returnCode);
+        unlink($tempFile);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al copiar configuración: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Crear symlink en sites-enabled
+        exec("sudo ln -sf {$availablePath} {$enabledPath} 2>&1", $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al activar sitio: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Verificar configuración
+        exec('sudo nginx -t 2>&1', $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            // Revertir cambios
+            exec("sudo rm {$enabledPath}");
+            exec("sudo rm {$availablePath}");
+            
+            return [
+                'success' => false,
+                'message' => 'Configuración nginx inválida: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Recargar nginx
+        exec('sudo systemctl reload nginx 2>&1', $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al recargar nginx: ' . implode("\n", $output)
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'message' => 'Configuración nginx instalada y activada correctamente'
+        ];
+    }
+    
+    /**
+     * Verifica si un puerto está libre
+     * 
+     * @param int $port
+     * @return bool
+     */
+    public function isPortFree(int $port): bool
+    {
+        // Verificar localhost
+        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        // Verificar 0.0.0.0 (all interfaces)
+        $connection = @fsockopen('0.0.0.0', $port, $errno, $errstr, 1);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        // Verificar con netstat/ss si está disponible (más confiable)
+        if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
+            $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\\s'";
+            exec($cmd, $output, $returnCode);
+            if (!empty($output)) {
+                return false; // Puerto en uso
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Encuentra un puerto libre a partir de uno preferido
+     * 
+     * @param int $preferred
+     * @return int
+     */
+    public function findFreePort(int $preferred): int
+    {
+        $port = $preferred;
+        $maxAttempts = 100;
+        
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($this->isPortFree($port)) {
+                return $port;
+            }
+            $port++;
+        }
+        
+        return $preferred;
+    }
+    
+    /**
+     * Instala configuración Apache
+     * 
+     * @param string $projectName
+     * @param string $configContent
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function installApacheConfig(string $projectName, string $configContent): array
+    {
+        $configPath = "/etc/apache2/sites-available/{$projectName}.conf";
+        
+        // Crear archivo
+        $tempFile = tempnam(sys_get_temp_dir(), 'apache_');
+        file_put_contents($tempFile, $configContent);
+        
+        // Copiar con sudo
+        exec("sudo cp {$tempFile} {$configPath} 2>&1", $output, $returnCode);
+        unlink($tempFile);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al copiar configuración: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Habilitar módulos necesarios
+        exec('sudo a2enmod proxy proxy_http rewrite 2>&1', $output, $returnCode);
+        
+        // Activar sitio
+        exec("sudo a2ensite {$projectName} 2>&1", $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al activar sitio: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Verificar configuración
+        exec('sudo apache2ctl configtest 2>&1', $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            // Revertir cambios
+            exec("sudo a2dissite {$projectName}");
+            exec("sudo rm {$configPath}");
+            
+            return [
+                'success' => false,
+                'message' => 'Configuración Apache inválida: ' . implode("\n", $output)
+            ];
+        }
+        
+        // Recargar Apache
+        exec('sudo systemctl reload apache2 2>&1', $output, $returnCode);
+        
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'message' => 'Error al recargar Apache: ' . implode("\n", $output)
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'message' => 'Configuración Apache instalada y activada correctamente'
+        ];
+    }
+}
+

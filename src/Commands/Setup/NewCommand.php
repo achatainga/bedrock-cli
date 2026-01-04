@@ -16,10 +16,11 @@ use Roots\BedrockCli\Services\StateService;
 use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\SpinnerTrait;
+use Roots\BedrockCli\Traits\ProjectCreationTrait;
 
 class NewCommand extends Command
 {
-    use PremiumAssetsTrait, SpinnerTrait;
+    use PremiumAssetsTrait, SpinnerTrait, ProjectCreationTrait;
 
     private ProfileService $profileService;
     private ComposerService $composerService;
@@ -209,9 +210,9 @@ class NewCommand extends Command
         $dbUser = $input->getOption('db-user');
         $dbPass = $input->getOption('db-pass');
 
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
-        $mysqlPort = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
-        $redisPort = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+        $httpPort = $input->getOption('http-port') ?: $this->determineHttpPort(null, $output)['port'];
+        $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
+        $redisPort = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
 
         $vars = [
             '{{PROJECT_NAME}}' => $projectName,
@@ -365,52 +366,6 @@ class NewCommand extends Command
     private function generateKey(): string
     {
         return bin2hex(random_bytes(32));
-    }
-
-    private function findFreePort(int $preferred, OutputInterface $output): int
-    {
-        $port = $preferred;
-        $maxAttempts = 100;
-        
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            if ($this->isPortFree($port)) {
-                if ($port !== $preferred) {
-                    $output->writeln("<comment>Puerto {$preferred} ocupado, usando {$port}</comment>");
-                }
-                return $port;
-            }
-            $port++;
-        }
-        
-        return $preferred;
-    }
-
-    private function isPortFree(int $port): bool
-    {
-        // Verificar localhost
-        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
-        if (is_resource($connection)) {
-            fclose($connection);
-            return false;
-        }
-        
-        // Verificar 0.0.0.0 (all interfaces)
-        $connection = @fsockopen('0.0.0.0', $port, $errno, $errstr, 1);
-        if (is_resource($connection)) {
-            fclose($connection);
-            return false;
-        }
-        
-        // Verificar con netstat/ss si está disponible (más confiable)
-        if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
-            $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\s'";
-            exec($cmd, $output, $returnCode);
-            if (!empty($output)) {
-                return false; // Puerto en uso
-            }
-        }
-        
-        return true;
     }
 
     private function copyApplicationConfig(string $name, OutputInterface $output): void

@@ -10,9 +10,12 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Roots\BedrockCli\Services\ProfileService;
+use Roots\BedrockCli\Services\WebServerService;
+use Roots\BedrockCli\Traits\ProjectCreationTrait;
 
 class NewWizardCommand extends Command
 {
+    use ProjectCreationTrait;
     protected function configure(): void
     {
         $this->setName('new:wizard')
@@ -129,22 +132,79 @@ class NewWizardCommand extends Command
         $redisAnswer = strtoupper(trim($helper->ask($input, $output, $redisQuestion)));
         $withRedis = $redisAnswer === 'S' || $redisAnswer === 'Y' || $redisAnswer === '';
 
-        // 6. Puertos (solo si Docker está habilitado)
+        // 6. Detectar web server del sistema y estrategia
+        $webServerService = new WebServerService();
+        $webServer = $withDocker ? $webServerService->detectWebServer() : null;
+        $useReverseProxy = false;
+        $generateWebServerConfig = false;
+        
+        // 7. Puertos (solo si Docker está habilitado)
         $httpPort = 80;
         $mysqlPort = 3306;
         $redisPort = 6379;
         
         if ($withDocker) {
             $output->writeln('');
+            $output->writeln('<fg=cyan>═══ DETECCIÓN DE ENTORNO ═══</>');
+            
+            if ($webServer) {
+                $output->writeln("<fg=green>✓</> Web server detectado: <fg=yellow>{$webServer}</>");
+                $existingProjects = $webServerService->detectExistingProjects();
+                if (!empty($existingProjects)) {
+                    $output->writeln("<fg=green>✓</> Proyectos existentes: <fg=yellow>" . implode(', ', $existingProjects) . "</>");
+                }
+            } else {
+                $output->writeln("<fg=yellow>ℹ</> No se detectó web server del sistema (nginx/apache)");
+            }
+            
+            $output->writeln('');
             $output->writeln('<fg=cyan>═══ CONFIGURACIÓN DE PUERTOS ═══</>');
             
-            // Detectar puertos libres
-            $freeHttpPort = $this->findFreePort(80);
-            $freeMysqlPort = $this->findFreePort(3306);
-            $freeRedisPort = $this->findFreePort(6379);
+            // Detectar puertos libres usando el trait
+            $httpPortInfo = $this->determineHttpPort(null, $output);
+            $freeHttpPort = $httpPortInfo['port'];
+            $freeMysqlPort = $this->webServerService->findFreePort(3306);
+            $freeRedisPort = $this->webServerService->findFreePort(6379);
+            
+            // Recomendar estrategia
+            if ($webServer) {
+                $recommendation = $webServerService->recommendStrategy($webServer, $freeHttpPort);
+                
+                $output->writeln('');
+                $output->writeln('<fg=cyan;options=bold>═══ ESTRATEGIA DE DESPLIEGUE ═══</>');
+                $output->writeln("<fg=yellow>Razón:</> {$recommendation['reason']}");
+                
+                if ($recommendation['strategy'] === 'reverse-proxy') {
+                    $output->writeln('');
+                    $output->writeln('<fg=green>Recomendación:</> Usar reverse proxy (escalable, multi-proyecto)');
+                    $output->writeln("  • Docker nginx en puerto 82");
+                    $output->writeln("  • {$webServer} sistema hace reverse proxy 80 → 82");
+                    $output->writeln("  • Fácil configuración SSL con certbot");
+                    $output->writeln('');
+                    
+                    $strategyQuestion = new Question('<fg=yellow>¿Usar reverse proxy? (S/n):</> ', 'S');
+                    $strategyAnswer = strtoupper(trim($helper->ask($input, $output, $strategyQuestion)));
+                    
+                    if ($strategyAnswer === 'S' || $strategyAnswer === 'Y' || $strategyAnswer === '') {
+                        $useReverseProxy = true;
+                        $freeHttpPort = 82; // Forzar puerto 82
+                        
+                        $configQuestion = new Question("<fg=yellow>¿Generar y activar configuración {$webServer}? (S/n):</> ", 'S');
+                        $configAnswer = strtoupper(trim($helper->ask($input, $output, $configQuestion)));
+                        $generateWebServerConfig = ($configAnswer === 'S' || $configAnswer === 'Y' || $configAnswer === '');
+                    }
+                } else {
+                    $output->writeln('');
+                    $output->writeln('<fg=green>Recomendación:</> Docker nginx directo en puerto 80');
+                    if (isset($recommendation['alternative'])) {
+                        $output->writeln("<fg=yellow>Alternativa:</> {$recommendation['alternative']}");
+                    }
+                    $output->writeln('');
+                }
+            }
             
             // Mostrar advertencia si puerto está ocupado
-            if ($freeHttpPort !== 80) {
+            if ($freeHttpPort !== 80 && !$useReverseProxy) {
                 $output->writeln("<comment>⚠️  Puerto 80 ocupado, sugerido: {$freeHttpPort}</comment>");
             }
             if ($freeMysqlPort !== 3306) {
@@ -154,6 +214,7 @@ class NewWizardCommand extends Command
                 $output->writeln("<comment>⚠️  Puerto 6379 ocupado, sugerido: {$freeRedisPort}</comment>");
             }
             
+            $output->writeln('');
             $httpPortQuestion = new Question("<fg=yellow>Puerto HTTP [{$freeHttpPort}]:</> ", (string)$freeHttpPort);
             $httpPort = $helper->ask($input, $output, $httpPortQuestion);
             
@@ -164,7 +225,7 @@ class NewWizardCommand extends Command
             $redisPort = $helper->ask($input, $output, $redisPortQuestion);
         }
 
-        // 7. Resumen y confirmación
+        // 8. Resumen y confirmación
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>═══ RESUMEN DE CONFIGURACIÓN ═══</>');
         $output->writeln("<fg=cyan>Proyecto:</> {$name}");
@@ -187,7 +248,7 @@ class NewWizardCommand extends Command
             return Command::FAILURE;
         }
 
-        // 8. Ejecutar comando 'new' con los parámetros configurados
+        // 9. Ejecutar comando 'new' con los parámetros configurados
         $output->writeln('');
         $output->writeln('<fg=green;options=bold>🚀 Creando proyecto...</>');
         $output->writeln('');
@@ -223,49 +284,41 @@ class NewWizardCommand extends Command
         }
         
         $newInput = new ArrayInput($arguments);
-        return $newCommand->run($newInput, $output);
-    }
-    
-    private function findFreePort(int $preferred): int
-    {
-        $port = $preferred;
-        $maxAttempts = 100;
+        $result = $newCommand->run($newInput, $output);
         
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            if ($this->isPortFree($port)) {
-                return $port;
+        // 10. Generar y activar configuración web server si se solicitó
+        if ($result === Command::SUCCESS && $generateWebServerConfig && $webServer && $useReverseProxy) {
+            $output->writeln('');
+            $output->writeln('<fg=cyan;options=bold>═══ CONFIGURANDO WEB SERVER ═══</>');
+            
+            // Preguntar por dominio
+            $domainQuestion = new Question("<fg=yellow>Dominio o IP [{$name}.local]:</> ", "{$name}.local");
+            $domain = $helper->ask($input, $output, $domainQuestion);
+            
+            // Generar configuración
+            if ($webServer === 'nginx') {
+                $config = $webServerService->generateNginxConfig($name, $domain, (int)$httpPort);
+                $installResult = $webServerService->installNginxConfig($name, $config);
+            } else {
+                $config = $webServerService->generateApacheConfig($name, $domain, (int)$httpPort);
+                $installResult = $webServerService->installApacheConfig($name, $config);
             }
-            $port++;
-        }
-        
-        return $preferred;
-    }
-    
-    private function isPortFree(int $port): bool
-    {
-        // Verificar localhost
-        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
-        if (is_resource($connection)) {
-            fclose($connection);
-            return false;
-        }
-        
-        // Verificar 0.0.0.0 (all interfaces)
-        $connection = @fsockopen('0.0.0.0', $port, $errno, $errstr, 1);
-        if (is_resource($connection)) {
-            fclose($connection);
-            return false;
-        }
-        
-        // Verificar con netstat/ss si está disponible (más confiable)
-        if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
-            $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\\s'";
-            exec($cmd, $output, $returnCode);
-            if (!empty($output)) {
-                return false; // Puerto en uso
+            
+            if ($installResult['success']) {
+                $output->writeln("<fg=green>✓</> {$installResult['message']}");
+                $output->writeln('');
+                $output->writeln("<fg=green>✓</> Proyecto accesible en: <fg=yellow>http://{$domain}</>");
+                $output->writeln("<fg=cyan>ℹ</> Para SSL: <fg=yellow>sudo certbot --{$webServer} -d {$domain}</>");
+            } else {
+                $output->writeln("<fg=red>✗</> {$installResult['message']}");
+                $output->writeln('');
+                $output->writeln('<fg=yellow>Configuración manual requerida:</>');
+                $output->writeln("  1. Guardar config en: <fg=cyan>{$name}-{$webServer}.conf</>");
+                $output->writeln("  2. Copiar a /etc/{$webServer}/sites-available/");
+                $output->writeln("  3. Activar sitio y recargar {$webServer}");
             }
         }
         
-        return true;
+        return $result;
     }
 }
