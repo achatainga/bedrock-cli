@@ -36,7 +36,8 @@ class NewCommand extends Command
         BlueprintService $blueprintService,
         AuthService $authService,
         StateService $stateService,
-        ProjectValidationService $validationService
+        ProjectValidationService $validationService,
+        WebServerService $webServerService
     ) {
         parent::__construct();
         $this->profileService = $profileService;
@@ -45,7 +46,7 @@ class NewCommand extends Command
         $this->authService = $authService;
         $this->stateService = $stateService;
         $this->validationService = $validationService;
-        $this->webServerService = new WebServerService();
+        $this->webServerService = $webServerService;
     }
 
     protected function configure(): void

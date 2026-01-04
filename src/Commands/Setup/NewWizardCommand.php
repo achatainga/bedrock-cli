@@ -17,10 +17,10 @@ class NewWizardCommand extends Command
 {
     use ProjectCreationTrait;
     
-    public function __construct()
+    public function __construct(WebServerService $webServerService)
     {
         parent::__construct();
-        $this->webServerService = new WebServerService();
+        $this->webServerService = $webServerService;
     }
     protected function configure(): void
     {
