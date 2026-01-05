@@ -289,6 +289,8 @@ class NewCommand extends Command
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $useDocker = !$input->getOption('no-docker');
+        $useRedis = !$input->getOption('no-redis');
         
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
@@ -303,9 +305,12 @@ class NewCommand extends Command
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
+            '{{DB_HOST}}' => $useDocker ? 'mysql' : 'localhost',
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,
+            '{{WP_CACHE}}' => $useRedis ? 'true' : 'false',
+            '{{REDIS_HOST}}' => $useDocker ? 'redis' : 'localhost',
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),
