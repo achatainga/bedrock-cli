@@ -78,8 +78,8 @@ class ProjectValidationService
             $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>&1";
             $output = shell_exec($cmd);
             
-            // Verificar si la salida contiene el nombre de la base de datos
-            if ($output && strpos($output, $dbName) !== false) {
+            // Verificar si la salida contiene el nombre de la base de datos (ignorar warnings de MySQL)
+            if ($output && strpos($output, $dbName) !== false && strpos($output, 'ERROR') === false) {
                 return new DatabaseValidation(true, 'Database connection successful (Docker)');
             }
             
@@ -87,7 +87,7 @@ class ProjectValidationService
             $pingCmd = "docker exec {$projectName}_mysql mysqladmin -u{$dbUser} -p{$dbPass} ping 2>&1";
             $pingOutput = shell_exec($pingCmd);
             
-            if ($pingOutput && strpos($pingOutput, 'mysqld is alive') !== false) {
+            if ($pingOutput && strpos($pingOutput, 'mysqld is alive') !== false && strpos($pingOutput, 'ERROR') === false) {
                 return new DatabaseValidation(true, 'MySQL is alive (Docker)');
             }
             
