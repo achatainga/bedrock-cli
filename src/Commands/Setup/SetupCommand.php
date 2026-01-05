@@ -587,14 +587,16 @@ class SetupCommand extends Command
         $this->updateEnvFile($newUrl);
         $output->writeln('<info>✓ .env actualizado</info>');
         
-        // Si cambió puerto, actualizar docker-compose.yml y reconstruir
-        if ($newPort !== $currentPort) {
-            $output->writeln("<comment>Puerto cambió de {$currentPort} a {$newPort}</comment>");
-            $this->updateDockerComposePort($newPort);
-            $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
+        // Si cambió la URL (host o puerto), necesitamos reiniciar para que Docker lea el nuevo .env
+        if ($currentUrl !== $newUrl || $newPort !== $currentPort) {
+            if ($newPort !== $currentPort) {
+                $output->writeln("<comment>Puerto cambió de {$currentPort} a {$newPort}</comment>");
+                $this->updateDockerComposePort($newPort);
+                $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
+            }
             
-            // Reconstruir contenedores
-            $output->writeln('<comment>Reconstruyendo contenedores...</comment>');
+            // Reconstruir contenedores para que Docker lea el nuevo .env
+            $output->writeln('<comment>Reiniciando contenedores para aplicar cambios de URL...</comment>');
             $dockerService = $this->dockerService;
             
             $process = $dockerService->down();
@@ -605,8 +607,8 @@ class SetupCommand extends Command
             $process = $dockerService->up();
             $this->runWithLoader($process, $output, 'Iniciando contenedores');
             
-            sleep(3);
-            $output->writeln('<info>✓ Contenedores reconstruidos</info>');
+            sleep(5); // Dar tiempo a MySQL para arrancar
+            $output->writeln('<info>✓ Contenedores reiniciados con nueva configuración</info>');
         } else {
             $output->writeln("<info>Puerto actual: {$currentPort} (sin cambios)</info>");
             $output->writeln('<info>✓ docker-compose.yml sin cambios</info>');
