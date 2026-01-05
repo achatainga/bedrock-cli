@@ -55,15 +55,17 @@ class StateService
             }
         }
 
-        file_put_contents(
-            "{$projectPath}/bedrock_state.json",
-            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-        );
+        $stateFile = $this->getStateFilePath($projectPath);
+        $stateDir = dirname($stateFile);
+        if (!is_dir($stateDir)) {
+            @mkdir($stateDir, 0755, true);
+        }
+        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     public function loadState(string $projectPath): ?array
     {
-        $file = "{$projectPath}/bedrock_state.json";
+        $file = $this->getStateFilePath($projectPath);
         
         // Si no existe y es un proyecto Bedrock, generarlo
         if (!file_exists($file) && $this->isBedrockProject($projectPath)) {
@@ -109,10 +111,16 @@ class StateService
             $state['wizard_mode'] = false;
         }
 
-        file_put_contents(
-            "{$projectPath}/bedrock_state.json",
-            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
+        $stateFile = $this->getStateFilePath($projectPath);
+        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function getStateFilePath(string $projectPath): string
+    {
+        $home = getenv('HOME') ?: getenv('USERPROFILE');
+        $stateDir = $home . '/.bedrock/states';
+        $projectHash = md5($projectPath);
+        return "{$stateDir}/{$projectHash}.json";
     }
 
     public function markStepCompleted(int $stepId): void
@@ -545,10 +553,8 @@ class StateService
             }
 
             // Guardar estado actualizado
-            file_put_contents(
-                "{$projectPath}/bedrock_state.json",
-                json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-            );
+            $stateFile = $this->getStateFilePath($projectPath);
+            file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         }
     }
 }
