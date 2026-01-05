@@ -308,12 +308,34 @@ class SetupCommand extends Command
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
         $adminEmail = $helper->ask($input, $output, new Question('Email admin [admin@example.com]: ', 'admin@example.com'));
         
+        // Selector de idioma
+        $output->writeln('');
+        $locales = [
+            'en_US' => 'English (United States)',
+            'es_ES' => 'Español (España)',
+            'es_VE' => 'Español (Venezuela)',
+            'es_MX' => 'Español (México)',
+            'es_AR' => 'Español (Argentina)',
+            'de_DE' => 'Deutsch (Deutschland)',
+            'fr_FR' => 'Français (France)',
+            'pt_BR' => 'Português (Brasil)'
+        ];
+        
+        $localeQuestion = new \Symfony\Component\Console\Question\ChoiceQuestion(
+            'Selecciona el idioma de WordPress:',
+            array_values($locales),
+            2  // Default: es_VE
+        );
+        $selectedLocaleName = $helper->ask($input, $output, $localeQuestion);
+        $locale = array_search($selectedLocaleName, $locales);
+        
         return [
             'url' => $url,
             'title' => $title,
             'adminUser' => $adminUser,
             'adminPassword' => $adminPassword,
-            'adminEmail' => $adminEmail
+            'adminEmail' => $adminEmail,
+            'locale' => $locale
         ];
     }
     
@@ -366,7 +388,8 @@ class SetupCommand extends Command
                 'title' => $config['title'],
                 'admin_user' => $config['adminUser'],
                 'admin_password' => $config['adminPassword'],
-                'admin_email' => $config['adminEmail']
+                'admin_email' => $config['adminEmail'],
+                'locale' => $config['locale'] ?? 'es_VE'
             ]);
             
             $this->runWithLoader($process, $output, 'Instalando WordPress');
