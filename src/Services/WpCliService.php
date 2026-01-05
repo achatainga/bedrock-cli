@@ -7,14 +7,25 @@ use Symfony\Component\Process\Process;
 class WpCliService
 {
     private DockerService $docker;
+    private bool $isDockerProject;
+    private string $projectPath;
 
     public function __construct(DockerService $docker)
     {
         $this->docker = $docker;
+        $this->projectPath = getcwd();
+        $this->isDockerProject = file_exists($this->projectPath . '/docker-compose.yml');
     }
 
     public function exec(array $args): Process
     {
+        if (!$this->isDockerProject) {
+            // Native mode: use vendor/bin/wp directly
+            $wpPath = $this->projectPath . '/vendor/bin/wp';
+            return new Process(array_merge([$wpPath], $args), $this->projectPath);
+        }
+
+        // Docker mode
         // Escapar argumentos para evitar problemas con espacios y caracteres especiales
         $escapedArgs = array_map(function($arg) {
             // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas
