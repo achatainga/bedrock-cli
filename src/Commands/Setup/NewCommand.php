@@ -367,11 +367,29 @@ class NewCommand extends Command
         $mode = $input->getOption('mode') ?: ($input->getOption('no-docker') ? 'native' : 'full');
         $useRedis = !$input->getOption('no-redis');
         
+        // Determinar puertos
+        $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
+        $redisPort = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
+        
         // Determinar hosts según el modo
         // Full: usa nombres de servicio Docker
         // Hybrid/Native: usa 127.0.0.1 (Docker mapeado o servicio local)
         $dbHost = ($mode === 'full') ? 'mysql' : '127.0.0.1';
         $redisHost = ($mode === 'full') ? 'redis' : '127.0.0.1';
+        
+        // Agregar DB_PORT solo si no es modo full (en full usa 3306 interno)
+        $dbPortLine = '';
+        if ($mode !== 'full') {
+            $dbPortLine = "\nDB_PORT={$mysqlPort}";
+        }
+        
+        // Agregar REDIS_PORT solo si no es modo full
+        $redisPortLine = '';
+        if ($mode !== 'full') {
+            $redisPortLine = "\nREDIS_PORT={$redisPort}";
+        } else {
+            $redisPortLine = "\nREDIS_PORT=6379";
+        }
 
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
@@ -387,11 +405,13 @@ class NewCommand extends Command
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
             '{{DB_HOST}}' => $dbHost,
+            '{{DB_PORT_LINE}}' => $dbPortLine,
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,
             '{{WP_CACHE}}' => $useRedis ? 'true' : 'false',
             '{{REDIS_HOST}}' => $redisHost,
+            '{{REDIS_PORT_LINE}}' => $redisPortLine,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),
