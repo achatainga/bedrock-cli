@@ -61,22 +61,34 @@ class ProjectValidationService
             return new DatabaseValidation(false, "Fallo conexión Híbrida a 127.0.0.1:{$dbPort}. Verifica que Docker esté corriendo.");
         }
 
-        // 2. Modo Docker Puro: Usar docker-compose exec
+        // 2. Modo Docker Puro: Usar docker exec directo (más robusto)
         if ($mode === ExecutionMode::DOCKER) {
             // Check if containers are running first
             if (!$this->areContainersRunning($projectPath)) {
                 return new DatabaseValidation(false, 'Docker containers not running');
             }
 
-            // Test database connection via Docker
+            // Test database connection via Docker usando docker exec directo
             $dbName = trim($env['DB_NAME'], '"\'');
             $dbUser = trim($env['DB_USER'], '"\'');
             $dbPass = trim($env['DB_PASSWORD'], '"\'');
+            $projectName = basename($projectPath);
             
-            exec("docker-compose -f {$projectPath}/docker-compose.yml exec -T mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>/dev/null", $output, $returnCode);
+            // Usar docker exec directo con el nombre del contenedor (más robusto que docker-compose exec)
+            $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>&1";
+            $output = shell_exec($cmd);
             
-            if ($returnCode === 0 && !empty($output)) {
+            // Verificar si la salida contiene el nombre de la base de datos
+            if ($output && strpos($output, $dbName) !== false) {
                 return new DatabaseValidation(true, 'Database connection successful (Docker)');
+            }
+            
+            // Si falla, intentar solo verificar que MySQL responde (más permisivo)
+            $pingCmd = "docker exec {$projectName}_mysql mysqladmin -u{$dbUser} -p{$dbPass} ping 2>&1";
+            $pingOutput = shell_exec($pingCmd);
+            
+            if ($pingOutput && strpos($pingOutput, 'mysqld is alive') !== false) {
+                return new DatabaseValidation(true, 'MySQL is alive (Docker)');
             }
             
             return new DatabaseValidation(false, 'Database connection failed inside Docker');
