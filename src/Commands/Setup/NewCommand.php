@@ -168,7 +168,7 @@ class NewCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress (wp-cli nativo):</comment>');
             $output->writeln('  wp core install \\');
-            $output->writeln('    --path=/var/www/{$name}/web \\');
+            $output->writeln("    --path=/var/www/{$name}/web \\");
             $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: 82) . ' \\');
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
@@ -180,9 +180,9 @@ class NewCommand extends Command
             if (!$input->getOption('no-acorn')) {
                 $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
                 $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
-                $output->writeln('<comment>    wp plugin activate acorn --path=/var/www/{$name}/web</comment>');
-                $output->writeln('<comment>    wp acorn acorn:init storage --path=/var/www/{$name}/web</comment>');
-                $output->writeln('<comment>    wp acorn vendor:publish --tag=acorn --path=/var/www/{$name}/web</comment>');
+                $output->writeln("<comment>    wp plugin activate acorn --path=/var/www/{$name}/web</comment>");
+                $output->writeln("<comment>    wp acorn acorn:init storage --path=/var/www/{$name}/web</comment>");
+                $output->writeln("<comment>    wp acorn vendor:publish --tag=acorn --path=/var/www/{$name}/web</comment>");
                 $output->writeln('');
             }
             
