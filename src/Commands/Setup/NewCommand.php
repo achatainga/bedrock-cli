@@ -199,7 +199,7 @@ class NewCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Lee README.md para workflow completo</comment>');
         }
-        }
+        
         $output->writeln('');
         $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
         $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --no-docker</comment>');
