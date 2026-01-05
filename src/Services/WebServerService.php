@@ -241,9 +241,14 @@ APACHE;
         exec('sudo systemctl reload nginx 2>&1', $output, $returnCode);
         
         if ($returnCode !== 0) {
+            // Guardar archivo localmente para uso manual
+            $localPath = getcwd() . "/{$projectName}/{$projectName}-nginx.conf";
+            file_put_contents($localPath, $configContent);
+            
             return [
                 'success' => false,
-                'message' => 'Error al recargar nginx: ' . implode("\n", $output)
+                'message' => 'Error al recargar nginx: ' . implode("\n", $output),
+                'config_file' => $localPath
             ];
         }
         

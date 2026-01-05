@@ -129,9 +129,13 @@ class NewCommand extends Command
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
         $output->writeln('');
         
+        $mode = $input->getOption('mode') ?: ($input->getOption('no-docker') ? 'native' : 'full');
+        
         $output->writeln('<comment>Próximos pasos:</comment>');
         $output->writeln("  cd {$name}");
-        if (!$input->getOption('no-docker')) {
+        
+        if ($mode === 'full') {
+            // Modo Full Docker
             $output->writeln('  docker-compose up -d');
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
@@ -144,7 +148,6 @@ class NewCommand extends Command
             $output->writeln('    --locale=es_ES');
             $output->writeln('');
             
-            // Mostrar instrucciones de Acorn si fue instalado
             if (!$input->getOption('no-acorn')) {
                 $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
                 $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
@@ -159,10 +162,43 @@ class NewCommand extends Command
                 $output->writeln('<comment>    • storage/ (logs, cache, framework)</comment>');
                 $output->writeln('');
             }
+        } elseif ($mode === 'hybrid') {
+            // Modo Híbrido
+            $output->writeln('  docker-compose up -d  # Solo MySQL + Redis');
+            $output->writeln('');
+            $output->writeln('<comment>Instalar WordPress (wp-cli nativo):</comment>');
+            $output->writeln('  wp core install \\');
+            $output->writeln('    --path=/var/www/{$name}/web \\');
+            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: 82) . ' \\');
+            $output->writeln('    --title="Mi Sitio" \\');
+            $output->writeln('    --admin_user=admin \\');
+            $output->writeln('    --admin_password=admin \\');
+            $output->writeln('    --admin_email=admin@example.com \\');
+            $output->writeln('    --locale=es_ES');
+            $output->writeln('');
             
-            $output->writeln('<comment>Lee README.md para workflow completo</comment>');
+            if (!$input->getOption('no-acorn')) {
+                $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
+                $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
+                $output->writeln('<comment>    wp plugin activate acorn --path=/var/www/{$name}/web</comment>');
+                $output->writeln('<comment>    wp acorn acorn:init storage --path=/var/www/{$name}/web</comment>');
+                $output->writeln('<comment>    wp acorn vendor:publish --tag=acorn --path=/var/www/{$name}/web</comment>');
+                $output->writeln('');
+            }
+            
+            $output->writeln('<comment>Nginx ya configurado en puerto ' . ($input->getOption('http-port') ?: 82) . '</comment>');
         } else {
+            // Modo Native
             $output->writeln('  composer install');
+            $output->writeln('');
+            $output->writeln('<comment>Configura tu servidor web (Apache/Nginx) apuntando a:</comment>');
+            $output->writeln("  Document Root: {$name}/web");
+        }
+        
+        if ($mode !== 'native') {
+            $output->writeln('');
+            $output->writeln('<comment>Lee README.md para workflow completo</comment>');
+        }
         }
         $output->writeln('');
         $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
