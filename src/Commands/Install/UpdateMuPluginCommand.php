@@ -54,7 +54,12 @@ class UpdateMuPluginCommand extends Command
 
         // Remove existing if present
         if (file_exists($newPluginDir)) {
-            $this->recursiveRemove($newPluginDir);
+            $output->writeln("<fg=yellow>⚠ Removing old version...</>");
+            $removeResult = $this->recursiveRemove($newPluginDir);
+            if (!$removeResult) {
+                $output->writeln("<fg=red>✗ Permission denied. Run: sudo chown -R $USER:$USER web/app/mu-plugins</>");
+                return Command::FAILURE;
+            }
         }
 
         // Copy directory
@@ -111,16 +116,20 @@ class UpdateMuPluginCommand extends Command
         closedir($dir);
     }
 
-    private function recursiveRemove(string $dir): void
+    private function recursiveRemove(string $dir): bool
     {
-        if (!is_dir($dir)) return;
+        if (!is_dir($dir)) return true;
         
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
-            is_dir($path) ? $this->recursiveRemove($path) : unlink($path);
+            if (is_dir($path)) {
+                if (!$this->recursiveRemove($path)) return false;
+            } else {
+                if (!@unlink($path)) return false;
+            }
         }
         
-        rmdir($dir);
+        return @rmdir($dir);
     }
 }
