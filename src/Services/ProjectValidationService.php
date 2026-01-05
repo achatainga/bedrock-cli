@@ -156,11 +156,17 @@ class ProjectValidationService
 
     public function validateTheme(string $projectPath, string $themeName): object
     {
-        if (!$this->areContainersRunning($projectPath)) {
-            return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+        $mode = $this->contextDetector->detectExecutionMode();
+        
+        if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
+            $cmd = "wp theme status {$themeName} --path={$projectPath}/web 2>/dev/null";
+        } else {
+            if (!$this->areContainersRunning($projectPath)) {
+                return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+            }
+            $cmd = "cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null";
         }
-
-        $cmd = "cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null";
+        
         exec($cmd, $output, $returnCode);
         
         $isActive = false;
@@ -179,11 +185,17 @@ class ProjectValidationService
 
     public function validatePlugins(string $projectPath): object
     {
-        if (!$this->areContainersRunning($projectPath)) {
-            return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+        $mode = $this->contextDetector->detectExecutionMode();
+        
+        if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
+            $cmd = "wp plugin list --status=active --format=count --path={$projectPath}/web 2>/dev/null";
+        } else {
+            if (!$this->areContainersRunning($projectPath)) {
+                return (object)['isValid' => false, 'message' => 'Docker containers not running'];
+            }
+            $cmd = "cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null";
         }
-
-        $cmd = "cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null";
+        
         exec($cmd, $output, $returnCode);
         
         $count = isset($output[0]) ? (int)trim($output[0]) : 0;
