@@ -235,11 +235,12 @@ class MainMenuCommand extends Command
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
         $projectPath = getcwd();
+        $isDockerProject = file_exists($projectPath . '/docker-compose.yml');
         
         $validations = [
             'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
             'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
-            'Docker containers' => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
+            ($isDockerProject ? 'Docker containers' : 'Project mode') => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
             'Database connection' => ['delay' => 0.4, 'method' => 'validateDatabaseAccess'],
             'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
             'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
