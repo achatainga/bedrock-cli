@@ -394,6 +394,13 @@ class SetupCommand extends Command
             
             $this->runWithLoader($process, $output, 'Instalando WordPress');
             
+            // Fix: Forzar actualización de URLs en BD para sobrescribir valores cacheados por Docker
+            if ($process->isSuccessful()) {
+                $cleanUrl = rtrim($config['url'], '/');
+                $wpcli->custom("option update home '{$cleanUrl}'")->run();
+                $wpcli->custom("option update siteurl '{$cleanUrl}/wp'")->run();
+            }
+            
             if (!$process->isSuccessful()) {
                 $output->writeln('<error>✗ Error al instalar WordPress</error>');
                 $output->writeln('');
@@ -696,6 +703,13 @@ class SetupCommand extends Command
         $content = preg_replace(
             "/^WP_HOME=.*/m",
             "WP_HOME=\"{$cleanUrl}\"",
+            $content
+        );
+        
+        // También actualizar APP_URL (Acorn)
+        $content = preg_replace(
+            "/^APP_URL=.*/m",
+            "APP_URL=\"{$cleanUrl}\"",
             $content
         );
         file_put_contents($envPath, $content);
