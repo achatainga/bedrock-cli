@@ -18,10 +18,10 @@ class ContextDetector
 
     public function detectExecutionMode(): ExecutionMode
     {
-        $root = $this->getProjectRoot();
+        $root = getcwd(); // Use current directory instead of getProjectRoot()
         
         // 1. Sin docker-compose.yml -> NATIVE
-        if (!$root || !file_exists($root . '/docker-compose.yml')) {
+        if (!file_exists($root . '/docker-compose.yml')) {
             return ExecutionMode::NATIVE;
         }
 
@@ -32,7 +32,7 @@ class ContextDetector
         // 3. Lógica Híbrida: Hay Docker, pero config apunta a local
         $isLocalHost = in_array($dbHost, ['127.0.0.1', 'localhost']);
         
-        if ($isLocalHost && $this->dockerService->areContainersUp()) {
+        if ($isLocalHost) {
             return ExecutionMode::HYBRID;
         }
 

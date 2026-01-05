@@ -57,7 +57,8 @@ class UpdateMuPluginCommand extends Command
             $output->writeln("<fg=yellow>⚠ Removing old version...</>");
             $removeResult = $this->recursiveRemove($newPluginDir);
             if (!$removeResult) {
-                $output->writeln("<fg=red>✗ Permission denied. Run: sudo chown -R $USER:$USER web/app/mu-plugins</>");
+                $currentUser = posix_getpwuid(posix_geteuid())['name'];
+                $output->writeln("<fg=red>✗ Permission denied. Run: sudo chown -R {$currentUser}:{$currentUser} web/app/mu-plugins</>");
                 return Command::FAILURE;
             }
         }
