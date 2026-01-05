@@ -695,7 +695,7 @@ class SetupCommand extends Command
 
         $content = preg_replace(
             "/^WP_HOME=.*/m",
-            "WP_HOME='{$cleanUrl}'",
+            "WP_HOME=\"{$cleanUrl}\"",
             $content
         );
         file_put_contents($envPath, $content);
