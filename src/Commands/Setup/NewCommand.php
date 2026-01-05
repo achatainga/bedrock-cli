@@ -64,6 +64,8 @@ class NewCommand extends Command
             ->addOption('http-port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP')
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
+            ->addOption('mode', null, InputOption::VALUE_REQUIRED, 'Modo de ejecución (full, hybrid, native)', 'full')
+            ->addOption('hybrid-services', null, InputOption::VALUE_REQUIRED, 'Servicios híbridos (separados por coma)', 'mysql,redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
             ->addOption('profile', null, InputOption::VALUE_REQUIRED, 'Profile a usar', 'default');
     }
@@ -216,14 +218,22 @@ class NewCommand extends Command
 
     private function setupDocker(string $name, InputInterface $input, OutputInterface $output): void
     {
-        $output->writeln('<info>Configurando Docker...</info>');
+        $mode = $input->getOption('mode');
+        
+        // Native mode: No generar archivos Docker
+        if ($mode === 'native') {
+            return;
+        }
+
+        $output->writeln('<info>Configurando Docker (' . ucfirst($mode) . ')...</info>');
 
         $stubsDir = $this->getStubsDir();
         $projectName = $name;
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $dbUser = $input->getOption('db-user');
         $dbPass = $input->getOption('db-pass');
-
+        
+        // Determinar puertos (necesarios para reemplazo en stub)
         $httpPort = $input->getOption('http-port') ?: $this->determineHttpPort(null, $output)['port'];
         $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
         $redisPort = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
@@ -238,15 +248,44 @@ class NewCommand extends Command
             '{{REDIS_PORT}}' => $redisPort,
         ];
 
+        // 1. Generar docker-compose.yml base desde stub
         $this->copyStub("{$stubsDir}/docker-compose.yml.stub", "{$name}/docker-compose.yml", $vars);
-        $this->copyStub("{$stubsDir}/Dockerfile.web.stub", "{$name}/Dockerfile.web", $vars);
-        
-        @mkdir("{$name}/docker/nginx", 0755, true);
+
+        // 2. Adaptar si es modo Híbrido
+        if ($mode === 'hybrid') {
+            $hybridServices = explode(',', $input->getOption('hybrid-services'));
+            $yamlContent = file_get_contents("{$name}/docker-compose.yml");
+            
+            // Usar Symfony Yaml (ya incluido en dependencias) para manipular estructura
+            $config = \Symfony\Component\Yaml\Yaml::parse($yamlContent);
+            
+            // Eliminar servicios de aplicación (web, nginx)
+            unset($config['services']['web']);
+            unset($config['services']['nginx']);
+            
+            // Filtrar servicios de datos según selección
+            if (!in_array('mysql', $hybridServices)) {
+                unset($config['services']['mysql']);
+            }
+            if (!in_array('redis', $hybridServices)) {
+                unset($config['services']['redis']);
+            }
+            
+            // Guardar YAML modificado
+            file_put_contents("{$name}/docker-compose.yml", \Symfony\Component\Yaml\Yaml::dump($config, 4, 2));
+        }
+
+        // 3. Generar archivos de configuración auxiliares
         @mkdir("{$name}/docker/mysql", 0755, true);
-        
-        $this->copyStub("{$stubsDir}/docker/nginx/default.conf.stub", "{$name}/docker/nginx/default.conf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/client.cnf.stub", "{$name}/docker/mysql/client.cnf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/my.cnf.stub", "{$name}/docker/mysql/my.cnf", $vars);
+
+        // Archivos específicos de Full Mode
+        if ($mode === 'full') {
+            $this->copyStub("{$stubsDir}/Dockerfile.web.stub", "{$name}/Dockerfile.web", $vars);
+            @mkdir("{$name}/docker/nginx", 0755, true);
+            $this->copyStub("{$stubsDir}/docker/nginx/default.conf.stub", "{$name}/docker/nginx/default.conf", $vars);
+        }
 
         $output->writeln('<info>✓ Archivos Docker creados</info>');
     }
@@ -289,9 +328,15 @@ class NewCommand extends Command
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = $input->getOption('http-port') ?: $this->webServerService->findFreePort(80);
-        $useDocker = !$input->getOption('no-docker');
+        $mode = $input->getOption('mode') ?: ($input->getOption('no-docker') ? 'native' : 'full');
         $useRedis = !$input->getOption('no-redis');
         
+        // Determinar hosts según el modo
+        // Full: usa nombres de servicio Docker
+        // Hybrid/Native: usa 127.0.0.1 (Docker mapeado o servicio local)
+        $dbHost = ($mode === 'full') ? 'mysql' : '127.0.0.1';
+        $redisHost = ($mode === 'full') ? 'redis' : '127.0.0.1';
+
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
         $wpHomeUrl = 'http://localhost';
@@ -305,12 +350,12 @@ class NewCommand extends Command
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $input->getOption('db-user'),
             '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
-            '{{DB_HOST}}' => $useDocker ? 'mysql' : 'localhost',
+            '{{DB_HOST}}' => $dbHost,
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,
             '{{WP_CACHE}}' => $useRedis ? 'true' : 'false',
-            '{{REDIS_HOST}}' => $useDocker ? 'redis' : 'localhost',
+            '{{REDIS_HOST}}' => $redisHost,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),

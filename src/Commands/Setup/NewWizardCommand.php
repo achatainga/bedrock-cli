@@ -122,13 +122,49 @@ class NewWizardCommand extends Command
         $dbPassQuestion = new Question('<fg=yellow>Contraseña BD [mysql]:</> ', 'mysql');
         $dbPass = $helper->ask($input, $output, $dbPassQuestion);
 
-        // 5. Opciones adicionales
+        // 5. Modo de Ejecución
         $output->writeln('');
-        $output->writeln('<fg=cyan>═══ OPCIONES ADICIONALES ═══</>');
+        $output->writeln('<fg=cyan>═══ MODO DE EJECUCIÓN ═══</>');
         
-        $dockerQuestion = new Question('<fg=yellow>¿Generar archivos Docker? (S/n):</> ', 'S');
-        $dockerAnswer = strtoupper(trim($helper->ask($input, $output, $dockerQuestion)));
-        $withDocker = $dockerAnswer === 'S' || $dockerAnswer === 'Y' || $dockerAnswer === '';
+        $modeChoices = [
+            'full' => '🐳 Full Docker (Todo en contenedores: Web + DB + Redis)',
+            'hybrid' => '🚀 Hybrid (PHP local + Servicios en Docker)',
+            'native' => '💻 Native (Todo local: LAMP/LEMP clásico)'
+        ];
+        
+        $modeQuestion = new ChoiceQuestion(
+            '<fg=yellow>Selecciona el modo de ejecución:</>',
+            array_values($modeChoices),
+            0
+        );
+        $modeAnswer = $helper->ask($input, $output, $modeQuestion);
+        $mode = array_search($modeAnswer, $modeChoices); // 'full', 'hybrid', 'native'
+
+        $withDocker = $mode !== 'native';
+        $hybridServices = [];
+
+        // Configuración específica para modo Híbrido
+        if ($mode === 'hybrid') {
+            $output->writeln('');
+            $output->writeln('<fg=cyan>Configuración Híbrida:</>');
+            
+            $serviceQuestion = new ChoiceQuestion(
+                '<fg=yellow>¿Qué servicios quieres en Docker? (separados por coma, ej: 0,1):</>',
+                ['MySQL', 'Redis'],
+                '0,1'
+            );
+            $serviceQuestion->setMultiselect(true);
+            $selectedServices = $helper->ask($input, $output, $serviceQuestion);
+            
+            if (in_array('MySQL', $selectedServices)) $hybridServices[] = 'mysql';
+            if (in_array('Redis', $selectedServices)) $hybridServices[] = 'redis';
+            
+            // Validar WP-CLI global
+            $wpPath = trim(shell_exec('which wp 2>/dev/null') ?: '');
+            if (empty($wpPath)) {
+                $output->writeln('<fg=yellow>⚠️  WP-CLI global no detectado. Es necesario para el modo híbrido.</>');
+            }
+        }
         
         $acornQuestion = new Question('<fg=yellow>¿Instalar Roots Acorn? (S/n):</> ', 'S');
         $acornAnswer = strtoupper(trim($helper->ask($input, $output, $acornQuestion)));
@@ -267,9 +303,11 @@ class NewWizardCommand extends Command
             '--db-name' => $dbName,
             '--db-user' => $dbUser,
             '--db-pass' => $dbPass,
+            '--mode' => $mode,
+            '--hybrid-services' => implode(',', $hybridServices ?? []),
         ];
         
-        if (!$withDocker) {
+        if ($mode === 'native') {
             $arguments['--no-docker'] = true;
         } else {
             $arguments['--http-port'] = $httpPort;
