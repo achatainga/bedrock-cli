@@ -56,7 +56,7 @@ class MainMenuCommand extends Command
         // FASE 2.5: Validaciones con animación y cache
         $skipValidation = $input->getOption('skip-validation');
         
-        if ($state && $state['wizard_mode'] && !$skipValidation) {
+        if ($state && !$skipValidation) {
             $this->showValidationProgress($output);
             $this->stateService->updateStepValidations(getcwd());
             // Recargar estado después de validaciones
