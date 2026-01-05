@@ -134,7 +134,7 @@ class NewCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
             $output->writeln('  docker-compose exec web wp core install \\');
-            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->findFreePort(80, $output)) . ' \\');
+            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->webServerService->findFreePort(80)) . ' \\');
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
             $output->writeln('    --admin_password=admin \\');
@@ -288,7 +288,7 @@ class NewCommand extends Command
 
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $httpPort = $input->getOption('http-port') ?: $this->webServerService->findFreePort(80);
         $useDocker = !$input->getOption('no-docker');
         $useRedis = !$input->getOption('no-redis');
         
@@ -327,8 +327,8 @@ class NewCommand extends Command
 
         if (!$input->getOption('no-docker')) {
             $vars['{{HTTP_PORT}}'] = $httpPort;
-            $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
-            $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+            $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
+            $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
             $this->copyStub("{$stubsDir}/README.project.stub", "{$name}/README.md", $vars);
         }
 
@@ -635,7 +635,7 @@ class NewCommand extends Command
         $output->writeln('<info>Generando wizard de configuración...</info>');
 
 
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $httpPort = $input->getOption('http-port') ?: $this->webServerService->findFreePort(80);
 
         $themeName = 'twentytwentyfive';
         if ($profile && !empty($profile['themes'])) {
