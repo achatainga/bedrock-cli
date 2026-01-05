@@ -6,9 +6,18 @@ use Roots\BedrockCli\ValueObjects\DockerValidation;
 use Roots\BedrockCli\ValueObjects\DatabaseValidation;
 use Roots\BedrockCli\ValueObjects\WordPressValidation;
 use Roots\BedrockCli\ValueObjects\AcornValidation;
+use Roots\BedrockCli\Services\Management\ContextDetector;
+use Roots\BedrockCli\Enums\ExecutionMode;
 
 class ProjectValidationService
 {
+    private ContextDetector $contextDetector;
+
+    public function __construct(ContextDetector $contextDetector)
+    {
+        $this->contextDetector = $contextDetector;
+    }
+
     public function validateDocker(string $projectPath): DockerValidation
     {
         $dockerComposePath = $projectPath . '/docker-compose.yml';
@@ -38,9 +47,22 @@ class ProjectValidationService
         }
 
         $dockerComposePath = $projectPath . '/docker-compose.yml';
-        $isDockerProject = file_exists($dockerComposePath);
+        $mode = $this->contextDetector->detectExecutionMode();
 
-        if ($isDockerProject) {
+        // 1. Modo Híbrido: Conexión TCP al host (Docker expuesto)
+        if ($mode === ExecutionMode::HYBRID) {
+            $dbPort = $env['DB_PORT'] ?? 3306;
+            $connection = @fsockopen('127.0.0.1', $dbPort, $errno, $errstr, 2);
+            
+            if (is_resource($connection)) {
+                fclose($connection);
+                return new DatabaseValidation(true, "Conexión Híbrida OK (127.0.0.1:{$dbPort})");
+            }
+            return new DatabaseValidation(false, "Fallo conexión Híbrida a 127.0.0.1:{$dbPort}. Verifica que Docker esté corriendo.");
+        }
+
+        // 2. Modo Docker Puro: Usar docker-compose exec
+        if ($mode === ExecutionMode::DOCKER) {
             // Check if containers are running first
             if (!$this->areContainersRunning($projectPath)) {
                 return new DatabaseValidation(false, 'Docker containers not running');
@@ -51,21 +73,16 @@ class ProjectValidationService
             $dbUser = trim($env['DB_USER'], '"\'');
             $dbPass = trim($env['DB_PASSWORD'], '"\'');
             
-            $projectName = basename($projectPath);
             exec("docker-compose -f {$projectPath}/docker-compose.yml exec -T mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>/dev/null", $output, $returnCode);
             
             if ($returnCode === 0 && !empty($output)) {
-                foreach ($output as $line) {
-                    if (strpos($line, $dbName) !== false) {
-                        return new DatabaseValidation(true, 'Database connection successful');
-                    }
-                }
+                return new DatabaseValidation(true, 'Database connection successful (Docker)');
             }
             
-            return new DatabaseValidation(false, 'Database connection failed or database does not exist');
+            return new DatabaseValidation(false, 'Database connection failed inside Docker');
         }
 
-        // Native mode: test direct MySQL connection
+        // 3. Modo Nativo: Conexión MySQL local
         $dbHost = trim($env['DB_HOST'], '"\'');
         $dbName = trim($env['DB_NAME'], '"\'');
         $dbUser = trim($env['DB_USER'], '"\'');

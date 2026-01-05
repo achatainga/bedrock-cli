@@ -592,7 +592,8 @@ class SetupCommand extends Command
         
         // Si es solo número, asumir localhost
         if (preg_match('/^\d+$/', $input)) {
-            return "http://localhost:{$input}";
+            $port = (int)$input;
+            return $port === 80 ? 'http://localhost' : "http://localhost:{$input}";
         }
         
         // Si no tiene protocolo, agregar http://
@@ -650,9 +651,12 @@ class SetupCommand extends Command
         
         $content = file_get_contents($envPath);
         // Reemplazar toda la línea WP_HOME, no solo el valor
+        // Asegurar que no guardamos :80 en el .env
+        $cleanUrl = preg_replace('/:(80|443)$/', '', $newUrl);
+
         $content = preg_replace(
             "/^WP_HOME=.*/m",
-            "WP_HOME='{$newUrl}'",
+            "WP_HOME='{$cleanUrl}'",
             $content
         );
         file_put_contents($envPath, $content);

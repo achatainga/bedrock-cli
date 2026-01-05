@@ -216,4 +216,26 @@ trait ProjectCreationTrait
         $output->writeln("  sudo ln -s /etc/{$webServer}/sites-available/{$projectName} /etc/{$webServer}/sites-enabled/");
         $output->writeln("  sudo {$webServer} -t && sudo systemctl reload {$webServer}");
     }
+
+    /**
+     * Limpia la URL de puertos estándar innecesarios (:80, :443)
+     */
+    protected function sanitizeWpHomeUrl(string $url): string 
+    {
+        $parsed = parse_url($url);
+        $scheme = $parsed['scheme'] ?? 'http';
+        $host = $parsed['host'] ?? 'localhost';
+        $port = $parsed['port'] ?? null;
+
+        // Eliminar puertos estándar visualmente
+        if (($scheme === 'http' && $port == 80) || ($scheme === 'https' && $port == 443)) {
+            $port = null;
+        }
+
+        $portStr = $port ? ":{$port}" : '';
+        // Manejar path si existe
+        $path = $parsed['path'] ?? '';
+        
+        return "{$scheme}://{$host}{$portStr}{$path}";
+    }
 }

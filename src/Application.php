@@ -377,8 +377,10 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\BlueprintService', 'Roots\BedrockCli\Services\BlueprintService');
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
         $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
-        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService');
-        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector');
+        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
+        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
         $this->container->register('Roots\BedrockCli\Services\Management\ManagementService', 'Roots\BedrockCli\Services\Management\ManagementService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
         $this->container->register('Roots\BedrockCli\Services\Management\PluginManager', 'Roots\BedrockCli\Services\Management\PluginManager')
@@ -401,7 +403,8 @@ class Application extends BaseApplication
         
         // Add WpCliService with DockerService dependency
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'))
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
         
         // Add StateService with ProjectValidationService dependency
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService')

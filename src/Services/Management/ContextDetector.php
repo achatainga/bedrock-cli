@@ -2,10 +2,58 @@
 
 namespace Roots\BedrockCli\Services\Management;
 
+use Roots\BedrockCli\Services\DockerService;
+use Roots\BedrockCli\Enums\ExecutionMode;
+
 class ContextDetector
 {
     private ?string $projectRoot = null;
     private ?array $profileData = null;
+    private DockerService $dockerService;
+
+    public function __construct(DockerService $dockerService)
+    {
+        $this->dockerService = $dockerService;
+    }
+
+    public function detectExecutionMode(): ExecutionMode
+    {
+        $root = $this->getProjectRoot();
+        
+        // 1. Sin docker-compose.yml -> NATIVE
+        if (!$root || !file_exists($root . '/docker-compose.yml')) {
+            return ExecutionMode::NATIVE;
+        }
+
+        // 2. Leer configuración de BD del .env
+        $env = $this->readEnv($root);
+        $dbHost = $env['DB_HOST'] ?? '';
+
+        // 3. Lógica Híbrida: Hay Docker, pero config apunta a local
+        $isLocalHost = in_array($dbHost, ['127.0.0.1', 'localhost']);
+        
+        if ($isLocalHost && $this->dockerService->areContainersUp()) {
+            return ExecutionMode::HYBRID;
+        }
+
+        // 4. Default a Docker si apunta al servicio interno (ej: 'mysql')
+        return ExecutionMode::DOCKER;
+    }
+
+    private function readEnv(string $path): array
+    {
+        if (!file_exists($path . '/.env')) return [];
+        $env = [];
+        $lines = file($path . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (str_starts_with(trim($line), '#')) continue;
+            if (strpos($line, '=') !== false) {
+                [$key, $value] = explode('=', $line, 2);
+                $env[trim($key)] = trim($value, "'\"");
+            }
+        }
+        return $env;
+    }
 
     public function isBedrockProject(?string $path = null): bool
     {

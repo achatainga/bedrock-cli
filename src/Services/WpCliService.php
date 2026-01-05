@@ -3,24 +3,29 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Process\Process;
+use Roots\BedrockCli\Services\Management\ContextDetector;
+use Roots\BedrockCli\Enums\ExecutionMode;
 
 class WpCliService
 {
     private DockerService $docker;
-    private bool $isDockerProject;
+    private ContextDetector $contextDetector;
     private string $projectPath;
 
-    public function __construct(DockerService $docker)
+    public function __construct(DockerService $docker, ContextDetector $contextDetector)
     {
         $this->docker = $docker;
+        $this->contextDetector = $contextDetector;
         $this->projectPath = getcwd();
-        $this->isDockerProject = file_exists($this->projectPath . '/docker-compose.yml');
     }
 
     public function exec(array $args): Process
     {
-        if (!$this->isDockerProject) {
-            // Native mode: use global wp-cli or install it
+        $mode = $this->contextDetector->detectExecutionMode();
+
+        // Native OR Hybrid mode: use local wp-cli
+        if ($mode !== ExecutionMode::DOCKER) {
+            // Native/Hybrid mode: use global wp-cli or install it
             $wpPath = trim(shell_exec('which wp 2>/dev/null') ?: '');
             
             if (empty($wpPath)) {
@@ -36,7 +41,7 @@ class WpCliService
             return new Process(array_merge([$wpPath], $args), $this->projectPath);
         }
 
-        // Docker mode
+        // Docker Pure mode
         // Escapar argumentos para evitar problemas con espacios y caracteres especiales
         $escapedArgs = array_map(function($arg) {
             // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas
