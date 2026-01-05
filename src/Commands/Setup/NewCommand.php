@@ -295,7 +295,7 @@ class NewCommand extends Command
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
         $wpHomeUrl = 'http://localhost';
-        if ($httpPort != 80) {
+        if ((int)$httpPort !== 80) {
             $wpPortLine = "\nWP_PORT={$httpPort}";
             $wpHomeUrl = "http://localhost:\${WP_PORT}";
         }
