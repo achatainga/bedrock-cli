@@ -651,17 +651,33 @@ class SetupCommand extends Command
     
     private function readDockerComposePort(): int
     {
+        // PRIORIDAD 1: Leer de .env (fuente de verdad)
+        $envPath = getcwd() . '/.env';
+        if (file_exists($envPath)) {
+            $envContent = file_get_contents($envPath);
+            
+            // Buscar WP_PORT
+            if (preg_match('/^WP_PORT=(\d+)/m', $envContent, $matches)) {
+                return (int)$matches[1];
+            }
+            
+            // Buscar puerto en WP_HOME
+            if (preg_match('/WP_HOME=.*:(\d+)/m', $envContent, $matches)) {
+                return (int)$matches[1];
+            }
+        }
+        
+        // PRIORIDAD 2: Leer de docker-compose.yml (solo modo full)
         $dockerPath = getcwd() . '/docker-compose.yml';
-        if (!file_exists($dockerPath)) {
-            return 80;
+        if (file_exists($dockerPath)) {
+            $content = file_get_contents($dockerPath);
+            // Buscar puerto en formato "PUERTO:80"
+            if (preg_match('/-\s*"(\d+):80"/', $content, $matches)) {
+                return (int)$matches[1];
+            }
         }
         
-        $content = file_get_contents($dockerPath);
-        // Buscar puerto en formato "PUERTO:80"
-        if (preg_match('/-\s*"(\d+):80"/', $content, $matches)) {
-            return (int)$matches[1];
-        }
-        
+        // FALLBACK
         return 80;
     }
     
