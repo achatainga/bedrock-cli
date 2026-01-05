@@ -20,8 +20,19 @@ class WpCliService
     public function exec(array $args): Process
     {
         if (!$this->isDockerProject) {
-            // Native mode: use vendor/bin/wp directly
-            $wpPath = $this->projectPath . '/vendor/bin/wp';
+            // Native mode: use global wp-cli or install it
+            $wpPath = trim(shell_exec('which wp 2>/dev/null') ?: '');
+            
+            if (empty($wpPath)) {
+                // Try composer global wp-cli
+                $composerHome = getenv('COMPOSER_HOME') ?: (getenv('HOME') . '/.config/composer');
+                $wpPath = $composerHome . '/vendor/bin/wp';
+                
+                if (!file_exists($wpPath)) {
+                    throw new \RuntimeException('WP-CLI not found. Install it: composer global require wp-cli/wp-cli-bundle');
+                }
+            }
+            
             return new Process(array_merge([$wpPath], $args), $this->projectPath);
         }
 
