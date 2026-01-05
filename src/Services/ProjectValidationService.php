@@ -159,7 +159,7 @@ class ProjectValidationService
         $mode = $this->contextDetector->detectExecutionMode();
         
         if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
-            $cmd = "wp theme status {$themeName} --path={$projectPath}/web 2>/dev/null";
+            $cmd = "cd {$projectPath} && wp theme status {$themeName} 2>/dev/null";
         } else {
             if (!$this->areContainersRunning($projectPath)) {
                 return (object)['isValid' => false, 'message' => 'Docker containers not running'];
@@ -188,7 +188,7 @@ class ProjectValidationService
         $mode = $this->contextDetector->detectExecutionMode();
         
         if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
-            $cmd = "wp plugin list --status=active --format=count --path={$projectPath}/web 2>/dev/null";
+            $cmd = "cd {$projectPath} && wp plugin list --status=active --format=count 2>/dev/null";
         } else {
             if (!$this->areContainersRunning($projectPath)) {
                 return (object)['isValid' => false, 'message' => 'Docker containers not running'];
