@@ -64,8 +64,15 @@ class ComposerService
         // Agregar plugins públicos desde wpackagist
         if (!empty($profile['plugins']['public'])) {
             foreach ($profile['plugins']['public'] as $plugin) {
-                $package = "wpackagist-plugin/{$plugin['slug']}";
-                $composerData['require'][$package] = $plugin['version'];
+                if (is_string($plugin)) {
+                    // Formato simple: "woocommerce"
+                    $package = "wpackagist-plugin/{$plugin}";
+                    $composerData['require'][$package] = '*';
+                } else {
+                    // Formato completo: {"slug": "woocommerce", "version": "^8.5"}
+                    $package = "wpackagist-plugin/{$plugin['slug']}";
+                    $composerData['require'][$package] = $plugin['version'];
+                }
             }
         }
 
