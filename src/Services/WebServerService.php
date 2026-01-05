@@ -123,8 +123,61 @@ class WebServerService
      * @param int $dockerPort
      * @return string Contenido del archivo de configuración
      */
-    public function generateNginxConfig(string $projectName, string $domain, int $dockerPort): string
+    public function generateNginxConfig(string $projectName, string $domain, int $port, bool $isHybrid = false): string
     {
+        if ($isHybrid) {
+            // Modo híbrido: nginx sirve directamente PHP-FPM en el puerto especificado
+            return <<<NGINX
+server {
+    listen {$port};
+    server_name {$domain};
+    
+    root /var/www/{$projectName}/web;
+    index index.php index.html;
+    
+    # Logs
+    access_log /var/log/nginx/{$projectName}-access.log;
+    error_log /var/log/nginx/{$projectName}-error.log;
+    
+    # WordPress permalinks
+    location / {
+        try_files \$uri \$uri/ /index.php?\$args;
+    }
+    
+    # PHP-FPM
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    
+    # Deny access to sensitive files
+    location ~ /\.ht {
+        deny all;
+    }
+    
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+    
+    location = /robots.txt {
+        log_not_found off;
+        access_log off;
+    }
+    
+    # Static files caching
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires max;
+        log_not_found off;
+    }
+}
+
+NGINX;
+        }
+        
+        // Modo full: reverse proxy en puerto 80 a Docker
         return <<<NGINX
 server {
     listen 80;
@@ -136,7 +189,7 @@ server {
     
     # Reverse proxy to Docker nginx
     location / {
-        proxy_pass http://127.0.0.1:{$dockerPort};
+        proxy_pass http://127.0.0.1:{$port};
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

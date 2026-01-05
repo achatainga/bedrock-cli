@@ -340,8 +340,9 @@ class NewWizardCommand extends Command
             $domain = $helper->ask($input, $output, $domainQuestion);
             
             // Generar configuración
+            $isHybrid = ($mode === 'hybrid');
             if ($webServer === 'nginx') {
-                $config = $webServerService->generateNginxConfig($name, $domain, (int)$httpPort);
+                $config = $webServerService->generateNginxConfig($name, $domain, (int)$httpPort, $isHybrid);
                 $installResult = $webServerService->installNginxConfig($name, $config);
             } else {
                 $config = $webServerService->generateApacheConfig($name, $domain, (int)$httpPort);
