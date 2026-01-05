@@ -377,9 +377,11 @@ class NewCommand extends Command
         $dbHost = ($mode === 'full') ? 'mysql' : '127.0.0.1';
         $redisHost = ($mode === 'full') ? 'redis' : '127.0.0.1';
         
-        // Agregar DB_PORT solo si no es modo full (en full usa 3306 interno)
+        // DB_PORT: Full usa 3306 interno, Hybrid/Native usa puerto mapeado
         $dbPortLine = '';
-        if ($mode !== 'full') {
+        if ($mode === 'full') {
+            $dbPortLine = "\nDB_PORT=3306";
+        } else {
             $dbPortLine = "\nDB_PORT={$mysqlPort}";
         }
         
