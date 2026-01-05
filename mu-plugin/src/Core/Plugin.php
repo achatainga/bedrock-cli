@@ -5,18 +5,21 @@ namespace BedrockCli\Plugin\Core;
 use BedrockCli\Plugin\API\RestController;
 use BedrockCli\Plugin\Admin\AdminMenu;
 use BedrockCli\Plugin\Utils\Logger;
+use BedrockCli\Plugin\Core\Security;
 
 class Plugin
 {
     private Logger $logger;
     private RestController $restController;
     private AdminMenu $adminMenu;
+    private Security $security;
 
     public function __construct()
     {
         $this->logger = new Logger();
         $this->restController = new RestController($this->logger);
         $this->adminMenu = new AdminMenu();
+        $this->security = new Security();
 
         add_action('rest_api_init', [$this->restController, 'registerRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
