@@ -64,7 +64,9 @@ class PluginController
                 $patterns = [
                     $slug . '/' . $slug . '.php',
                     $slug . '/index.php', 
-                    $slug . '/wp-' . $slug . '.php'
+                    $slug . '/wp-' . $slug . '.php',
+                    $slug . '/' . str_replace('-translate', '', $slug) . '.php', // loco-translate -> loco.php
+                    $slug . '/' . explode('-', $slug)[0] . '.php' // primer-palabra.php
                 ];
                 
                 $isActive = false;
