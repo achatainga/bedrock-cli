@@ -140,6 +140,7 @@ class MainMenuCommand extends Command
             $output->writeln('');
             
             $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
+            $this->printMenuItem($output, 'L', 'L', '🌐 Language - Cambiar idioma', $currentStep);
             $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
             
             if ($needsAuth) {
@@ -155,7 +156,7 @@ class MainMenuCommand extends Command
             $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, A, T, U, B, R]:</> ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, L, A, T, U, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -164,9 +165,9 @@ class MainMenuCommand extends Command
             
             $selectedIndex = strtoupper($selectedIndex);
             
-            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'A', 'T', 'U', 'B', 'R'];
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'L', 'A', 'T', 'U', 'B', 'R'];
             if (!in_array($selectedIndex, $validOptions)) {
-                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, A, T, B, R.</error>');
+                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, L, A, T, B, R.</error>');
                 sleep(1);
                 continue;
             }
@@ -190,6 +191,7 @@ class MainMenuCommand extends Command
                 '9' => 'init:menu',
                 'I' => 'ai',
                 'O' => 'options',
+                'L' => 'language',
                 'A' => 'acorn',
                 'T' => 'auth:menu',
                 'U' => 'install:update-mu-plugin',

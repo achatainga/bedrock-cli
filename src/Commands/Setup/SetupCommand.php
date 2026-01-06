@@ -382,6 +382,15 @@ class SetupCommand extends Command
         
         // Paso 1: Instalar WordPress
         if (!$state['wp_installed'] && !$input->getOption('skip-wp-install')) {
+            $locale = $config['locale'] ?? 'es_VE';
+            
+            // Descargar idioma ANTES de instalar WordPress
+            if ($locale !== 'en_US') {
+                $output->writeln("<comment>Descargando idioma {$locale}...</comment>");
+                $downloadLang = $wpcli->custom("language core download {$locale}");
+                $downloadLang->run();
+            }
+            
             $output->writeln('<comment>Instalando WordPress...</comment>');            
             $process = $wpcli->coreInstall([
                 'url' => $config['url'],
@@ -389,7 +398,7 @@ class SetupCommand extends Command
                 'admin_user' => $config['adminUser'],
                 'admin_password' => $config['adminPassword'],
                 'admin_email' => $config['adminEmail'],
-                'locale' => $config['locale'] ?? 'es_VE'
+                'locale' => $locale
             ]);
             
             $this->runWithLoader($process, $output, 'Instalando WordPress');
@@ -399,6 +408,11 @@ class SetupCommand extends Command
                 $cleanUrl = rtrim($config['url'], '/');
                 $wpcli->custom("option update home '{$cleanUrl}'")->run();
                 $wpcli->custom("option update siteurl '{$cleanUrl}/wp'")->run();
+                
+                // Activar idioma descargado
+                if ($locale !== 'en_US') {
+                    $wpcli->custom("site switch-language {$locale}")->run();
+                }
             }
             
             if (!$process->isSuccessful()) {
