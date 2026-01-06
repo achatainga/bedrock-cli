@@ -43,7 +43,10 @@ class LogViewer
 
     public function ajaxGetLogs(): void
     {
-        check_ajax_referer('bedrock_cli_logs', 'nonce');
+        if (!check_ajax_referer('bedrock_cli_logs', 'nonce', false)) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
@@ -59,6 +62,6 @@ class LogViewer
             $logs = array_filter($logs, fn($log) => strpos($log, "[{$level}]") !== false);
         }
 
-        wp_send_json_success(['logs' => $logs]);
+        wp_send_json_success(['logs' => array_values($logs)]);
     }
 }

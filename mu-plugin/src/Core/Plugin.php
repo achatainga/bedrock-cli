@@ -7,6 +7,7 @@ use BedrockCli\Plugin\API\DashboardController;
 use BedrockCli\Plugin\API\DockerController;
 use BedrockCli\Plugin\API\LanguageController;
 use BedrockCli\Plugin\Admin\AdminMenu;
+use BedrockCli\Plugin\Admin\LogViewer;
 use BedrockCli\Plugin\Utils\Logger;
 use BedrockCli\Plugin\Core\Security;
 
@@ -18,6 +19,7 @@ class Plugin
     private DockerController $dockerController;
     private LanguageController $languageController;
     private AdminMenu $adminMenu;
+    private LogViewer $logViewer;
     private Security $security;
 
     public function __construct()
@@ -28,6 +30,7 @@ class Plugin
         $this->dockerController = new DockerController();
         $this->languageController = new LanguageController();
         $this->adminMenu = new AdminMenu();
+        $this->logViewer = new LogViewer($this->logger);
         $this->security = new Security();
 
         add_action('rest_api_init', [$this, 'registerRoutes']);

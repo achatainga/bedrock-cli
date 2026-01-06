@@ -2,7 +2,7 @@
 // src/API/LanguageController.php
 namespace BedrockCli\Plugin\API;
 
-use BedrockCli\Plugin\Core\ServiceBridge;
+use BedrockCli\Plugin\Core\BedrockCliProxy;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -25,12 +25,8 @@ class LanguageController
 
     public function listLanguages(): WP_REST_Response
     {
-        $wpCli = ServiceBridge::getInstance()->get('WpCliService');
-        
-        // Obtener actual
         $current = get_locale();
         
-        // Lista hardcoded de comunes para velocidad
         $common = [
             'en_US' => 'English (US)',
             'es_ES' => 'Español (España)',
@@ -50,19 +46,13 @@ class LanguageController
     public function installLanguage(WP_REST_Request $request): WP_REST_Response
     {
         $locale = $request->get_param('locale');
-        $wpCli = ServiceBridge::getInstance()->get('WpCliService');
+        $proxy = BedrockCliProxy::getInstance();
 
-        // 1. Instalar
-        $install = $wpCli->custom("language core install {$locale}");
-        $install->run();
-
-        // 2. Activar
-        $activate = $wpCli->custom("site switch-language {$locale}");
-        $activate->run();
+        $result = $proxy->run('language:install', [$locale]);
 
         return new WP_REST_Response([
-            'success' => $activate->isSuccessful(),
-            'message' => $activate->isSuccessful() ? "Idioma cambiado a {$locale}" : "Error cambiando idioma"
+            'success' => $result['success'],
+            'message' => $result['success'] ? "Idioma cambiado a {$locale}" : "Error cambiando idioma"
         ], 200);
     }
 }

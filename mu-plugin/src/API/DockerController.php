@@ -2,7 +2,7 @@
 // src/API/DockerController.php
 namespace BedrockCli\Plugin\API;
 
-use BedrockCli\Plugin\Core\ServiceBridge;
+use BedrockCli\Plugin\Core\BedrockCliProxy;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -25,35 +25,27 @@ class DockerController
 
     public function getStatus(): WP_REST_Response
     {
-        $docker = ServiceBridge::getInstance()->get('DockerService');
-        if (!$docker->isRunning()) {
-            return new WP_REST_Response(['success' => false, 'error' => 'Docker no está corriendo'], 200);
-        }
+        $proxy = BedrockCliProxy::getInstance();
+        $result = $proxy->run('docker:status');
 
-        // Obtener estado real usando el servicio
-        $process = $docker->status();
-        $process->run();
-        
         return new WP_REST_Response([
-            'success' => true, 
-            'output' => $process->getOutput()
+            'success' => $result['success'],
+            'output' => $result['output']
         ], 200);
     }
 
     public function controlContainer(WP_REST_Request $request): WP_REST_Response
     {
         $action = $request->get_param('action');
-        $docker = ServiceBridge::getInstance()->get('DockerService');
+        $proxy = BedrockCliProxy::getInstance();
 
-        // SEGURIDAD: Lista blanca estricta
         if ($action === 'restart') {
-            $process = $docker->restart();
-            $process->run();
+            $result = $proxy->run('docker:restart');
             
             return new WP_REST_Response([
-                'success' => $process->isSuccessful(),
-                'message' => $process->isSuccessful() ? 'Contenedores reiniciados' : 'Error al reiniciar',
-                'output' => $process->getOutput() . $process->getErrorOutput()
+                'success' => $result['success'],
+                'message' => $result['success'] ? 'Contenedores reiniciados' : 'Error al reiniciar',
+                'output' => $result['output']
             ], 200);
         }
 
