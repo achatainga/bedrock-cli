@@ -205,7 +205,7 @@ class PluginController
         
         // Ejecutar composer update para remover
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("cd {$projectRoot} && {$composerBin} update --no-interaction 2>&1", $output, $returnCode);
+        exec("cd {$projectRoot} && {$composerBin} remove wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,

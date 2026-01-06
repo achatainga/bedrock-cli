@@ -333,6 +333,16 @@ APACHE;
             return false;
         }
         
+        // NUEVO: Verificar IP externa del servidor (cPanel/GoDaddy)
+        $externalIp = $this->getExternalServerIp();
+        if ($externalIp) {
+            $connection = @fsockopen($externalIp, $port, $errno, $errstr, 1);
+            if (is_resource($connection)) {
+                fclose($connection);
+                return false;
+            }
+        }
+        
         // Verificar con netstat/ss si está disponible (más confiable)
         if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
             $cmd = "ss -tuln 2>/dev/null | grep -E ':{$port}\\s' || netstat -tuln 2>/dev/null | grep -E ':{$port}\\s'";
@@ -495,6 +505,39 @@ APACHE;
         }
         
         return is_dir('/var/www') ? '/var/www' : null;
+    }
+    
+    /**
+     * Obtiene la IP externa del servidor
+     * 
+     * @return string|null
+     */
+    private function getExternalServerIp(): ?string
+    {
+        // Método 1: Variable de entorno SERVER_ADDR (cPanel)
+        $serverAddr = $_SERVER['SERVER_ADDR'] ?? null;
+        if ($serverAddr && $serverAddr !== '127.0.0.1' && $serverAddr !== '::1') {
+            return $serverAddr;
+        }
+        
+        // Método 2: hostname -I (Linux)
+        exec('hostname -I 2>/dev/null', $output);
+        if (!empty($output)) {
+            $ips = explode(' ', trim($output[0]));
+            foreach ($ips as $ip) {
+                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIVATE_RANGE)) {
+                    return $ip;
+                }
+            }
+        }
+        
+        // Método 3: curl para obtener IP pública (último recurso)
+        exec('curl -s ifconfig.me 2>/dev/null || curl -s ipinfo.io/ip 2>/dev/null', $output);
+        if (!empty($output) && filter_var(trim($output[0]), FILTER_VALIDATE_IP)) {
+            return trim($output[0]);
+        }
+        
+        return null;
     }
     
     /**
