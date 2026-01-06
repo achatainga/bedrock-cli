@@ -12,31 +12,31 @@ class PluginController
         register_rest_route('bedrock-cli/v1', '/plugins', [
             'methods' => 'GET',
             'callback' => [$this, 'listPlugins'],
-            'permission_callback' => fn() => current_user_can('install_plugins')
+            'permission_callback' => fn() => current_user_can('manage_options')
         ]);
 
         register_rest_route('bedrock-cli/v1', '/plugins/search', [
             'methods' => 'GET',
             'callback' => [$this, 'searchPlugins'],
-            'permission_callback' => fn() => current_user_can('install_plugins')
+            'permission_callback' => fn() => current_user_can('manage_options')
         ]);
 
         register_rest_route('bedrock-cli/v1', '/plugins/install', [
             'methods' => 'POST',
             'callback' => [$this, 'installPlugin'],
-            'permission_callback' => fn() => current_user_can('install_plugins')
+            'permission_callback' => fn() => current_user_can('manage_options')
         ]);
 
         register_rest_route('bedrock-cli/v1', '/plugins/activate', [
             'methods' => 'POST',
             'callback' => [$this, 'activatePlugin'],
-            'permission_callback' => fn() => current_user_can('activate_plugins')
+            'permission_callback' => fn() => current_user_can('manage_options')
         ]);
 
         register_rest_route('bedrock-cli/v1', '/plugins/deactivate', [
             'methods' => 'POST',
             'callback' => [$this, 'deactivatePlugin'],
-            'permission_callback' => fn() => current_user_can('activate_plugins')
+            'permission_callback' => fn() => current_user_can('manage_options')
         ]);
     }
 
