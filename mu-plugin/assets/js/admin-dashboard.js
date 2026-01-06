@@ -24,12 +24,14 @@ jQuery(document).ready(function($) {
             $('#php-version').text('PHP ' + data.system.php_version);
             
             let html = '<ul class="bd-status-list">';
-            html += `<li><strong>Docker:</strong> ${data.validations.docker.isValid ? '✅' : '❌'}</li>`;
-            html += `<li><strong>DB:</strong> ${data.validations.database.isValid ? '✅' : '❌'}</li>`;
-            html += `<li><strong>Acorn:</strong> ${data.validations.acorn.isValid ? '✅' : '❌'}</li>`;
+            html += `<li><strong>CLI:</strong> ${data.cli_status}</li>`;
+            html += `<li><strong>OS:</strong> ${data.system.os}</li>`;
+            html += `<li><strong>PHP:</strong> ${data.system.php_version}</li>`;
             html += '</ul>';
             
             $('#health-status').html(html).removeClass('bd-content-loading');
+        }).fail(function() {
+            $('#health-status').html('<p style="color:red;">Error loading status</p>').removeClass('bd-content-loading');
         });
     }
 
