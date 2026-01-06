@@ -87,12 +87,12 @@ jQuery(document).ready(function($) {
         const slug = btn.data('slug');
         console.log('Installing:', slug);
         
-        if (!confirm(`¿Instalar ${slug}?`)) {
-            console.log('Installation cancelled');
-            return;
-        }
+        // if (!confirm(`¿Instalar ${slug}?`)) {
+        //     console.log('Installation cancelled');
+        //     return;
+        // }
         
-        console.log('Confirmed, starting installation...');
+        console.log('Starting installation...');
         btn.prop('disabled', true).text('Instalando...');
         
         console.log('Calling API:', '/plugins/install', {slug: slug});
