@@ -34,21 +34,20 @@ class BedrockCliProxy
 
     public function run(string $command, array $args = []): array
     {
-        // Detectar si estamos en Docker
+        // En Docker, no podemos ejecutar comandos del host
+        // Devolvemos datos usando funciones de WordPress directamente
         $inDocker = file_exists('/.dockerenv');
         
         if ($inDocker) {
-            // Ejecutar en host via docker-compose exec desde directorio del proyecto
-            $projectPath = defined('BEDROCK_APP_PATH') ? BEDROCK_APP_PATH : dirname(ABSPATH, 2);
-            $cmd = "cd {$projectPath} && docker-compose exec -T web bedrock {$command}";
-        } else {
-            // Ejecución directa
-            if (empty($this->binPath)) {
-                return ['success' => false, 'error' => 'Bedrock CLI binary not found'];
-            }
-            $cmd = escapeshellcmd($this->binPath . ' ' . $command);
+            return $this->runInDocker($command, $args);
         }
         
+        // Ejecución directa en host
+        if (empty($this->binPath)) {
+            return ['success' => false, 'error' => 'Bedrock CLI binary not found'];
+        }
+
+        $cmd = escapeshellcmd($this->binPath . ' ' . $command);
         foreach ($args as $arg) {
             $cmd .= ' ' . escapeshellarg($arg);
         }
@@ -62,6 +61,45 @@ class BedrockCliProxy
             'output' => implode("\n", $output),
             'command' => $cmd
         ];
+    }
+
+    private function runInDocker(string $command, array $args): array
+    {
+        // Implementar comandos usando WP-CLI o funciones nativas
+        switch ($command) {
+            case 'info':
+                return [
+                    'success' => true,
+                    'output' => 'Bedrock CLI (Docker mode)'
+                ];
+            
+            case 'docker:status':
+                return [
+                    'success' => true,
+                    'output' => 'Docker is running (inside container)'
+                ];
+            
+            case 'docker:restart':
+                return [
+                    'success' => false,
+                    'output' => 'Cannot restart Docker from inside container'
+                ];
+            
+            case 'language:install':
+                $locale = $args[0] ?? 'en_US';
+                // Usar WP-CLI directamente
+                exec("wp language core install {$locale} --activate 2>&1", $output, $code);
+                return [
+                    'success' => $code === 0,
+                    'output' => implode("\n", $output)
+                ];
+            
+            default:
+                return [
+                    'success' => false,
+                    'output' => "Command '{$command}' not supported in Docker mode"
+                ];
+        }
     }
 
     private function commandExists(string $cmd): bool
