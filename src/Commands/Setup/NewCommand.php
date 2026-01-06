@@ -812,8 +812,9 @@ class NewCommand extends Command
                             $output->writeln("<info>✓ {$plugin['name']} descargado</info>");
                         }
                     } catch (\Exception $e) {
-                        $output->writeln("<error>✗ Error descargando {$plugin['name']}: {$e->getMessage()}</error>");
-                        throw $e;
+                        $output->writeln("<comment>⚠ Omitiendo {$plugin['name']}: {$e->getMessage()}</comment>");
+                        // Continuar sin fallar - el plugin se omitirá del profile
+                        continue;
                     }
                 }
             }
@@ -835,8 +836,9 @@ class NewCommand extends Command
                             $output->writeln("<info>✓ {$theme['name']} descargado</info>");
                         }
                     } catch (\Exception $e) {
-                        $output->writeln("<error>✗ Error descargando {$theme['name']}: {$e->getMessage()}</error>");
-                        throw $e;
+                        $output->writeln("<comment>⚠ Omitiendo {$theme['name']}: {$e->getMessage()}</comment>");
+                        // Continuar sin fallar - el theme se omitirá del profile
+                        continue;
                     }
                 }
             }
