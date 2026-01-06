@@ -37,10 +37,11 @@ jQuery(document).ready(function($) {
                 html += `<td>${plugin.active ? '<span class="dashicons dashicons-yes-alt" style="color:green;"></span> Activo' : '<span class="dashicons dashicons-minus"></span> Inactivo'}</td>`;
                 html += '<td>';
                 if (plugin.active) {
-                    html += `<button class="button btn-deactivate" data-slug="${plugin.slug}">Desactivar</button>`;
+                    html += `<button class="button btn-deactivate" data-slug="${plugin.slug}">Desactivar</button> `;
                 } else {
-                    html += `<button class="button button-primary btn-activate" data-slug="${plugin.slug}">Activar</button>`;
+                    html += `<button class="button button-primary btn-activate" data-slug="${plugin.slug}">Activar</button> `;
                 }
+                html += `<button class="button btn-uninstall" data-slug="${plugin.slug}" style="color:#b32d2e;">Desinstalar</button>`;
                 html += '</td></tr>';
             });
             
@@ -92,6 +93,8 @@ jQuery(document).ready(function($) {
                 loadInstalledPlugins();
                 $('.bd-tab[data-tab="installed"]').click();
             }
+        }).fail(function(xhr) {
+            alert('Error: ' + (xhr.responseJSON?.message || 'No se pudo instalar'));
         }).always(function() {
             btn.prop('disabled', false).text('Instalar');
         });
@@ -124,6 +127,25 @@ jQuery(document).ready(function($) {
             if (res.success) loadInstalledPlugins();
         }).always(function() {
             btn.prop('disabled', false).text('Desactivar');
+        });
+    });
+
+    // Desinstalar plugin
+    $(document).on('click', '.btn-uninstall', function() {
+        const btn = $(this);
+        const slug = btn.data('slug');
+        
+        if (!confirm(`¿DESINSTALAR ${slug}? Esto eliminará el plugin completamente.`)) return;
+        
+        btn.prop('disabled', true).text('Desinstalando...');
+        
+        api('/plugin/uninstall', 'POST', { slug: slug }).done(function(res) {
+            alert(res.message);
+            if (res.success) loadInstalledPlugins();
+        }).fail(function() {
+            alert('Error al desinstalar');
+        }).always(function() {
+            btn.prop('disabled', false).text('Desinstalar');
         });
     });
 

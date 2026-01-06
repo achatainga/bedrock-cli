@@ -28,6 +28,13 @@ class PluginController
             'args' => ['slug' => ['required' => true]]
         ]);
 
+        register_rest_route('bedrock-cli/v1', '/plugin/uninstall', [
+            'methods' => 'POST',
+            'callback' => [$this, 'uninstallPlugin'],
+            'permission_callback' => fn() => current_user_can('manage_options'),
+            'args' => ['slug' => ['required' => true]]
+        ]);
+
         register_rest_route('bedrock-cli/v1', '/plugin/activate', [
             'methods' => 'POST',
             'callback' => [$this, 'activatePlugin'],
@@ -126,6 +133,32 @@ class PluginController
         return new WP_REST_Response([
             'success' => $returnCode === 0,
             'message' => $returnCode === 0 ? "Plugin desactivado" : "Error desactivando plugin",
+            'output' => implode("\n", $output)
+        ], 200);
+    }
+
+    public function uninstallPlugin(WP_REST_Request $request): WP_REST_Response
+    {
+        $slug = $request->get_param('slug');
+
+        // 1. Desactivar primero
+        exec("wp plugin deactivate {$slug} 2>&1", $output);
+
+        // 2. Remover de composer.json
+        $composerPath = dirname(ABSPATH, 2) . '/composer.json';
+        $composer = json_decode(file_get_contents($composerPath), true);
+        unset($composer['require']["wpackagist-plugin/{$slug}"]);
+        file_put_contents($composerPath, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        // 3. Ejecutar composer remove
+        $output = [];
+        $returnCode = 0;
+        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
+        exec("cd " . dirname(ABSPATH, 2) . " && {$composerBin} remove wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
+
+        return new WP_REST_Response([
+            'success' => $returnCode === 0,
+            'message' => $returnCode === 0 ? "Plugin desinstalado" : "Error desinstalando plugin",
             'output' => implode("\n", $output)
         ], 200);
     }
