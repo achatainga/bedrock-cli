@@ -358,6 +358,13 @@ PHP;
             if ($premiumRepo) {
                 // Extraer path del repo clonado
                 $repoName = basename($premiumRepo, '.git');
+                
+                // Convertir HTTPS a SSH si es necesario para buscar el repo local
+                $sshRepo = $premiumRepo;
+                if (str_contains($premiumRepo, 'https://gitlab.com/')) {
+                    $sshRepo = str_replace('https://gitlab.com/', 'git@gitlab.com:', $premiumRepo);
+                }
+                
                 $possiblePaths = [
                     $_SERVER['HOME'] . '/code/dt24/' . $repoName,
                     $_SERVER['HOME'] . '/code/' . $repoName,
@@ -424,7 +431,7 @@ PHP;
                 }
                 
                 $output->writeln('<comment>⚠️  No se encontró el repositorio de premium assets</comment>');
-                $output->writeln("<comment>Clona el repo: git clone {$premiumRepo}</comment>");
+                $output->writeln("<comment>Clona el repo: git clone {$sshRepo}</comment>");
                 $output->writeln('<comment>Continuando sin actualizar cache...</comment>');
                 $output->writeln('');
                 return;
