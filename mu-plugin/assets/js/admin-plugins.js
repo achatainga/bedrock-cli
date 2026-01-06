@@ -71,7 +71,7 @@ jQuery(document).ready(function($) {
                 html += `<h3>${plugin.name}</h3>`;
                 html += `<p>${plugin.short_description || ''}</p>`;
                 html += `<p><small>Por ${plugin.author} | ${plugin.active_installs}+ instalaciones</small></p>`;
-                html += `<button class="button button-primary btn-install" data-slug="${plugin.slug}">Instalar</button>`;
+                html += `<button class="button button-primary bd-btn-install" data-slug="${plugin.slug}">Instalar</button>`;
                 html += '</div>';
             });
             html += '</div>';
@@ -81,9 +81,11 @@ jQuery(document).ready(function($) {
     });
 
     // Instalar plugin
-    $(document).on('click', '.btn-install', function() {
+    $(document).on('click', '.bd-btn-install', function() {
+        console.log('Install button clicked!');
         const btn = $(this);
         const slug = btn.data('slug');
+        console.log('Installing:', slug);
         
         if (!confirm(`¿Instalar ${slug}?`)) return;
         
