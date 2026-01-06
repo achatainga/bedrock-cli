@@ -365,11 +365,26 @@ PHP;
                     $sshRepo = str_replace('https://gitlab.com/', 'git@gitlab.com:', $premiumRepo);
                 }
                 
-                $possiblePaths = [
-                    $_SERVER['HOME'] . '/code/dt24/' . $repoName,
-                    $_SERVER['HOME'] . '/code/' . $repoName,
-                    getcwd() . '/../' . $repoName
+                // Buscar en ubicaciones comunes, priorizando directorios existentes
+                $possiblePaths = [];
+                $baseDirs = [
+                    $_SERVER['HOME'] . '/code/dt24',
+                    $_SERVER['HOME'] . '/code',
+                    getcwd() . '/..',
+                    $_SERVER['HOME'] . '/projects',
+                    $_SERVER['HOME'] . '/workspace'
                 ];
+                
+                foreach ($baseDirs as $baseDir) {
+                    if (is_dir($baseDir)) {
+                        $possiblePaths[] = $baseDir . '/' . $repoName;
+                    }
+                }
+                
+                // Si no hay directorios base, usar el primero como default
+                if (empty($possiblePaths)) {
+                    $possiblePaths[] = $_SERVER['HOME'] . '/code/dt24/' . $repoName;
+                }
                 
                 foreach ($possiblePaths as $repoPath) {
                     if (is_dir($repoPath . '/.git')) {
@@ -431,7 +446,83 @@ PHP;
                 }
                 
                 $output->writeln('<comment>⚠️  No se encontró el repositorio de premium assets</comment>');
-                $output->writeln("<comment>Clona el repo: git clone {$sshRepo}</comment>");
+                $output->writeln("<comment>Intentando clonar: git clone {$sshRepo}</comment>");
+                
+                // Intentar clonar automáticamente en el primer directorio base existente
+                $targetDir = null;
+                foreach ($baseDirs as $baseDir) {
+                    if (is_dir($baseDir)) {
+                        $targetDir = $baseDir;
+                        break;
+                    }
+                }
+                
+                // Si no hay directorios base, crear el default
+                if (!$targetDir) {
+                    $targetDir = $_SERVER['HOME'] . '/code/dt24';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0755, true);
+                    }
+                }
+                
+                $cloneProcess = new \Symfony\Component\Process\Process(['git', 'clone', $sshRepo], $targetDir);
+                $cloneProcess->setTimeout(120);
+                $cloneProcess->run();
+                
+                if ($cloneProcess->isSuccessful()) {
+                    $output->writeln('<info>✓ Repositorio clonado exitosamente</info>');
+                    
+                    // Reintentar la copia de archivos
+                    $repoPath = $targetDir . '/' . $repoName;
+                    if (is_dir($repoPath . '/.git')) {
+                        $output->writeln('<comment>Copiando al cache...</comment>');
+                        $copied = 0;
+                        
+                        foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
+                            if ($plugin['source'] === 'cache') {
+                                $pluginSlug = basename(dirname($plugin['path']));
+                                $sourceZip = $repoPath . '/' . $plugin['path'] . $pluginSlug . '.zip';
+                                
+                                $targetDir = $_SERVER['HOME'] . '/.bedrock-cli/cache/premium/' . $plugin['name'] . '/' . $plugin['version'];
+                                $targetZip = $targetDir . '/' . $plugin['name'] . '.zip';
+                                
+                                if (file_exists($sourceZip) && !file_exists($targetZip)) {
+                                    if (!is_dir($targetDir)) {
+                                        mkdir($targetDir, 0755, true);
+                                    }
+                                    copy($sourceZip, $targetZip);
+                                    $copied++;
+                                }
+                            }
+                        }
+                        
+                        foreach ($profile['themes']['premium'] ?? [] as $theme) {
+                            if ($theme['source'] === 'cache') {
+                                $themeSlug = basename(dirname($theme['path']));
+                                $sourceZip = $repoPath . '/' . $theme['path'] . $themeSlug . '.zip';
+                                
+                                $targetDir = $_SERVER['HOME'] . '/.bedrock-cli/cache/themes/' . $theme['name'] . '/' . $theme['version'];
+                                $targetZip = $targetDir . '/' . $theme['name'] . '.zip';
+                                
+                                if (file_exists($sourceZip) && !file_exists($targetZip)) {
+                                    if (!is_dir($targetDir)) {
+                                        mkdir($targetDir, 0755, true);
+                                    }
+                                    copy($sourceZip, $targetZip);
+                                    $copied++;
+                                }
+                            }
+                        }
+                        
+                        $output->writeln("<info>✓ {$copied} archivos copiados al cache</info>");
+                        $output->writeln('');
+                        return;
+                    }
+                } else {
+                    $output->writeln('<comment>⚠️  No se pudo clonar el repositorio automáticamente</comment>');
+                    $output->writeln("<comment>Clona manualmente: git clone {$sshRepo}</comment>");
+                }
+                
                 $output->writeln('<comment>Continuando sin actualizar cache...</comment>');
                 $output->writeln('');
                 return;

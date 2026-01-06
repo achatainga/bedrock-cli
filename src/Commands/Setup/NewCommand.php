@@ -868,7 +868,8 @@ class NewCommand extends Command
 
         // 2. Directorios que necesitan escritura/ejecución (777: rwxrwxrwx)
         $writeDirs = [
-            "{$name}/web/app/plugins"
+            "{$name}/web/app/plugins",
+            "{$name}/web/app/themes"
         ];
 
         foreach ($writeDirs as $dir) {
