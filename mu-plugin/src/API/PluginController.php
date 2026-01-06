@@ -28,14 +28,14 @@ class PluginController
             'args' => ['slug' => ['required' => true]]
         ]);
 
-        register_rest_route('bedrock-cli/v1', '/plugins/activate', [
+        register_rest_route('bedrock-cli/v1', '/plugin/activate', [
             'methods' => 'POST',
             'callback' => [$this, 'activatePlugin'],
             'permission_callback' => fn() => current_user_can('manage_options'),
             'args' => ['slug' => ['required' => true]]
         ]);
 
-        register_rest_route('bedrock-cli/v1', '/plugins/deactivate', [
+        register_rest_route('bedrock-cli/v1', '/plugin/deactivate', [
             'methods' => 'POST',
             'callback' => [$this, 'deactivatePlugin'],
             'permission_callback' => fn() => current_user_can('manage_options'),

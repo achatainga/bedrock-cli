@@ -104,7 +104,7 @@ jQuery(document).ready(function($) {
         
         btn.prop('disabled', true).text('Activando...');
         
-        api('/plugins/activate', 'POST', { slug: slug }).done(function(res) {
+        api('/plugin/activate', 'POST', { slug: slug }).done(function(res) {
             alert(res.message);
             if (res.success) loadInstalledPlugins();
         }).always(function() {
@@ -119,7 +119,7 @@ jQuery(document).ready(function($) {
         
         btn.prop('disabled', true).text('Desactivando...');
         
-        api('/plugins/deactivate', 'POST', { slug: slug }).done(function(res) {
+        api('/plugin/deactivate', 'POST', { slug: slug }).done(function(res) {
             alert(res.message);
             if (res.success) loadInstalledPlugins();
         }).always(function() {
