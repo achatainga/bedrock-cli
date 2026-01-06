@@ -1,7 +1,8 @@
 FROM php:8.4-fpm
 
 RUN apt-get update && \
-    apt-get install -y zlib1g-dev libzip-dev wget build-essential mariadb-client unzip python3 python3-pip zip git subversion curl && \
+    apt-get install -y zlib1g-dev libzip-dev wget build-essential mariadb-client unzip python3 python3-pip zip git subversion curl \
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
     rm -rf /var/lib/apt/lists/*
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
@@ -25,6 +26,9 @@ RUN rm -rf /tmp/php-8.4.0
 RUN echo "extension=zip.so" > /usr/local/etc/php/conf.d/docker-php-ext-zip.ini
 
 RUN docker-php-ext-install mysqli pdo pdo_mysql
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install -j$(nproc) gd
 
 RUN echo '#!/bin/bash' > /usr/local/bin/mariadb-wrapper.sh && \
     echo 'args=()' >> /usr/local/bin/mariadb-wrapper.sh && \
