@@ -6,6 +6,7 @@ use BedrockCli\Plugin\API\RestController;
 use BedrockCli\Plugin\API\DashboardController;
 use BedrockCli\Plugin\API\DockerController;
 use BedrockCli\Plugin\API\LanguageController;
+use BedrockCli\Plugin\API\PluginController;
 use BedrockCli\Plugin\Admin\AdminMenu;
 use BedrockCli\Plugin\Admin\LogViewer;
 use BedrockCli\Plugin\Utils\Logger;
@@ -18,6 +19,7 @@ class Plugin
     private DashboardController $dashboardController;
     private DockerController $dockerController;
     private LanguageController $languageController;
+    private PluginController $pluginController;
     private AdminMenu $adminMenu;
     private LogViewer $logViewer;
     private Security $security;
@@ -29,6 +31,7 @@ class Plugin
         $this->dashboardController = new DashboardController();
         $this->dockerController = new DockerController();
         $this->languageController = new LanguageController();
+        $this->pluginController = new PluginController();
         $this->adminMenu = new AdminMenu();
         $this->logViewer = new LogViewer($this->logger);
         $this->security = new Security();
@@ -45,15 +48,16 @@ class Plugin
         $this->dashboardController->registerRoutes();
         $this->dockerController->registerRoutes();
         $this->languageController->registerRoutes();
+        $this->pluginController->registerRoutes();
     }
 
     public function enqueueAssets(string $hook): void
     {
-        if (!in_array($hook, ['toplevel_page_bedrock-cli', 'bedrock-cli_page_bedrock-cli-logs'])) {
+        if (!in_array($hook, ['toplevel_page_bedrock-cli', 'bedrock-cli_page_bedrock-cli-plugins', 'bedrock-cli_page_bedrock-cli-logs'])) {
             return;
         }
 
-        // Dashboard assets (FASE 1)
+        // Dashboard assets
         if ($hook === 'toplevel_page_bedrock-cli') {
             wp_enqueue_style(
                 'bedrock-cli-dashboard',
@@ -71,6 +75,28 @@ class Plugin
             );
 
             wp_localize_script('bedrock-cli-dashboard', 'bedrockCliSettings', [
+                'nonce' => wp_create_nonce('wp_rest')
+            ]);
+        }
+
+        // Plugins assets
+        if ($hook === 'bedrock-cli_page_bedrock-cli-plugins') {
+            wp_enqueue_style(
+                'bedrock-cli-dashboard',
+                plugins_url('assets/css/admin-dashboard.css', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                [],
+                '1.0.0'
+            );
+
+            wp_enqueue_script(
+                'bedrock-cli-plugins',
+                plugins_url('assets/js/admin-plugins.js', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                ['jquery'],
+                '1.0.0',
+                true
+            );
+
+            wp_localize_script('bedrock-cli-plugins', 'bedrockCliSettings', [
                 'nonce' => wp_create_nonce('wp_rest')
             ]);
         }

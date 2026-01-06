@@ -32,6 +32,16 @@ class AdminMenu
             [$this, 'renderDashboard']
         );
 
+        // Submenú: Plugins
+        add_submenu_page(
+            'bedrock-cli',
+            'Plugins',
+            'Plugins',
+            'install_plugins',
+            'bedrock-cli-plugins',
+            [$this, 'renderPlugins']
+        );
+
         // Submenú: Logs
         add_submenu_page(
             'bedrock-cli',
@@ -56,6 +66,11 @@ class AdminMenu
     public function renderDashboard(): void
     {
         require_once __DIR__ . '/Views/dashboard.php';
+    }
+
+    public function renderPlugins(): void
+    {
+        require_once __DIR__ . '/Views/plugins.php';
     }
 
     public function renderLogs(): void
