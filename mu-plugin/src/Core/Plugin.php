@@ -61,16 +61,16 @@ class Plugin
         if ($hook === 'toplevel_page_bedrock-cli') {
             wp_enqueue_style(
                 'bedrock-cli-dashboard',
-                plugins_url('assets/css/admin-dashboard.css', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                BEDROCK_CLI_PLUGIN_URL . '/assets/css/admin-dashboard.css',
                 [],
-                '1.0.0'
+                BEDROCK_CLI_PLUGIN_VERSION
             );
 
             wp_enqueue_script(
                 'bedrock-cli-dashboard',
-                plugins_url('assets/js/admin-dashboard.js', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                BEDROCK_CLI_PLUGIN_URL . '/assets/js/admin-dashboard.js',
                 ['jquery'],
-                '1.0.0',
+                BEDROCK_CLI_PLUGIN_VERSION,
                 true
             );
 
@@ -81,20 +81,18 @@ class Plugin
 
         // Plugins assets
         if ($hook === 'bedrock-cli_page_bedrock-cli-plugins') {
-            $pluginFile = dirname(__DIR__, 2) . '/bedrock-cli-plugin.php';
-            
             wp_enqueue_style(
                 'bedrock-cli-dashboard',
-                plugins_url('assets/css/admin-dashboard.css', $pluginFile),
+                BEDROCK_CLI_PLUGIN_URL . '/assets/css/admin-dashboard.css',
                 [],
-                '1.0.0'
+                BEDROCK_CLI_PLUGIN_VERSION
             );
 
             wp_enqueue_script(
                 'bedrock-cli-plugins',
-                plugins_url('assets/js/admin-plugins.js', $pluginFile),
+                BEDROCK_CLI_PLUGIN_URL . '/assets/js/admin-plugins.js',
                 ['jquery'],
-                '1.0.0',
+                BEDROCK_CLI_PLUGIN_VERSION,
                 true
             );
 
@@ -106,9 +104,9 @@ class Plugin
         // Logs assets
         wp_enqueue_style(
             'bedrock-cli-logs',
-            plugins_url('assets/css/admin-logs.css', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+            BEDROCK_CLI_PLUGIN_URL . '/assets/css/admin-logs.css',
             [],
-            '1.0.0'
+            BEDROCK_CLI_PLUGIN_VERSION
         );
 
         wp_enqueue_script(
