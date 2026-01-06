@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Install;
 
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -9,6 +10,7 @@ use Symfony\Component\Process\Process;
 
 class UpdateMuPluginCommand extends Command
 {
+    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this->setName('install:update-mu-plugin')
@@ -21,7 +23,7 @@ class UpdateMuPluginCommand extends Command
         $output->writeln("<fg=magenta>  BEDROCK CLI - UPDATE MU-PLUGIN</>");
         $output->writeln("<fg=magenta>═══════════════════════════════════════════════════════════════</>\n");
 
-        if (!file_exists('web/app/mu-plugins')) {
+        if (!$this->isBedrockProject(getcwd())) {
             $output->writeln("<fg=red>✗ Error: Not a Bedrock project</>");
             return Command::FAILURE;
         }
@@ -44,10 +46,10 @@ class UpdateMuPluginCommand extends Command
             $output->writeln("<fg=green>✓ Old plugin removed</>\n");
         }
 
-        // Copy new plugin
-        $sourcePath = __DIR__ . '/../../../mu-plugin';
+        // Copy new plugin - use proper path resolution
+        $sourcePath = $this->findMuPluginSource();
         
-        if (!file_exists($sourcePath)) {
+        if (!$sourcePath || !file_exists($sourcePath)) {
             $output->writeln("<fg=red>✗ Error: New plugin source not found</>");
             return Command::FAILURE;
         }
@@ -87,6 +89,19 @@ class UpdateMuPluginCommand extends Command
         $output->writeln("<fg=gray>  Location: {$newPluginDir}</>\n");
 
         return Command::SUCCESS;
+    }
+
+    private function findMuPluginSource(): ?string
+    {
+        // The mu-plugin source is always relative to the bedrock-cli installation
+        // Since this command is part of bedrock-cli, we can reliably find it
+        $sourcePath = __DIR__ . '/../../../mu-plugin';
+        
+        if (file_exists($sourcePath) && file_exists($sourcePath . '/bedrock-cli-plugin.php')) {
+            return $sourcePath;
+        }
+        
+        return null;
     }
 
     private function getExistingToken(): ?string
