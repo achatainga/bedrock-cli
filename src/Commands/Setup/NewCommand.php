@@ -113,6 +113,9 @@ class NewCommand extends Command
         if (!$input->getOption('no-docker')) {
             $this->verifyAndFixProject($name, $output);
             
+            // [NUEVO] Configurar permisos para MU plugin
+            $this->configureComposerPermissions($name, $output);
+            
             // Manejar ubicación del proyecto si usó reverse proxy
             $httpPortInfo = $this->determineHttpPort($input->getOption('http-port'), $output);
             if ($httpPortInfo['strategy'] === 'reverse-proxy') {
@@ -835,5 +838,52 @@ class NewCommand extends Command
                 }
             }
         }
+    }
+    
+    /**
+     * Configura permisos 666/777 para que el MU-Plugin pueda ejecutar Composer
+     * desde dentro del contenedor (www-data) modificando archivos del host.
+     */
+    private function configureComposerPermissions(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Ajustando permisos para gestión web de plugins...</info>');
+
+        // 1. Archivos que necesitan escritura (666: rw-rw-rw-)
+        $writeFiles = [
+            "{$name}/composer.json",
+            "{$name}/composer.lock"
+        ];
+
+        foreach ($writeFiles as $file) {
+            if (file_exists($file)) {
+                @chmod($file, 0666);
+                $output->writeln("  ✓ Permisos 666 aplicados a: " . basename($file));
+            }
+        }
+
+        // 2. Directorios que necesitan escritura/ejecución (777: rwxrwxrwx)
+        $writeDirs = [
+            "{$name}/web/app/plugins"
+        ];
+
+        foreach ($writeDirs as $dir) {
+            if (is_dir($dir)) {
+                @chmod($dir, 0777);
+                $output->writeln("  ✓ Permisos 777 aplicados a: " . str_replace("{$name}/", '', $dir));
+            }
+        }
+
+        // 3. Permisos recursivos para vendor/composer
+        $vendorComposerDir = "{$name}/vendor/composer";
+        if (is_dir($vendorComposerDir)) {
+            $process = Process::fromShellCommandline("chmod -R 777 \"{$vendorComposerDir}\"");
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $output->writeln("  ✓ Permisos recursivos 777 aplicados a: vendor/composer");
+            }
+        }
+        
+        $output->writeln('<info>✓ Permisos configurados para gestión web</info>');
     }
 }

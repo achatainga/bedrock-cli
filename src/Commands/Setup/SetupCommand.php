@@ -73,6 +73,9 @@ class SetupCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         
+        // [NUEVO] Asegurar permisos correctos
+        $this->ensureComposerPermissions($output);
+        
         // 1. Detectar estado
         $output->writeln('<info>Detectando estado del proyecto...</info>');
         $output->writeln('');
@@ -916,6 +919,52 @@ class SetupCommand extends Command
         
         if ($modified) {
             file_put_contents($envPath, $envContent);
+        }
+    }
+    
+    /**
+     * Asegura permisos correctos en el directorio actual (getcwd)
+     */
+    private function ensureComposerPermissions(OutputInterface $output): void
+    {
+        $projectRoot = getcwd();
+        $needsAdjustment = false;
+
+        // Comprobación rápida
+        if (file_exists("{$projectRoot}/composer.json")) {
+            $perms = fileperms("{$projectRoot}/composer.json") & 0777;
+            if ($perms !== 0666 && $perms !== 0777) {
+                $needsAdjustment = true;
+            }
+        }
+
+        if ($needsAdjustment) {
+            $output->writeln('<info>Corrigiendo permisos de archivos...</info>');
+            
+            // Files -> 666
+            $files = ["composer.json", "composer.lock"];
+            foreach ($files as $file) {
+                if (file_exists($projectRoot . '/' . $file)) {
+                    @chmod($projectRoot . '/' . $file, 0666);
+                }
+            }
+
+            // Dirs -> 777
+            $dirs = ["web/app/plugins"];
+            foreach ($dirs as $dir) {
+                if (is_dir($projectRoot . '/' . $dir)) {
+                    @chmod($projectRoot . '/' . $dir, 0777);
+                }
+            }
+
+            // Vendor Recursivo -> 777
+            if (is_dir($projectRoot . '/vendor/composer')) {
+                $process = Process::fromShellCommandline('chmod -R 777 vendor/composer');
+                $process->run();
+            }
+            
+            $output->writeln('  ✓ Permisos ajustados para gestión web');
+            $output->writeln('');
         }
     }
 }
