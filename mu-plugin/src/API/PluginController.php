@@ -91,16 +91,20 @@ class PluginController
         $version = $request->get_param('version') ?: '*';
 
         $projectRoot = dirname(ABSPATH, 2);
+        $composerJson = $projectRoot . '/composer.json';
         $output = [];
         $returnCode = 0;
         
-        // Obtener usuario dueño del proyecto
-        $owner = posix_getpwuid(fileowner($projectRoot));
-        $username = $owner['name'];
+        // Cambiar permisos temporalmente
+        $originalPerms = fileperms($composerJson);
+        chmod($composerJson, 0666); // Hacer writable
         
-        // Ejecutar composer como el usuario correcto
+        // Ejecutar composer
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("sudo -u {$username} {$composerBin} require wpackagist-plugin/{$slug}:{$version} --working-dir={$projectRoot} --no-interaction 2>&1", $output, $returnCode);
+        exec("cd {$projectRoot} && {$composerBin} require wpackagist-plugin/{$slug}:{$version} --no-interaction 2>&1", $output, $returnCode);
+        
+        // Restaurar permisos
+        chmod($composerJson, $originalPerms);
 
         // Activar con wp-cli si la instalación fue exitosa
         if ($returnCode === 0) {
@@ -147,19 +151,23 @@ class PluginController
         $slug = $request->get_param('slug');
 
         $projectRoot = dirname(ABSPATH, 2);
+        $composerJson = $projectRoot . '/composer.json';
         $output = [];
         $returnCode = 0;
         
         // Desactivar primero
         exec("wp plugin deactivate {$slug} 2>&1");
         
-        // Obtener usuario dueño del proyecto
-        $owner = posix_getpwuid(fileowner($projectRoot));
-        $username = $owner['name'];
+        // Cambiar permisos temporalmente
+        $originalPerms = fileperms($composerJson);
+        chmod($composerJson, 0666);
         
-        // Ejecutar composer remove como el usuario correcto
+        // Ejecutar composer remove
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("sudo -u {$username} {$composerBin} remove wpackagist-plugin/{$slug} --working-dir={$projectRoot} --no-interaction 2>&1", $output, $returnCode);
+        exec("cd {$projectRoot} && {$composerBin} remove wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
+        
+        // Restaurar permisos
+        chmod($composerJson, $originalPerms);
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,
