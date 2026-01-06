@@ -87,10 +87,11 @@ jQuery(document).ready(function($) {
         const slug = btn.data('slug');
         console.log('Installing:', slug);
         
-        if (!confirm(`¿Instalar ${slug}?`)) {
-            console.log('Installation cancelled');
-            return;
-        }
+        // Temporalmente sin confirm para debug
+        // if (!confirm(`¿Instalar ${slug}?`)) {
+        //     console.log('Installation cancelled');
+        //     return;
+        // }
         
         console.log('Starting installation...');
         btn.prop('disabled', true).text('Instalando...');
