@@ -34,16 +34,22 @@ jQuery(document).ready(function($) {
             
             res.plugins.forEach(function(plugin) {
                 html += '<tr>';
-                html += `<td><strong>${plugin.slug}</strong></td>`;
+                html += `<td><strong>${plugin.name || plugin.slug}</strong>`;
+                if (plugin.source === 'manual') {
+                    html += ` <span class="dashicons dashicons-admin-plugins" title="Plugin premium/custom"></span>`;
+                }
+                html += `</td>`;
                 html += `<td>${plugin.version}</td>`;
                 html += `<td>${plugin.active ? '<span class="dashicons dashicons-yes-alt" style="color:green;"></span> Activo' : '<span class="dashicons dashicons-minus"></span> Inactivo'}</td>`;
                 html += '<td>';
                 if (plugin.active) {
-                    html += `<button class="button btn-deactivate" data-slug="${plugin.slug}">Desactivar</button> `;
+                    html += `<button class="button btn-deactivate" data-slug="${plugin.slug}" data-file="${plugin.file}">Desactivar</button> `;
                 } else {
-                    html += `<button class="button button-primary btn-activate" data-slug="${plugin.slug}">Activar</button> `;
+                    html += `<button class="button button-primary btn-activate" data-slug="${plugin.slug}" data-file="${plugin.file}">Activar</button> `;
                 }
-                html += `<button class="button btn-uninstall" data-slug="${plugin.slug}" style="color:#b32d2e;">Desinstalar</button>`;
+                if (plugin.source === 'composer') {
+                    html += `<button class="button btn-uninstall" data-slug="${plugin.slug}" style="color:#b32d2e;">Desinstalar</button>`;
+                }
                 html += '</td></tr>';
             });
             
@@ -115,10 +121,11 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.btn-activate', function() {
         const btn = $(this);
         const slug = btn.data('slug');
+        const file = btn.data('file') || slug;
         
         btn.prop('disabled', true).text('Activando...');
         
-        api('/plugin/activate', 'POST', { slug: slug }).done(function(res) {
+        api('/plugin/activate', 'POST', { slug: file }).done(function(res) {
             alert(res.message);
             if (res.success) loadInstalledPlugins();
         }).always(function() {
@@ -130,10 +137,11 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.btn-deactivate', function() {
         const btn = $(this);
         const slug = btn.data('slug');
+        const file = btn.data('file') || slug;
         
         btn.prop('disabled', true).text('Desactivando...');
         
-        api('/plugin/deactivate', 'POST', { slug: slug }).done(function(res) {
+        api('/plugin/deactivate', 'POST', { slug: file }).done(function(res) {
             alert(res.message);
             if (res.success) loadInstalledPlugins();
         }).always(function() {

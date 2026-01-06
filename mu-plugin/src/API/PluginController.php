@@ -52,39 +52,43 @@ class PluginController
 
     public function listPlugins(): WP_REST_Response
     {
+        // Obtener todos los plugins (incluyendo premium/custom)
+        if (!function_exists('get_plugins')) {
+            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+        }
+        
+        $allPlugins = get_plugins();
+        $activePlugins = get_option('active_plugins', []);
+        
+        // Obtener plugins de Composer para mostrar versiones
         $composerPath = dirname(ABSPATH, 2) . '/composer.json';
         $composer = json_decode(file_get_contents($composerPath), true);
+        $composerPlugins = [];
         
-        $plugins = [];
         foreach ($composer['require'] ?? [] as $package => $version) {
             if (strpos($package, 'wpackagist-plugin/') === 0) {
                 $slug = str_replace('wpackagist-plugin/', '', $package);
-                
-                // Patrones comunes para archivos principales
-                $patterns = [
-                    $slug . '/' . $slug . '.php',
-                    $slug . '/index.php', 
-                    $slug . '/wp-' . $slug . '.php',
-                    $slug . '/' . str_replace('-translate', '', $slug) . '.php', // loco-translate -> loco.php
-                    $slug . '/' . explode('-', $slug)[0] . '.php' // primer-palabra.php
-                ];
-                
-                $isActive = false;
-                foreach ($patterns as $pattern) {
-                    if (is_plugin_active($pattern)) {
-                        $isActive = true;
-                        break;
-                    }
-                }
-                
-                $plugins[] = [
-                    'slug' => $slug,
-                    'version' => $version,
-                    'active' => $isActive
-                ];
+                $composerPlugins[$slug] = $version;
             }
         }
-
+        
+        $plugins = [];
+        foreach ($allPlugins as $pluginFile => $pluginData) {
+            $slug = dirname($pluginFile);
+            if ($slug === '.') {
+                $slug = basename($pluginFile, '.php');
+            }
+            
+            $plugins[] = [
+                'slug' => $slug,
+                'name' => $pluginData['Name'],
+                'version' => $composerPlugins[$slug] ?? $pluginData['Version'],
+                'active' => in_array($pluginFile, $activePlugins),
+                'file' => $pluginFile,
+                'source' => isset($composerPlugins[$slug]) ? 'composer' : 'manual'
+            ];
+        }
+        
         return new WP_REST_Response(['success' => true, 'plugins' => $plugins], 200);
     }
 
