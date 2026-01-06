@@ -92,7 +92,8 @@ class PluginController
         // 2. Ejecutar composer require
         $output = [];
         $returnCode = 0;
-        exec("cd " . dirname(ABSPATH, 2) . " && composer require wpackagist-plugin/{$slug}:{$version} --no-interaction 2>&1", $output, $returnCode);
+        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
+        exec("cd " . dirname(ABSPATH, 2) . " && {$composerBin} require wpackagist-plugin/{$slug}:{$version} --no-interaction 2>&1", $output, $returnCode);
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,
