@@ -38,6 +38,7 @@ use Roots\BedrockCli\Commands\Setup\InitCommand;
 use Roots\BedrockCli\Commands\System\MainMenuCommand;
 use Roots\BedrockCli\Commands\System\InitMenuCommand;
 use Roots\BedrockCli\Commands\System\SearchMenuCommand;
+use Roots\BedrockCli\Commands\System\LanguageCommand;
 use Roots\BedrockCli\Commands\System\InfoCommand;
 use Roots\BedrockCli\Commands\System\DoctorCommand;
 use Roots\BedrockCli\Commands\System\BackupCommand;
@@ -192,6 +193,9 @@ class Application extends BaseApplication
             // MainMenuCommand registrado via CommandRegistryService - NO duplicar aquí
             new InitMenuCommand(),
             new SearchMenuCommand(),
+            new LanguageCommand(
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new InfoCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
             ),
