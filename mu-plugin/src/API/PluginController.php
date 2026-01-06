@@ -90,21 +90,26 @@ class PluginController
         $slug = $request->get_param('slug');
         $version = $request->get_param('version') ?: '*';
 
-        // 1. Agregar a composer.json
-        $composerPath = dirname(ABSPATH, 2) . '/composer.json';
-        $composer = json_decode(file_get_contents($composerPath), true);
-        $composer['require']["wpackagist-plugin/{$slug}"] = $version;
-        file_put_contents($composerPath, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-        // 2. Ejecutar composer require
+        $projectRoot = dirname(ABSPATH, 2);
         $output = [];
         $returnCode = 0;
+        
+        // Obtener usuario dueño del proyecto
+        $owner = posix_getpwuid(fileowner($projectRoot));
+        $username = $owner['name'];
+        
+        // Ejecutar composer como el usuario correcto
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("cd " . dirname(ABSPATH, 2) . " && {$composerBin} require wpackagist-plugin/{$slug}:{$version} --no-interaction 2>&1", $output, $returnCode);
+        exec("sudo -u {$username} {$composerBin} require wpackagist-plugin/{$slug}:{$version} --working-dir={$projectRoot} --no-interaction 2>&1", $output, $returnCode);
+
+        // Activar con wp-cli si la instalación fue exitosa
+        if ($returnCode === 0) {
+            exec("wp plugin activate {$slug} 2>&1", $activateOutput);
+        }
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,
-            'message' => $returnCode === 0 ? "Plugin {$slug} instalado" : "Error instalando plugin",
+            'message' => $returnCode === 0 ? "Plugin {$slug} instalado y activado" : "Error instalando plugin",
             'output' => implode("\n", $output)
         ], 200);
     }
@@ -141,20 +146,20 @@ class PluginController
     {
         $slug = $request->get_param('slug');
 
-        // 1. Desactivar primero
-        exec("wp plugin deactivate {$slug} 2>&1", $output);
-
-        // 2. Remover de composer.json
-        $composerPath = dirname(ABSPATH, 2) . '/composer.json';
-        $composer = json_decode(file_get_contents($composerPath), true);
-        unset($composer['require']["wpackagist-plugin/{$slug}"]);
-        file_put_contents($composerPath, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-        // 3. Ejecutar composer remove
+        $projectRoot = dirname(ABSPATH, 2);
         $output = [];
         $returnCode = 0;
+        
+        // Desactivar primero
+        exec("wp plugin deactivate {$slug} 2>&1");
+        
+        // Obtener usuario dueño del proyecto
+        $owner = posix_getpwuid(fileowner($projectRoot));
+        $username = $owner['name'];
+        
+        // Ejecutar composer remove como el usuario correcto
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("cd " . dirname(ABSPATH, 2) . " && {$composerBin} remove wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
+        exec("sudo -u {$username} {$composerBin} remove wpackagist-plugin/{$slug} --working-dir={$projectRoot} --no-interaction 2>&1", $output, $returnCode);
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,
