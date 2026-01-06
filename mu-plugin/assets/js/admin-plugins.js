@@ -143,18 +143,31 @@ jQuery(document).ready(function($) {
 
     // Desinstalar plugin
     $(document).on('click', '.btn-uninstall', function() {
+        console.log('Uninstall button clicked!');
         const btn = $(this);
         const slug = btn.data('slug');
+        console.log('Uninstalling:', slug);
         
-        if (!confirm(`¿DESINSTALAR ${slug}? Esto eliminará el plugin completamente.`)) return;
+        if (!confirm(`¿DESINSTALAR ${slug}? Esto eliminará el plugin completamente.`)) {
+            console.log('Uninstall cancelled');
+            return;
+        }
         
+        console.log('Starting uninstall...');
         btn.prop('disabled', true).text('Desinstalando...');
         
+        console.log('Calling API:', '/plugin/uninstall', {slug: slug});
         api('/plugin/uninstall', 'POST', { slug: slug }).done(function(res) {
-            alert(res.message);
+            console.log('Uninstall API response:', res);
+            console.log('Success:', res.success);
+            console.log('Message:', res.message);
+            console.log('Output:', res.output);
+            alert(res.message + (res.output ? '\n\nOutput:\n' + res.output : ''));
             if (res.success) loadInstalledPlugins();
-        }).fail(function() {
-            alert('Error al desinstalar');
+        }).fail(function(xhr) {
+            console.log('Uninstall API failed:', xhr);
+            console.log('Response:', xhr.responseJSON);
+            alert('Error al desinstalar: ' + (xhr.responseJSON?.message || 'Error desconocido'));
         }).always(function() {
             btn.prop('disabled', false).text('Desinstalar');
         });
