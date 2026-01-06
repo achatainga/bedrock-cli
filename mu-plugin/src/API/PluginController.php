@@ -99,14 +99,21 @@ class PluginController
         exec("git config --global --add safe.directory {$projectRoot} 2>&1");
         
         // 2. Modificar composer.json manualmente
-        $originalPerms = fileperms($composerJson);
+        $composerJson = $projectRoot . '/composer.json';
+        $composerLock = $projectRoot . '/composer.lock';
+        
+        $originalJsonPerms = fileperms($composerJson);
+        $originalLockPerms = fileperms($composerLock);
+        
         chmod($composerJson, 0666);
+        chmod($composerLock, 0666);
         
         $composer = json_decode(file_get_contents($composerJson), true);
         $composer['require']["wpackagist-plugin/{$slug}"] = $version;
         file_put_contents($composerJson, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         
-        chmod($composerJson, $originalPerms);
+        chmod($composerJson, $originalJsonPerms);
+        chmod($composerLock, $originalLockPerms);
         
         // 3. Ejecutar composer update (solo lee composer.json, no lo modifica)
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
@@ -168,14 +175,21 @@ class PluginController
         exec("git config --global --add safe.directory {$projectRoot} 2>&1");
         
         // Modificar composer.json manualmente
-        $originalPerms = fileperms($composerJson);
+        $composerJson = $projectRoot . '/composer.json';
+        $composerLock = $projectRoot . '/composer.lock';
+        
+        $originalJsonPerms = fileperms($composerJson);
+        $originalLockPerms = fileperms($composerLock);
+        
         chmod($composerJson, 0666);
+        chmod($composerLock, 0666);
         
         $composer = json_decode(file_get_contents($composerJson), true);
         unset($composer['require']["wpackagist-plugin/{$slug}"]);
         file_put_contents($composerJson, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         
-        chmod($composerJson, $originalPerms);
+        chmod($composerJson, $originalJsonPerms);
+        chmod($composerLock, $originalLockPerms);
         
         // Ejecutar composer update para remover
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
