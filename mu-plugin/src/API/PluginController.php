@@ -62,7 +62,7 @@ class PluginController
                 $plugins[] = [
                     'slug' => $slug,
                     'version' => $version,
-                    'active' => is_plugin_active($slug . '/' . $slug . '.php')
+                    'active' => is_plugin_active($slug . '/' . $slug . '.php') || is_plugin_active($slug . '/index.php')
                 ];
             }
         }
