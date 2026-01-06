@@ -88,6 +88,13 @@ class Plugin
                 BEDROCK_CLI_PLUGIN_VERSION
             );
 
+            wp_enqueue_style(
+                'bedrock-cli-plugins',
+                BEDROCK_CLI_PLUGIN_URL . '/assets/css/admin-plugins.css',
+                [],
+                BEDROCK_CLI_PLUGIN_VERSION
+            );
+
             wp_enqueue_script(
                 'bedrock-cli-plugins',
                 BEDROCK_CLI_PLUGIN_URL . '/assets/js/admin-plugins.js',

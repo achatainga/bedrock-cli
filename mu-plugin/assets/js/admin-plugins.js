@@ -4,6 +4,40 @@ jQuery(document).ready(function($) {
     const NONCE = bedrockCliSettings.nonce;
     console.log('API_ROOT:', API_ROOT, 'NONCE:', NONCE);
 
+    // Toast notification system
+    function showToast(message, type = 'success', duration = 4000) {
+        // Create container if it doesn't exist
+        if (!$('.bd-toast-container').length) {
+            $('body').append('<div class="bd-toast-container"></div>');
+        }
+        
+        // Create toast element
+        const toast = $(`
+            <div class="bd-toast ${type}">
+                ${message}
+                <button class="bd-toast-close">&times;</button>
+            </div>
+        `);
+        
+        // Add to container
+        $('.bd-toast-container').append(toast);
+        
+        // Show with animation
+        setTimeout(() => toast.addClass('show'), 100);
+        
+        // Auto remove
+        setTimeout(() => {
+            toast.removeClass('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+        
+        // Manual close
+        toast.find('.bd-toast-close').click(() => {
+            toast.removeClass('show');
+            setTimeout(() => toast.remove(), 300);
+        });
+    }
+
     function api(endpoint, method = 'GET', data = {}) {
         return $.ajax({
             url: API_ROOT + endpoint,
@@ -105,13 +139,13 @@ jQuery(document).ready(function($) {
         console.log('Calling API:', '/plugins/install', {slug: slug});
         api('/plugins/install', 'POST', { slug: slug }).done(function(res) {
             console.log('API response:', res);
-            alert(res.message);
+            showToast(res.message, res.success ? 'success' : 'error');
             if (res.success) {
                 loadInstalledPlugins();
                 $('.bd-tab[data-tab="installed"]').click();
             }
         }).fail(function(xhr) {
-            alert('Error: ' + (xhr.responseJSON?.message || 'No se pudo instalar'));
+            showToast('Error: ' + (xhr.responseJSON?.message || 'No se pudo instalar'), 'error');
         }).always(function() {
             btn.prop('disabled', false).text('Instalar');
         });
@@ -126,7 +160,7 @@ jQuery(document).ready(function($) {
         btn.prop('disabled', true).text('Activando...');
         
         api('/plugin/activate', 'POST', { slug: file }).done(function(res) {
-            alert(res.message);
+            showToast(res.message, res.success ? 'success' : 'error');
             if (res.success) loadInstalledPlugins();
         }).always(function() {
             btn.prop('disabled', false).text('Activar');
@@ -142,7 +176,7 @@ jQuery(document).ready(function($) {
         btn.prop('disabled', true).text('Desactivando...');
         
         api('/plugin/deactivate', 'POST', { slug: file }).done(function(res) {
-            alert(res.message);
+            showToast(res.message, res.success ? 'success' : 'error');
             if (res.success) loadInstalledPlugins();
         }).always(function() {
             btn.prop('disabled', false).text('Desactivar');
@@ -171,12 +205,12 @@ jQuery(document).ready(function($) {
             console.log('Success:', res.success);
             console.log('Message:', res.message);
             console.log('Output:', res.output);
-            alert(res.message + (res.output ? '\n\nOutput:\n' + res.output : ''));
+            showToast(res.message + (res.output ? '\n\nOutput:\n' + res.output : ''), res.success ? 'success' : 'error', 6000);
             if (res.success) loadInstalledPlugins();
         }).fail(function(xhr) {
             console.log('Uninstall API failed:', xhr);
             console.log('Response:', xhr.responseJSON);
-            alert('Error al desinstalar: ' + (xhr.responseJSON?.message || 'Error desconocido'));
+            showToast('Error al desinstalar: ' + (xhr.responseJSON?.message || 'Error desconocido'), 'error');
         }).always(function() {
             btn.prop('disabled', false).text('Desinstalar');
         });
