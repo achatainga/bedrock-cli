@@ -116,8 +116,20 @@ class PluginController
         chmod($composerLock, $originalLockPerms);
         
         // 3. Ejecutar composer update (solo lee composer.json, no lo modifica)
+        $pluginsDir = dirname(ABSPATH) . '/plugins';
+        
+        // Asegurar que el directorio plugins existe y tiene permisos
+        if (!file_exists($pluginsDir)) {
+            mkdir($pluginsDir, 0755, true);
+        }
+        $originalPluginsPerms = fileperms($pluginsDir);
+        chmod($pluginsDir, 0777);
+        
         $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
         exec("cd {$projectRoot} && {$composerBin} update wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
+        
+        // Restaurar permisos
+        chmod($pluginsDir, $originalPluginsPerms);
 
         // 4. Activar con wp-cli
         if ($returnCode === 0) {
