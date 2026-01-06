@@ -59,15 +59,50 @@ class PluginController
         foreach ($composer['require'] ?? [] as $package => $version) {
             if (strpos($package, 'wpackagist-plugin/') === 0) {
                 $slug = str_replace('wpackagist-plugin/', '', $package);
+                
+                // Detectar archivo principal del plugin
+                $pluginDir = dirname(ABSPATH) . '/plugins/' . $slug;
+                $mainFile = $this->findMainPluginFile($pluginDir, $slug);
+                
                 $plugins[] = [
                     'slug' => $slug,
                     'version' => $version,
-                    'active' => is_plugin_active($slug . '/' . $slug . '.php') || is_plugin_active($slug . '/index.php')
+                    'active' => $mainFile ? is_plugin_active($mainFile) : false
                 ];
             }
         }
 
         return new WP_REST_Response(['success' => true, 'plugins' => $plugins], 200);
+    }
+    
+    private function findMainPluginFile(string $pluginDir, string $slug): ?string
+    {
+        if (!is_dir($pluginDir)) return null;
+        
+        // Patrones comunes para archivos principales
+        $patterns = [
+            $slug . '/' . $slug . '.php',
+            $slug . '/index.php',
+            $slug . '/wp-' . $slug . '.php',
+            $slug . '/' . str_replace('-', '_', $slug) . '.php'
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (file_exists(dirname(ABSPATH) . '/plugins/' . $pattern)) {
+                return $pattern;
+            }
+        }
+        
+        // Buscar cualquier .php en la raíz del plugin
+        $files = glob($pluginDir . '/*.php');
+        foreach ($files as $file) {
+            $content = file_get_contents($file);
+            if (strpos($content, 'Plugin Name:') !== false) {
+                return $slug . '/' . basename($file);
+            }
+        }
+        
+        return null;
     }
 
     public function searchPlugins(WP_REST_Request $request): WP_REST_Response
