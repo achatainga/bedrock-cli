@@ -37,7 +37,7 @@ class AdminMenu
             'bedrock-cli',
             'Plugins',
             'Plugins',
-            'install_plugins',
+            'manage_options',
             'bedrock-cli-plugins',
             [$this, 'renderPlugins']
         );
