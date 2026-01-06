@@ -1,0 +1,14 @@
+.bedrock-dashboard { margin: 20px; }
+.bd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+.bd-card { background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+.bd-card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.bd-header { display: flex; justify-content: space-between; align-items: center; }
+.bd-badge { background: #2271b1; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
+.bd-status-list { margin: 0; }
+.bd-status-list li { margin-bottom: 5px; font-size: 14px; }
+.bd-terminal { background: #1e1e1e; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; margin-top: 10px; white-space: pre-wrap; display: none; }
+.bd-content-loading { color: #666; font-style: italic; }
+.bd-spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 5px; }
+.bd-form-row { display: flex; gap: 10px; margin-top: 10px; }
+.bd-form-row select { flex: 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
