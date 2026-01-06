@@ -116,6 +116,9 @@ class NewCommand extends Command
             // [NUEVO] Configurar permisos para MU plugin
             $this->configureComposerPermissions($name, $output);
             
+            // [NUEVO] Configurar permisos para uploads
+            $this->configureUploadsPermissions($name, $output);
+            
             // Manejar ubicación del proyecto si usó reverse proxy
             $httpPortInfo = $this->determineHttpPort($input->getOption('http-port'), $output);
             if ($httpPortInfo['strategy'] === 'reverse-proxy') {
@@ -885,5 +888,34 @@ class NewCommand extends Command
         }
         
         $output->writeln('<info>✓ Permisos configurados para gestión web</info>');
+    }
+    
+    /**
+     * Configura permisos para directorio uploads en entorno Docker
+     */
+    private function configureUploadsPermissions(string $name, OutputInterface $output): void
+    {
+        $output->writeln('<info>Configurando permisos para uploads...</info>');
+        
+        $uploadsDir = "{$name}/web/app/uploads";
+        
+        // Crear directorio uploads si no existe
+        if (!is_dir($uploadsDir)) {
+            @mkdir($uploadsDir, 0755, true);
+        }
+        
+        // Configurar permisos para www-data (Docker)
+        $process = Process::fromShellCommandline("chown -R 33:33 \"{$uploadsDir}\" && chmod -R 755 \"{$uploadsDir}\"");
+        $process->run();
+        
+        if ($process->isSuccessful()) {
+            $output->writeln('  ✓ Permisos 755 y owner www-data aplicados a: web/app/uploads');
+        } else {
+            // Fallback: solo permisos sin cambiar owner
+            @chmod($uploadsDir, 0777);
+            $output->writeln('  ✓ Permisos 777 aplicados a: web/app/uploads (fallback)');
+        }
+        
+        $output->writeln('<info>✓ Directorio uploads configurado</info>');
     }
 }

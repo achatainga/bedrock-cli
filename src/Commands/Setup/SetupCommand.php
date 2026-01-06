@@ -75,6 +75,7 @@ class SetupCommand extends Command
         
         // [NUEVO] Asegurar permisos correctos
         $this->ensureComposerPermissions($output);
+        $this->ensureUploadsPermissions($output);
         
         // 1. Detectar estado
         $output->writeln('<info>Detectando estado del proyecto...</info>');
@@ -964,6 +965,52 @@ class SetupCommand extends Command
             }
             
             $output->writeln('  ✓ Permisos ajustados para gestión web');
+            $output->writeln('');
+        }
+    }
+    
+    /**
+     * Asegura permisos correctos para uploads en el directorio actual
+     */
+    private function ensureUploadsPermissions(OutputInterface $output): void
+    {
+        $projectRoot = getcwd();
+        $uploadsDir = $projectRoot . '/web/app/uploads';
+        
+        // Crear directorio si no existe
+        if (!is_dir($uploadsDir)) {
+            @mkdir($uploadsDir, 0755, true);
+        }
+        
+        // Verificar si necesita ajuste de permisos
+        $needsAdjustment = false;
+        if (is_dir($uploadsDir)) {
+            $perms = fileperms($uploadsDir) & 0777;
+            $stat = stat($uploadsDir);
+            // Verificar si no es propiedad de www-data (uid 33) o no tiene permisos 755
+            if ($stat['uid'] !== 33 || $perms < 0755) {
+                $needsAdjustment = true;
+            }
+        }
+        
+        if ($needsAdjustment) {
+            $output->writeln('<info>Configurando permisos para uploads...</info>');
+            
+            // Intentar cambiar owner a www-data (Docker)
+            $process = Process::fromShellCommandline("chown -R 33:33 \"{$uploadsDir}\" 2>/dev/null");
+            $process->run();
+            
+            // Configurar permisos
+            @chmod($uploadsDir, 0755);
+            
+            // Si hay subdirectorios, aplicar recursivamente
+            $process = Process::fromShellCommandline("find \"{$uploadsDir}\" -type d -exec chmod 755 {} \; 2>/dev/null");
+            $process->run();
+            
+            $process = Process::fromShellCommandline("find \"{$uploadsDir}\" -type f -exec chmod 644 {} \; 2>/dev/null");
+            $process->run();
+            
+            $output->writeln('  ✓ Permisos de uploads configurados');
             $output->writeln('');
         }
     }
