@@ -514,27 +514,29 @@ APACHE;
      */
     private function getExternalServerIp(): ?string
     {
-        // Método 1: Variable de entorno SERVER_ADDR (cPanel)
-        $serverAddr = $_SERVER['SERVER_ADDR'] ?? null;
-        if ($serverAddr && $serverAddr !== '127.0.0.1' && $serverAddr !== '::1') {
-            return $serverAddr;
-        }
-        
-        // Método 2: hostname -I (Linux)
-        exec('hostname -I 2>/dev/null', $output);
-        if (!empty($output)) {
+        // Método 1: hostname -I (Linux) - más rápido
+        exec('hostname -I 2>/dev/null', $output, $returnCode);
+        if ($returnCode === 0 && !empty($output)) {
             $ips = explode(' ', trim($output[0]));
             foreach ($ips as $ip) {
+                $ip = trim($ip);
                 if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIVATE_RANGE)) {
                     return $ip;
                 }
             }
         }
         
-        // Método 3: curl para obtener IP pública (último recurso)
-        exec('curl -s ifconfig.me 2>/dev/null || curl -s ipinfo.io/ip 2>/dev/null', $output);
-        if (!empty($output) && filter_var(trim($output[0]), FILTER_VALIDATE_IP)) {
-            return trim($output[0]);
+        // Método 2: Variable de entorno SERVER_ADDR (solo si está disponible)
+        if (isset($_SERVER['SERVER_ADDR'])) {
+            $serverAddr = $_SERVER['SERVER_ADDR'];
+            if ($serverAddr && $serverAddr !== '127.0.0.1' && $serverAddr !== '::1') {
+                return $serverAddr;
+            }
+        }
+        
+        // Método 3: Hardcoded para GoDaddy (evitar timeout)
+        if (strpos(gethostname(), 'host') !== false) {
+            return '208.109.231.98'; // IP conocida de GoDaddy
         }
         
         return null;
