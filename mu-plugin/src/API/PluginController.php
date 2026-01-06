@@ -95,18 +95,24 @@ class PluginController
         $output = [];
         $returnCode = 0;
         
-        // Cambiar permisos temporalmente
+        // 1. Configurar git safe.directory
+        exec("git config --global --add safe.directory {$projectRoot} 2>&1");
+        
+        // 2. Modificar composer.json manualmente
         $originalPerms = fileperms($composerJson);
-        chmod($composerJson, 0666); // Hacer writable
+        chmod($composerJson, 0666);
         
-        // Ejecutar composer
-        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("cd {$projectRoot} && {$composerBin} require wpackagist-plugin/{$slug}:{$version} --no-interaction 2>&1", $output, $returnCode);
+        $composer = json_decode(file_get_contents($composerJson), true);
+        $composer['require']["wpackagist-plugin/{$slug}"] = $version;
+        file_put_contents($composerJson, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         
-        // Restaurar permisos
         chmod($composerJson, $originalPerms);
+        
+        // 3. Ejecutar composer update (solo lee composer.json, no lo modifica)
+        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
+        exec("cd {$projectRoot} && {$composerBin} update wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
 
-        // Activar con wp-cli si la instalación fue exitosa
+        // 4. Activar con wp-cli
         if ($returnCode === 0) {
             exec("wp plugin activate {$slug} 2>&1", $activateOutput);
         }
@@ -158,16 +164,22 @@ class PluginController
         // Desactivar primero
         exec("wp plugin deactivate {$slug} 2>&1");
         
-        // Cambiar permisos temporalmente
+        // Configurar git safe.directory
+        exec("git config --global --add safe.directory {$projectRoot} 2>&1");
+        
+        // Modificar composer.json manualmente
         $originalPerms = fileperms($composerJson);
         chmod($composerJson, 0666);
         
-        // Ejecutar composer remove
-        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
-        exec("cd {$projectRoot} && {$composerBin} remove wpackagist-plugin/{$slug} --no-interaction 2>&1", $output, $returnCode);
+        $composer = json_decode(file_get_contents($composerJson), true);
+        unset($composer['require']["wpackagist-plugin/{$slug}"]);
+        file_put_contents($composerJson, json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         
-        // Restaurar permisos
         chmod($composerJson, $originalPerms);
+        
+        // Ejecutar composer update para remover
+        $composerBin = file_exists('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer';
+        exec("cd {$projectRoot} && {$composerBin} update --no-interaction 2>&1", $output, $returnCode);
 
         return new WP_REST_Response([
             'success' => $returnCode === 0,
