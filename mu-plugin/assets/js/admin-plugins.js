@@ -1,6 +1,8 @@
 jQuery(document).ready(function($) {
+    console.log('Bedrock CLI Plugins JS loaded');
     const API_ROOT = '/wp-json/bedrock-cli/v1';
     const NONCE = bedrockCliSettings.nonce;
+    console.log('API_ROOT:', API_ROOT, 'NONCE:', NONCE);
 
     function api(endpoint, method = 'GET', data = {}) {
         return $.ajax({
