@@ -81,16 +81,18 @@ class Plugin
 
         // Plugins assets
         if ($hook === 'bedrock-cli_page_bedrock-cli-plugins') {
+            $pluginFile = dirname(__DIR__, 2) . '/bedrock-cli-plugin.php';
+            
             wp_enqueue_style(
                 'bedrock-cli-dashboard',
-                plugins_url('assets/css/admin-dashboard.css', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                plugins_url('assets/css/admin-dashboard.css', $pluginFile),
                 [],
                 '1.0.0'
             );
 
             wp_enqueue_script(
                 'bedrock-cli-plugins',
-                plugins_url('assets/js/admin-plugins.js', dirname(__DIR__, 2) . '/bedrock-cli-plugin.php'),
+                plugins_url('assets/js/admin-plugins.js', $pluginFile),
                 ['jquery'],
                 '1.0.0',
                 true
