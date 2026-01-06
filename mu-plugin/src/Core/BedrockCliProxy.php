@@ -34,11 +34,21 @@ class BedrockCliProxy
 
     public function run(string $command, array $args = []): array
     {
-        if (empty($this->binPath)) {
-            return ['success' => false, 'error' => 'Bedrock CLI binary not found'];
+        // Detectar si estamos en Docker
+        $inDocker = file_exists('/.dockerenv');
+        
+        if ($inDocker) {
+            // Ejecutar en host via docker-compose exec desde directorio del proyecto
+            $projectPath = defined('BEDROCK_APP_PATH') ? BEDROCK_APP_PATH : dirname(ABSPATH, 2);
+            $cmd = "cd {$projectPath} && docker-compose exec -T web bedrock {$command}";
+        } else {
+            // Ejecución directa
+            if (empty($this->binPath)) {
+                return ['success' => false, 'error' => 'Bedrock CLI binary not found'];
+            }
+            $cmd = escapeshellcmd($this->binPath . ' ' . $command);
         }
-
-        $cmd = escapeshellcmd($this->binPath . ' ' . $command);
+        
         foreach ($args as $arg) {
             $cmd .= ' ' . escapeshellarg($arg);
         }
