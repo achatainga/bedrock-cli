@@ -1,6 +1,8 @@
 jQuery(document).ready(function($) {
+    console.log('Bedrock CLI Plugins JS loaded');
     const API_ROOT = '/wp-json/bedrock-cli/v1';
     const NONCE = bedrockCliSettings.nonce;
+    console.log('API_ROOT:', API_ROOT, 'NONCE:', NONCE);
 
     function api(endpoint, method = 'GET', data = {}) {
         return $.ajax({
@@ -80,14 +82,22 @@ jQuery(document).ready(function($) {
 
     // Instalar plugin
     $(document).on('click', '.bd-btn-install', function() {
+        console.log('Install button clicked!');
         const btn = $(this);
         const slug = btn.data('slug');
+        console.log('Installing:', slug);
         
-        if (!confirm(`¿Instalar ${slug}?`)) return;
+        if (!confirm(`¿Instalar ${slug}?`)) {
+            console.log('Installation cancelled');
+            return;
+        }
         
+        console.log('Starting installation...');
         btn.prop('disabled', true).text('Instalando...');
         
+        console.log('Calling API:', '/plugins/install', {slug: slug});
         api('/plugins/install', 'POST', { slug: slug }).done(function(res) {
+            console.log('API response:', res);
             alert(res.message);
             if (res.success) {
                 loadInstalledPlugins();
