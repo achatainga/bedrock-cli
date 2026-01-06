@@ -305,42 +305,53 @@ PHP;
     private function ensureCacheUpdated(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
     {
         $cacheDir = $_SERVER['HOME'] . '/.bedrock/cache';
-        $missingPlugins = [];
+        $missingCachePlugins = [];
         
-        // Verificar plugins premium en cache
+        // Solo verificar plugins premium con source = 'cache'
         foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
             if ($plugin['source'] === 'cache') {
                 $zipPath = $cacheDir . '/' . $plugin['path'] . basename($plugin['path'], '/') . '.zip';
                 if (!file_exists($zipPath)) {
-                    $missingPlugins[] = $plugin['name'] . ' v' . $plugin['version'];
+                    $missingCachePlugins[] = $plugin['name'] . ' v' . $plugin['version'];
                 }
             }
         }
         
-        // Verificar themes premium en cache
+        // Solo verificar themes premium con source = 'cache'
         foreach ($profile['themes']['premium'] ?? [] as $theme) {
             if ($theme['source'] === 'cache') {
                 $zipPath = $cacheDir . '/' . $theme['path'] . basename($theme['path'], '/') . '.zip';
                 if (!file_exists($zipPath)) {
-                    $missingPlugins[] = $theme['name'] . ' v' . $theme['version'];
+                    $missingCachePlugins[] = $theme['name'] . ' v' . $theme['version'];
                 }
             }
         }
         
-        if (!empty($missingPlugins)) {
+        // Solo proceder si hay plugins/themes de cache faltantes
+        if (!empty($missingCachePlugins)) {
             $output->writeln('');
-            $output->writeln('<fg=yellow>⚠️  Plugins/themes no encontrados en cache:</>');            foreach ($missingPlugins as $missing) {
+            $output->writeln('<fg=yellow>⚠️  Plugins/themes no encontrados en cache:</>');            foreach ($missingCachePlugins as $missing) {
                 $output->writeln("  • {$missing}");
             }
             $output->writeln('');
             $output->writeln('<info>🔄 Actualizando desde repositorio premium...</info>');
             
-            // Buscar repo de premium assets
+            // Buscar repo de premium assets (solo para plugins con source = cache)
             $premiumRepo = null;
             foreach ($profile['plugins']['premium'] ?? [] as $plugin) {
-                if (isset($plugin['original_url'])) {
+                if ($plugin['source'] === 'cache' && isset($plugin['original_url'])) {
                     $premiumRepo = $plugin['original_url'];
                     break;
+                }
+            }
+            
+            // Si no se encontró en plugins, buscar en themes
+            if (!$premiumRepo) {
+                foreach ($profile['themes']['premium'] ?? [] as $theme) {
+                    if ($theme['source'] === 'cache' && isset($theme['original_url'])) {
+                        $premiumRepo = $theme['original_url'];
+                        break;
+                    }
                 }
             }
             
@@ -412,9 +423,15 @@ PHP;
                     }
                 }
                 
-                $output->writeln('<error>No se encontró el repositorio de premium assets</error>');
+                $output->writeln('<comment>⚠️  No se encontró el repositorio de premium assets</comment>');
                 $output->writeln("<comment>Clona el repo: git clone {$premiumRepo}</comment>");
-                throw new \Exception("Repositorio premium no encontrado");
+                $output->writeln('<comment>Continuando sin actualizar cache...</comment>');
+                $output->writeln('');
+                return;
+            } else {
+                $output->writeln('<comment>⚠️  No hay repositorio de premium assets configurado</comment>');
+                $output->writeln('<comment>Continuando sin actualizar cache...</comment>');
+                $output->writeln('');
             }
         }
     }
