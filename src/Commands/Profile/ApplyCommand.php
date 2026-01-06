@@ -5,7 +5,6 @@ namespace Roots\BedrockCli\Commands\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\VcsValidator;
-use Roots\BedrockCli\Services\PluginDependencyManager;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -20,19 +19,16 @@ class ApplyCommand extends Command
     private ProfileService $profileService;
     private ComposerService $composerService;
     private VcsValidator $vcsValidator;
-    private PluginDependencyManager $dependencyManager;
 
     public function __construct(
         ProfileService $profileService,
         ComposerService $composerService,
-        VcsValidator $vcsValidator,
-        PluginDependencyManager $dependencyManager
+        VcsValidator $vcsValidator
     ) {
         parent::__construct();
         $this->profileService = $profileService;
         $this->composerService = $composerService;
         $this->vcsValidator = $vcsValidator;
-        $this->dependencyManager = $dependencyManager;
     }
 
     protected function configure(): void
@@ -125,11 +121,6 @@ class ApplyCommand extends Command
         
         $output->writeln('');
         $output->writeln('<info>✓ Profile aplicado y dependencias instaladas</info>');
-        $output->writeln('');
-        
-        // Resolver dependencias de plugins automáticamente
-        $output->writeln('<info>🔧 Resolviendo dependencias de plugins...</info>');
-        $this->dependencyManager->resolvePluginDependencies($projectRoot, $output);
         $output->writeln('');
         
         // Configurar child theme para Acorn si es necesario

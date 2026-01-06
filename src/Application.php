@@ -240,8 +240,7 @@ class Application extends BaseApplication
             new ProfileApplyCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService'),
                 $this->container->get('Roots\BedrockCli\Services\ComposerService'),
-                $this->container->get('Roots\BedrockCli\Services\VcsValidator'),
-                $this->container->get('Roots\BedrockCli\Services\PluginDependencyManager')
+                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
             ),
             new ProfileAddPluginCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProfileService')
@@ -431,9 +430,6 @@ class Application extends BaseApplication
         // Add CommandRegistryService
         $this->container->register('Roots\BedrockCli\Services\CommandRegistryService', 'Roots\BedrockCli\Services\CommandRegistryService')
             ->addArgument($this->container);
-        
-        // Add PluginDependencyManager
-        $this->container->register('Roots\BedrockCli\Services\PluginDependencyManager', 'Roots\BedrockCli\Services\PluginDependencyManager');
     }
 
     public function getContainer(): ContainerBuilder
