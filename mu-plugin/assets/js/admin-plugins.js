@@ -148,10 +148,11 @@ jQuery(document).ready(function($) {
         const slug = btn.data('slug');
         console.log('Uninstalling:', slug);
         
-        if (!confirm(`¿DESINSTALAR ${slug}? Esto eliminará el plugin completamente.`)) {
-            console.log('Uninstall cancelled');
-            return;
-        }
+        // Temporalmente sin confirm para debug
+        // if (!confirm(`¿DESINSTALAR ${slug}? Esto eliminará el plugin completamente.`)) {
+        //     console.log('Uninstall cancelled');
+        //     return;
+        // }
         
         console.log('Starting uninstall...');
         btn.prop('disabled', true).text('Desinstalando...');
