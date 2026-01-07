@@ -6,7 +6,7 @@ class AdminMenu
 {
     public function __construct()
     {
-        add_action('admin_menu', [$this, 'registerMenu'], 57);
+        add_action('admin_menu', [$this, 'registerMenu'], 5);
     }
 
     public function registerMenu(): void
@@ -19,7 +19,7 @@ class AdminMenu
             'bedrock-cli',
             [$this, 'renderDashboard'],
             'dashicons-admin-tools',
-            57
+            2
         );
 
         // Submenú: Dashboard
