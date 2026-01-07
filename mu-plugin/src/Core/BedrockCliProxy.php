@@ -80,9 +80,10 @@ class BedrockCliProxy
                 ];
             
             case 'docker:restart':
+                exec('kill -USR2 1', $output, $code);
                 return [
-                    'success' => false,
-                    'output' => 'Cannot restart Docker from inside container'
+                    'success' => $code === 0,
+                    'output' => 'PHP-FPM reloaded successfully'
                 ];
             
             case 'language:install':
