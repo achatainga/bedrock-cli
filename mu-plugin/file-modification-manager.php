@@ -25,7 +25,7 @@ class FileModificationManager {
     ];
     
     public static function init() {
-        error_log("[FileModificationManager] Initializing File Modification Manager");
+        error_log("[FileModificationManager] Initializing File Modification Manager", 3, "/home/qqgi77wff00i/apps/bedrock-docker/debug-file-mod.log");
         add_filter('loco_file_mod_allowed_context', [self::class, 'filter_loco_context'], 10, 2);
         add_filter('file_mod_allowed', [self::class, 'filter_file_mod'], 10, 2);
         add_filter('wp_max_upload_size', [self::class, 'increase_upload_limits']);
@@ -33,20 +33,20 @@ class FileModificationManager {
     }
     
     public static function filter_loco_context($context, $file) {
-        error_log("[FileModificationManager] filter_loco_context called: context=$context, file=$file");
+        error_log("[FileModificationManager] filter_loco_context called: context=$context, file=$file", 3, "/home/qqgi77wff00i/apps/bedrock-docker/debug-file-mod.log");
         // Permitir modificaciones para contextos de traducción
         if (in_array($context, ['download_language_pack', 'loco_translate'])) {
-            error_log("[FileModificationManager] Allowing loco context");
+            error_log("[FileModificationManager] Allowing loco context", 3, "/home/qqgi77wff00i/apps/bedrock-docker/debug-file-mod.log");
             return 'loco_translate';
         }
         return $context;
     }
     
     public static function filter_file_mod($allowed, $context) {
-        error_log("[FileModificationManager] filter_file_mod called: allowed=$allowed, context=$context");
+        error_log("[FileModificationManager] filter_file_mod called: allowed=$allowed, context=$context", 3, "/home/qqgi77wff00i/apps/bedrock-docker/debug-file-mod.log");
         // Verificar si el contexto está permitido
         if (isset(self::$allowed_contexts[$context])) {
-            error_log("[FileModificationManager] Context found, returning: " . (self::$allowed_contexts[$context] ? 'true' : 'false'));
+            error_log("[FileModificationManager] Context found, returning: " . (self::$allowed_contexts[$context] ? 'true' : 'false'), 3, "/home/qqgi77wff00i/apps/bedrock-docker/debug-file-mod.log");
             return self::$allowed_contexts[$context];
         }
         
