@@ -131,6 +131,7 @@ if (!defined('NONCE_SALT')) Config::define('NONCE_SALT', env('NONCE_SALT'));
  * WP Mail SMTP Configuration
  */
 if (!defined('WPMS_ON')) Config::define('WPMS_ON', env('WPMS_ON') ?: false);
+if (!defined('WPMS_MAILER')) Config::define('WPMS_MAILER', env('WPMS_MAILER') ?: 'smtp');
 if (!defined('WPMS_SMTP_HOST')) Config::define('WPMS_SMTP_HOST', env('WPMS_SMTP_HOST'));
 if (!defined('WPMS_SMTP_PORT')) Config::define('WPMS_SMTP_PORT', env('WPMS_SMTP_PORT') ?: 587);
 if (!defined('WPMS_SMTP_AUTH')) Config::define('WPMS_SMTP_AUTH', env('WPMS_SMTP_AUTH') ?: true);
