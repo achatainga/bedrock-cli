@@ -30,8 +30,8 @@ class FileModificationManager
         add_filter('wp_max_upload_size', [$this, 'increase_upload_limits']);
         add_action('admin_init', [$this, 'set_php_limits']);
         
-        // Habilitar Theme Editor condicionalmente
-        add_action('init', [$this, 'enable_theme_editor']);
+        // Forzar que aparezca Theme Editor
+        add_action('admin_menu', [$this, 'force_theme_editor_menu']);
     }
     
     public function filter_loco_context($context, $file) {
@@ -83,15 +83,14 @@ class FileModificationManager
         }
     }
     
-    public function enable_theme_editor(): void {
-        // Permitir Theme Editor solo para child themes
-        if (is_admin() && current_user_can('edit_themes')) {
-            // Deshabilitar DISALLOW_FILE_EDIT temporalmente para theme editor
-            if (isset($_GET['page']) && $_GET['page'] === 'theme-editor.php') {
-                if (!defined('DISALLOW_FILE_EDIT')) {
-                    define('DISALLOW_FILE_EDIT', false);
-                }
-            }
+    public function force_theme_editor_menu(): void {
+        if (current_user_can('edit_themes')) {
+            add_theme_page(
+                __('Editor de archivos de temas'),
+                __('Editor'),
+                'edit_themes',
+                'theme-editor.php'
+            );
         }
     }
 }
