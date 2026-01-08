@@ -1,12 +1,12 @@
 <?php
 
-namespace BedrockCli\Commands\Install;
+namespace Roots\BedrockCli\Commands\Install;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use BedrockCli\Traits\ProjectSelectorTrait;
+use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class UpdateConfigCommand extends Command
 {
@@ -37,7 +37,7 @@ class UpdateConfigCommand extends Command
         ];
 
         foreach ($configFiles as $target => $stub) {
-            $stubPath = __DIR__ . '/../../stubs/' . $stub;
+            $stubPath = __DIR__ . '/../../../stubs/' . $stub;
             $targetPath = $projectPath . '/' . $target;
 
             if (!file_exists($stubPath)) {

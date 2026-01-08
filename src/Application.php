@@ -83,6 +83,7 @@ use Roots\BedrockCli\Commands\Auth\RemoveCommand as AuthRemoveCommand;
 use Roots\BedrockCli\Commands\AI\AICommand;
 use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
+use Roots\BedrockCli\Commands\Install\UpdateConfigCommand as InstallUpdateConfigCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
 use Roots\BedrockCli\Commands\UpdateCommand;
@@ -352,6 +353,7 @@ class Application extends BaseApplication
             ),
             new InstallMuPluginCommand(),
             new UpdateMuPluginCommand(),
+            new InstallUpdateConfigCommand(),
             new CacheImportCommand(
                 $this->container->get('Roots\BedrockCli\Services\PremiumCacheService')
             ),
