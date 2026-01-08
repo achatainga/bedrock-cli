@@ -53,6 +53,11 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     });
 }
 
+// Cargar File Modification Manager
+if (file_exists(__DIR__ . '/file-modification-manager.php')) {
+    require_once __DIR__ . '/file-modification-manager.php';
+}
+
 // Inicializar plugin
 use BedrockCli\Plugin\Core\Plugin;
 
