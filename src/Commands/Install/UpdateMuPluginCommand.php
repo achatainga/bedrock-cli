@@ -68,15 +68,6 @@ class UpdateMuPluginCommand extends Command
         // Copy directory
         $this->recursiveCopy($sourcePath, $newPluginDir);
         $output->writeln("<fg=green>✓ New plugin installed</>");
-        
-        // Copy loader file to mu-plugins root
-        $loaderStub = __DIR__ . '/../../../stubs/mu-plugins/bedrock-cli-plugin.php';
-        $loaderDest = 'web/app/mu-plugins/bedrock-cli-plugin.php';
-        
-        if (file_exists($loaderStub)) {
-            copy($loaderStub, $loaderDest);
-            $output->writeln("<fg=green>✓ Plugin loader installed</>");
-        }
 
         // Run composer install
         $output->writeln("<fg=cyan>→ Installing dependencies...</>");

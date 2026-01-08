@@ -38,8 +38,6 @@ class Plugin
 
         add_action('rest_api_init', [$this, 'registerRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-
-        $this->logger->info('Bedrock CLI Plugin initialized');
     }
 
     public function registerRoutes(): void
