@@ -12,18 +12,14 @@ class SmtpHostnameFix
 {
     public function __construct()
     {
-        add_action('phpmailer_init', [$this, 'configureHostname'], 1);
+        add_action('phpmailer_init', [$this, 'configureHostname'], PHP_INT_MAX);
     }
 
     public function configureHostname($phpmailer)
     {
         // Force hostname for HELO command
         $phpmailer->Hostname = 'detodo24.com';
-        // Override the method that generates HELO
+        // Explicitly set the Helo string to prevent PHPMailer from regenerating it
         $phpmailer->Helo = 'detodo24.com';
-        // Set server hostname
-        if (method_exists($phpmailer, 'serverHostname')) {
-            $phpmailer->serverHostname('detodo24.com');
-        }
     }
 }
