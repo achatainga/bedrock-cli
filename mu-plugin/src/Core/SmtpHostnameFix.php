@@ -12,7 +12,7 @@ class SmtpHostnameFix
 {
     public function __construct()
     {
-        add_filter('wp_mail_smtp_custom_options', [$this, 'configureHostname']);
+        add_action('phpmailer_init', [$this, 'configureHostname'], 999);
     }
 
     /**
@@ -20,12 +20,8 @@ class SmtpHostnameFix
      */
     public function configureHostname($phpmailer)
     {
-        // Only apply to SMTP mailer
         if ($phpmailer->Mailer === 'smtp') {
-            // Set proper hostname for HELO command
             $phpmailer->Hostname = 'detodo24.com';
         }
-        
-        return $phpmailer;
     }
 }
