@@ -17,7 +17,16 @@ class SmtpHostnameFix
 
     public function configureHostname($phpmailer)
     {
-        $phpmailer->Hostname = 'detodo24.com';
-        $phpmailer->Helo = 'detodo24.com';
+        if (property_exists($phpmailer, 'Hostname')) {
+            $phpmailer->Hostname = 'detodo24.com';
+        }
+        if (property_exists($phpmailer, 'Helo')) {
+            $phpmailer->Helo = 'detodo24.com';
+        }
+        // Force override for WP Mail SMTP
+        add_filter('wp_mail_smtp_phpmailer_init', function($mailer) {
+            $mailer->Hostname = 'detodo24.com';
+            return $mailer;
+        }, 999);
     }
 }
