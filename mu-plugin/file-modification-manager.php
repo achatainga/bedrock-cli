@@ -5,8 +5,6 @@
  * Version: 1.0.0
  */
 
-use BedrockCli\Plugin\Utils\Logger;
-
 // Configuración de plugins/contextos permitidos
 class FileModificationManager {
     
@@ -32,9 +30,6 @@ class FileModificationManager {
     private static $logger;
     
     public static function init() {
-        self::$logger = new Logger();
-        self::$logger->info('FileModificationManager initialized');
-        
         add_filter('loco_file_mod_allowed_context', [self::class, 'filter_loco_context'], 10, 2);
         add_filter('file_mod_allowed', [self::class, 'filter_file_mod'], 10, 2);
         add_filter('wp_max_upload_size', [self::class, 'increase_upload_limits']);
@@ -42,29 +37,17 @@ class FileModificationManager {
     }
     
     public static function filter_loco_context($context, $file) {
-        self::$logger->debug("filter_loco_context called", ['context' => $context, 'file' => $file]);
-        
         // Permitir modificaciones para contextos de traducción
         if (in_array($context, ['download_language_pack', 'loco_translate'])) {
-            self::$logger->info("Allowing loco context", ['context' => $context]);
             return 'loco_translate';
         }
         return $context;
     }
     
     public static function filter_file_mod($allowed, $context) {
-        self::$logger->debug("filter_file_mod called", ['allowed' => $allowed, 'context' => $context]);
-        
-        // Log específico para Loco Translate
-        if (strpos($context, 'loco') !== false || (isset($_GET['page']) && $_GET['page'] === 'loco-plugin')) {
-            self::$logger->info("Loco Translate context detected", ['context' => $context, 'page' => $_GET['page'] ?? 'none']);
-        }
-        
         // Verificar si el contexto está permitido
         if (isset(self::$allowed_contexts[$context])) {
-            $result = self::$allowed_contexts[$context];
-            self::$logger->info("Context found, returning", ['context' => $context, 'result' => $result]);
-            return $result;
+            return self::$allowed_contexts[$context];
         }
         
         // Para edición de temas, verificar que sea child theme
