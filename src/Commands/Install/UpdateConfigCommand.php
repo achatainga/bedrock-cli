@@ -6,12 +6,9 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class UpdateConfigCommand extends Command
 {
-    use ProjectSelectorTrait;
-
     protected static $defaultName = 'install:update-config';
     protected static $defaultDescription = 'Update configuration files from stubs';
 
@@ -24,11 +21,8 @@ class UpdateConfigCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         
-        $projectPath = $this->selectProject($io);
-        if (!$projectPath) {
-            return Command::FAILURE;
-        }
-
+        $projectPath = getcwd();
+        
         $io->title('BEDROCK CLI - UPDATE CONFIG');
 
         // Archivos de configuración a actualizar
