@@ -128,6 +128,19 @@ if (!defined('LOGGED_IN_SALT')) Config::define('LOGGED_IN_SALT', env('LOGGED_IN_
 if (!defined('NONCE_SALT')) Config::define('NONCE_SALT', env('NONCE_SALT'));
 
 /**
+ * WP Mail SMTP Configuration
+ */
+if (!defined('WPMS_ON')) Config::define('WPMS_ON', env('WPMS_ON') ?: false);
+if (!defined('WPMS_SMTP_HOST')) Config::define('WPMS_SMTP_HOST', env('WPMS_SMTP_HOST'));
+if (!defined('WPMS_SMTP_PORT')) Config::define('WPMS_SMTP_PORT', env('WPMS_SMTP_PORT') ?: 587);
+if (!defined('WPMS_SMTP_AUTH')) Config::define('WPMS_SMTP_AUTH', env('WPMS_SMTP_AUTH') ?: true);
+if (!defined('WPMS_SMTP_AUTOTLS')) Config::define('WPMS_SMTP_AUTOTLS', env('WPMS_SMTP_AUTOTLS') ?: true);
+if (!defined('WPMS_SMTP_USER')) Config::define('WPMS_SMTP_USER', env('WPMS_SMTP_USER'));
+if (!defined('WPMS_SMTP_PASS')) Config::define('WPMS_SMTP_PASS', env('WPMS_SMTP_PASS'));
+if (!defined('WPMS_MAIL_FROM')) Config::define('WPMS_MAIL_FROM', env('WPMS_MAIL_FROM'));
+if (!defined('WPMS_MAIL_FROM_NAME')) Config::define('WPMS_MAIL_FROM_NAME', env('WPMS_MAIL_FROM_NAME'));
+
+/**
  * Custom Settings
  */
 if (!defined('AUTOMATIC_UPDATER_DISABLED')) Config::define('AUTOMATIC_UPDATER_DISABLED', true);
