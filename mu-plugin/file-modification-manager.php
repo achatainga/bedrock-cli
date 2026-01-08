@@ -52,6 +52,11 @@ class FileModificationManager {
     public static function filter_file_mod($allowed, $context) {
         self::$logger->debug("filter_file_mod called", ['allowed' => $allowed, 'context' => $context]);
         
+        // Log específico para Loco Translate
+        if (strpos($context, 'loco') !== false || (isset($_GET['page']) && $_GET['page'] === 'loco-plugin')) {
+            self::$logger->info("Loco Translate context detected", ['context' => $context, 'page' => $_GET['page'] ?? 'none']);
+        }
+        
         // Verificar si el contexto está permitido
         if (isset(self::$allowed_contexts[$context])) {
             $result = self::$allowed_contexts[$context];
