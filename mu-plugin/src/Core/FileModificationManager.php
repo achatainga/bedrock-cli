@@ -25,13 +25,14 @@ class FileModificationManager
     
     public function __construct()
     {
-        // Interceptar DISALLOW_FILE_EDIT antes de que WordPress lo use
-        add_action('muplugins_loaded', [$this, 'override_file_edit_constant'], 1);
-        
         add_filter('loco_file_mod_allowed_context', [$this, 'filter_loco_context'], 10, 2);
         add_filter('file_mod_allowed', [$this, 'filter_file_mod'], 10, 2);
         add_filter('wp_max_upload_size', [$this, 'increase_upload_limits']);
         add_action('admin_init', [$this, 'set_php_limits']);
+        
+        // Habilitar theme editor para child themes usando map_meta_cap
+        add_filter('map_meta_cap', [$this, 'allow_child_theme_editing'], 10, 4);
+        add_action('admin_init', [$this, 'restrict_parent_theme_editing']);
     }
     
     public function filter_loco_context($context, $file) {
@@ -83,10 +84,35 @@ class FileModificationManager
         }
     }
     
-    public function override_file_edit_constant(): void {
-        // Solo definir si no existe, no se puede redefinir
-        if (!defined('DISALLOW_FILE_EDIT')) {
-            define('DISALLOW_FILE_EDIT', false);
+    private function is_child_theme_active(): bool {
+        return get_template() !== get_stylesheet();
+    }
+    
+    public function allow_child_theme_editing(array $caps, string $cap, int $user_id, array $args): array {
+        // Solo interceptar edit_themes cuando hay child theme activo
+        if ($cap === 'edit_themes' && $this->is_child_theme_active()) {
+            // Reemplazar 'do_not_allow' con capacidad válida
+            return ['edit_theme_options'];
+        }
+        
+        return $caps;
+    }
+    
+    public function restrict_parent_theme_editing(): void {
+        // Solo en theme-editor.php
+        if (!isset($_SERVER['SCRIPT_NAME']) || strpos($_SERVER['SCRIPT_NAME'], 'theme-editor.php') === false) {
+            return;
+        }
+        
+        // Si no hay child theme, bloquear completamente
+        if (!$this->is_child_theme_active()) {
+            wp_die(__('Theme editing is only allowed for child themes.'));
+        }
+        
+        // Si hay child theme pero se intenta editar tema padre, bloquear
+        $editing_theme = $_REQUEST['theme'] ?? get_stylesheet();
+        if ($editing_theme !== get_stylesheet()) {
+            wp_die(__('You can only edit the active child theme.'));
         }
     }
 }
