@@ -12,16 +12,12 @@ class SmtpHostnameFix
 {
     public function __construct()
     {
-        add_action('phpmailer_init', [$this, 'configureHostname'], 999);
+        add_action('phpmailer_init', [$this, 'configureHostname'], 1);
     }
 
-    /**
-     * Configure SMTP hostname for WP Mail SMTP plugin
-     */
     public function configureHostname($phpmailer)
     {
-        if ($phpmailer->Mailer === 'smtp') {
-            $phpmailer->Hostname = 'detodo24.com';
-        }
+        $phpmailer->Hostname = 'detodo24.com';
+        $phpmailer->Helo = 'detodo24.com';
     }
 }
