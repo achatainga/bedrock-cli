@@ -17,16 +17,13 @@ class SmtpHostnameFix
 
     public function configureHostname($phpmailer)
     {
-        if (property_exists($phpmailer, 'Hostname')) {
-            $phpmailer->Hostname = 'detodo24.com';
+        // Force hostname for HELO command
+        $phpmailer->Hostname = 'detodo24.com';
+        // Override the method that generates HELO
+        $phpmailer->Helo = 'detodo24.com';
+        // Set server hostname
+        if (method_exists($phpmailer, 'serverHostname')) {
+            $phpmailer->serverHostname('detodo24.com');
         }
-        if (property_exists($phpmailer, 'Helo')) {
-            $phpmailer->Helo = 'detodo24.com';
-        }
-        // Force override for WP Mail SMTP
-        add_filter('wp_mail_smtp_phpmailer_init', function($mailer) {
-            $mailer->Hostname = 'detodo24.com';
-            return $mailer;
-        }, 999);
     }
 }
