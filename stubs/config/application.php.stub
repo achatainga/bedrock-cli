@@ -135,6 +135,7 @@ if (!defined('WPMS_MAILER')) Config::define('WPMS_MAILER', env('WPMS_MAILER') ?:
 if (!defined('WPMS_SMTP_HOST')) Config::define('WPMS_SMTP_HOST', env('WPMS_SMTP_HOST'));
 if (!defined('WPMS_SMTP_PORT')) Config::define('WPMS_SMTP_PORT', env('WPMS_SMTP_PORT') ?: 587);
 if (!defined('WPMS_SMTP_HELO')) Config::define('WPMS_SMTP_HELO', env('WPMS_SMTP_HELO'));
+if (!defined('WPMS_SMTP_HOSTNAME')) Config::define('WPMS_SMTP_HOSTNAME', env('WPMS_SMTP_HOSTNAME'));
 if (!defined('WPMS_SMTP_AUTH')) Config::define('WPMS_SMTP_AUTH', env('WPMS_SMTP_AUTH') ?: false);
 if (!defined('WPMS_SMTP_AUTOTLS')) Config::define('WPMS_SMTP_AUTOTLS', env('WPMS_SMTP_AUTOTLS') ?: false);
 if (!defined('WPMS_SMTP_USER')) Config::define('WPMS_SMTP_USER', env('WPMS_SMTP_USER'));
