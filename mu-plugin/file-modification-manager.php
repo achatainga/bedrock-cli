@@ -13,8 +13,11 @@ class FileModificationManager {
     private static $allowed_contexts = [
         'loco_translate' => true,
         'download_language_pack' => true,
-        'theme_editor' => true,  // Para edición de temas
-        'plugin_editor' => false, // Mantener plugins bloqueados
+        'theme_editor' => true,
+        'plugin_editor' => false,
+        'capability_update_core' => true,  // Loco Translate necesita esto
+        'can_install_language_pack' => true,  // Para instalar paquetes de idioma
+        'woocommerce' => true,  // Para traducciones de WooCommerce
     ];
     
     private static $allowed_paths = [
