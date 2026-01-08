@@ -10,72 +10,54 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class UpdateConfigCommand extends Command
 {
-    use ProjectSelectorTrait;
-
-    protected static $defaultName = 'install:update-config';
-    protected static $defaultDescription = 'Update configuration files from stubs';
-
     protected function configure(): void
     {
-        $this->setDescription('Update configuration files from stubs');
+        $this->setName('install:update-config')
+             ->setDescription('Update configuration files from stubs');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         
-        try {
-            $projectPath = $this->selectProject($io);
-            if (!$projectPath) {
-                $io->error('No project selected');
-                return Command::FAILURE;
-            }
-            
-            $io->title('BEDROCK CLI - UPDATE CONFIG');
-            $io->text("Project path: {$projectPath}");
+        $projectPath = getcwd();
+        $io->title('BEDROCK CLI - UPDATE CONFIG');
+        $io->text("Working in: {$projectPath}");
 
-            // Archivos de configuración a actualizar
-            $configFiles = [
-                'config/application.php' => 'config/application.php.stub',
-            ];
-
-            foreach ($configFiles as $target => $stub) {
-                $stubPath = __DIR__ . '/../../../stubs/' . $stub;
-                $targetPath = $projectPath . '/' . $target;
-                
-                $io->text("Stub path: {$stubPath}");
-                $io->text("Target path: {$targetPath}");
-
-                if (!file_exists($stubPath)) {
-                    $io->warning("Stub not found: {$stub}");
-                    continue;
-                }
-
-                // Backup del archivo actual
-                if (file_exists($targetPath)) {
-                    $backupPath = $targetPath . '.backup.' . date('Ymd_His');
-                    copy($targetPath, $backupPath);
-                    $io->text("✓ Backup created: " . basename($backupPath));
-                }
-
-                // Copiar nuevo archivo
-                if (copy($stubPath, $targetPath)) {
-                    $io->text("✓ Updated: {$target}");
-                } else {
-                    $io->error("✗ Failed to update: {$target}");
-                    return Command::FAILURE;
-                }
-            }
-
-            $io->success('Configuration files updated successfully!');
-            $io->note('Remember to restart your web server/containers to apply changes.');
-
-            return Command::SUCCESS;
-            
-        } catch (\Exception $e) {
-            $io->error('Error: ' . $e->getMessage());
-            $io->text('Stack trace: ' . $e->getTraceAsString());
+        // Verificar que estamos en un proyecto bedrock
+        if (!file_exists($projectPath . '/composer.json')) {
+            $io->error('Not in a Bedrock project directory');
             return Command::FAILURE;
         }
+
+        $configFiles = [
+            'config/application.php' => 'config/application.php.stub',
+        ];
+
+        foreach ($configFiles as $target => $stub) {
+            $stubPath = __DIR__ . '/../../../stubs/' . $stub;
+            $targetPath = $projectPath . '/' . $target;
+            
+            if (!file_exists($stubPath)) {
+                $io->warning("Stub not found: {$stubPath}");
+                continue;
+            }
+
+            if (file_exists($targetPath)) {
+                $backupPath = $targetPath . '.backup.' . date('Ymd_His');
+                copy($targetPath, $backupPath);
+                $io->text("✓ Backup: " . basename($backupPath));
+            }
+
+            if (copy($stubPath, $targetPath)) {
+                $io->text("✓ Updated: {$target}");
+            } else {
+                $io->error("✗ Failed: {$target}");
+                return Command::FAILURE;
+            }
+        }
+
+        $io->success('Config updated! Restart containers to apply changes.');
+        return Command::SUCCESS;
     }
 }
