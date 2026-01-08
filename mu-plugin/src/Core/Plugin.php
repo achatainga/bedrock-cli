@@ -12,6 +12,7 @@ use BedrockCli\Plugin\Admin\LogViewer;
 use BedrockCli\Plugin\Utils\Logger;
 use BedrockCli\Plugin\Core\Security;
 use BedrockCli\Plugin\Core\FileModificationManager;
+use BedrockCli\Plugin\Core\UpdateBlocker;
 
 class Plugin
 {
@@ -25,6 +26,7 @@ class Plugin
     private LogViewer $logViewer;
     private Security $security;
     private FileModificationManager $fileModificationManager;
+    private UpdateBlocker $updateBlocker;
 
     public function __construct()
     {
@@ -38,6 +40,7 @@ class Plugin
         $this->logViewer = new LogViewer($this->logger);
         $this->security = new Security();
         $this->fileModificationManager = new FileModificationManager();
+        $this->updateBlocker = new UpdateBlocker();
 
         add_action('rest_api_init', [$this, 'registerRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
