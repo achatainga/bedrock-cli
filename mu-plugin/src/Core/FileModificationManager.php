@@ -84,11 +84,9 @@ class FileModificationManager
     }
     
     public function override_file_edit_constant(): void {
-        if (is_admin() && current_user_can('edit_themes')) {
-            // Redefinir la constante para permitir edición
-            if (!defined('DISALLOW_FILE_EDIT')) {
-                define('DISALLOW_FILE_EDIT', false);
-            }
+        // Solo definir si no existe, no se puede redefinir
+        if (!defined('DISALLOW_FILE_EDIT')) {
+            define('DISALLOW_FILE_EDIT', false);
         }
     }
 }
