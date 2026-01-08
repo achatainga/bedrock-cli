@@ -13,6 +13,7 @@ use BedrockCli\Plugin\Utils\Logger;
 use BedrockCli\Plugin\Core\Security;
 use BedrockCli\Plugin\Core\FileModificationManager;
 use BedrockCli\Plugin\Core\UpdateBlocker;
+use BedrockCli\Plugin\Core\SmtpHostnameFix;
 
 class Plugin
 {
@@ -27,6 +28,7 @@ class Plugin
     private Security $security;
     private FileModificationManager $fileModificationManager;
     private UpdateBlocker $updateBlocker;
+    private SmtpHostnameFix $smtpHostnameFix;
 
     public function __construct()
     {
@@ -41,6 +43,7 @@ class Plugin
         $this->security = new Security();
         $this->fileModificationManager = new FileModificationManager();
         $this->updateBlocker = new UpdateBlocker();
+        $this->smtpHostnameFix = new SmtpHostnameFix();
 
         add_action('rest_api_init', [$this, 'registerRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
