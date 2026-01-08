@@ -14,23 +14,28 @@ class UpdateBlocker
         // Bloquear actualizaciones automáticas
         add_filter('automatic_updater_disabled', '__return_true');
 
-        // Bloquear actualizaciones manuales pero mantener la vista
-        add_filter('user_has_cap', [$this, 'blockUpdateCapabilities'], 10, 3);
-
         // Mostrar mensaje en páginas de actualización
         add_action('admin_notices', [$this, 'showUpdateBlockedNotice']);
 
-        // Remover botones de actualización con CSS
+        // Remover botones de actualización con CSS/JS
         add_action('admin_head', [$this, 'hideUpdateButtons']);
+        
+        // Bloquear requests de actualización
+        add_action('wp_ajax_update-plugin', [$this, 'blockUpdateRequest'], 1);
+        add_action('wp_ajax_update-theme', [$this, 'blockUpdateRequest'], 1);
+        add_filter('pre_site_transient_update_plugins', [$this, 'preserveUpdateInfo']);
+        add_filter('pre_site_transient_update_themes', [$this, 'preserveUpdateInfo']);
     }
 
-    public function blockUpdateCapabilities($caps, $cap, $args): array
+    public function blockUpdateRequest(): void
     {
-        // Bloquear capacidades de actualización
-        if (in_array($cap[0], ['update_plugins', 'update_themes', 'update_core'])) {
-            $caps[$cap[0]] = false;
-        }
-        return $caps;
+        wp_die('🔒 Actualizaciones bloqueadas por seguridad', 'Actualización Bloqueada', ['response' => 403]);
+    }
+
+    public function preserveUpdateInfo($value)
+    {
+        // Mantener la información de actualizaciones pero bloquear ejecución
+        return $value;
     }
 
     public function showUpdateBlockedNotice(): void
