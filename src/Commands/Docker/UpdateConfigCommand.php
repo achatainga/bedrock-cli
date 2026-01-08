@@ -72,6 +72,23 @@ class UpdateConfigCommand extends Command
                 $output->writeln("<fg=yellow>• mysql/my.cnf ya está actualizado</>");
             }
         }
+        
+        // Actualizar Dockerfile si existe
+        $dockerfileStub = $stubsPath . '/Dockerfile.web.stub';
+        $dockerfileTarget = $projectPath . '/Dockerfile.web';
+        
+        if (file_exists($dockerfileStub) && file_exists($dockerfileTarget)) {
+            $stubContent = file_get_contents($dockerfileStub);
+            $currentContent = file_get_contents($dockerfileTarget);
+            
+            if ($stubContent !== $currentContent) {
+                copy($dockerfileStub, $dockerfileTarget);
+                $output->writeln("<fg=green>✓ Dockerfile.web actualizado</>");
+                $updated = true;
+            } else {
+                $output->writeln("<fg=yellow>• Dockerfile.web ya está actualizado</>");
+            }
+        }
 
         if ($updated) {
             $output->writeln("\n<fg=cyan>→ Reiniciando contenedores afectados...</>");
@@ -84,6 +101,26 @@ class UpdateConfigCommand extends Command
                 $output->writeln("<fg=green>✓ Contenedor nginx reiniciado</>");
             } else {
                 $output->writeln("<fg=red>✗ Error reiniciando nginx</>");
+            }
+            
+            // Si se actualizó Dockerfile, rebuild del contenedor web
+            if (file_exists($projectPath . '/Dockerfile.web')) {
+                $output->writeln("<fg=cyan>→ Reconstruyendo contenedor web...</>");
+                $process = new Process(['docker-compose', 'build', 'web'], $projectPath);
+                $process->run();
+                
+                if ($process->isSuccessful()) {
+                    $output->writeln("<fg=green>✓ Contenedor web reconstruido</>");
+                    
+                    $process = new Process(['docker-compose', 'up', '-d', 'web'], $projectPath);
+                    $process->run();
+                    
+                    if ($process->isSuccessful()) {
+                        $output->writeln("<fg=green>✓ Contenedor web reiniciado</>");
+                    }
+                } else {
+                    $output->writeln("<fg=red>✗ Error reconstruyendo contenedor web</>");
+                }
             }
             
             $output->writeln("\n<fg=green>✓ Configuración Docker actualizada!</>");
