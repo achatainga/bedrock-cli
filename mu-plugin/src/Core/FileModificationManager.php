@@ -25,13 +25,13 @@ class FileModificationManager
     
     public function __construct()
     {
+        // Interceptar DISALLOW_FILE_EDIT antes de que WordPress lo use
+        add_action('muplugins_loaded', [$this, 'override_file_edit_constant'], 1);
+        
         add_filter('loco_file_mod_allowed_context', [$this, 'filter_loco_context'], 10, 2);
         add_filter('file_mod_allowed', [$this, 'filter_file_mod'], 10, 2);
         add_filter('wp_max_upload_size', [$this, 'increase_upload_limits']);
         add_action('admin_init', [$this, 'set_php_limits']);
-        
-        // Forzar que aparezca Theme Editor
-        add_action('admin_menu', [$this, 'force_theme_editor_menu']);
     }
     
     public function filter_loco_context($context, $file) {
@@ -83,14 +83,12 @@ class FileModificationManager
         }
     }
     
-    public function force_theme_editor_menu(): void {
-        if (current_user_can('edit_themes')) {
-            add_theme_page(
-                __('Editor de archivos de temas'),
-                __('Editor'),
-                'edit_themes',
-                'theme-editor.php'
-            );
+    public function override_file_edit_constant(): void {
+        if (is_admin() && current_user_can('edit_themes')) {
+            // Redefinir la constante para permitir edición
+            if (!defined('DISALLOW_FILE_EDIT')) {
+                define('DISALLOW_FILE_EDIT', false);
+            }
         }
     }
 }
