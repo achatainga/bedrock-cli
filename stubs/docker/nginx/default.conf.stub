@@ -3,6 +3,9 @@ server {
     server_name 127.0.0.1;
     root /var/www/html/web;
     index index.php index.html;
+    
+    # Aumentar límite para uploads grandes (traducciones)
+    client_max_body_size 50M;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;

@@ -131,13 +131,14 @@ class DockerCommand extends Command
             $output->writeln(' <fg=cyan>[5]</> 🛠️  Reconstruir (con caché)');
             $output->writeln(' <fg=cyan>[6]</> 📊 Ver estado');
             $output->writeln(' <fg=cyan>[7]</> 📜 Ver logs');
+            $output->writeln(' <fg=cyan>[8]</> ⚙️  Actualizar configuración');
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
+            $question = new Question('<fg=yellow>Opción [0-8]: </>', '0');
             $index = $helper->ask($input, $output, $question);
             
-            if (!is_numeric($index) || $index < 0 || $index > 7) {
+            if (!is_numeric($index) || $index < 0 || $index > 8) {
                 $output->writeln('<error>Opción inválida</error>');
                 continue;
             }
@@ -169,6 +170,9 @@ class DockerCommand extends Command
                     break;
                 case '7':
                     $this->logs($docker, $output);
+                    break;
+                case '8':
+                    $this->updateConfig($output);
                     break;
             }
             
@@ -337,5 +341,12 @@ class DockerCommand extends Command
     private function markStepCompleted(int $stepId): void
     {
         $this->stateService->markCompleted(getcwd(), $stepId);
+    }
+    
+    private function updateConfig(OutputInterface $output): int
+    {
+        $command = $this->getApplication()->find('docker:update-config');
+        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        return $command->run($input, $output);
     }
 }

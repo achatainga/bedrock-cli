@@ -1,14 +1,10 @@
 <?php
-/**
- * Plugin Name: File Modification Manager
- * Description: Gestiona permisos de modificación de archivos para plugins y temas específicos
- * Version: 1.0.0
- */
 
-// Configuración de plugins/contextos permitidos
-class FileModificationManager {
-    
-    private static $allowed_contexts = [
+namespace BedrockCli\Plugin\Core;
+
+class FileModificationManager 
+{
+    private array $allowed_contexts = [
         'loco_translate' => true,
         'download_language_pack' => true,
         'theme_editor' => true,
@@ -18,7 +14,7 @@ class FileModificationManager {
         'woocommerce' => true,  // Para traducciones de WooCommerce
     ];
     
-    private static $allowed_paths = [
+    private array $allowed_paths = [
         // Permitir edición de child themes (se preservan en updates)
         '/themes/.*-child/',
         // Permitir archivos de traducción en ubicaciones seguras
@@ -27,16 +23,18 @@ class FileModificationManager {
         '/languages/plugins/',
     ];
     
-    private static $logger;
-    
-    public static function init() {
-        add_filter('loco_file_mod_allowed_context', [self::class, 'filter_loco_context'], 10, 2);
-        add_filter('file_mod_allowed', [self::class, 'filter_file_mod'], 10, 2);
-        add_filter('wp_max_upload_size', [self::class, 'increase_upload_limits']);
-        add_action('admin_init', [self::class, 'set_php_limits']);
+    public function __construct()
+    {
+        add_filter('loco_file_mod_allowed_context', [$this, 'filter_loco_context'], 10, 2);
+        add_filter('file_mod_allowed', [$this, 'filter_file_mod'], 10, 2);
+        add_filter('wp_max_upload_size', [$this, 'increase_upload_limits']);
+        add_action('admin_init', [$this, 'set_php_limits']);
+        
+        // Habilitar Theme Editor condicionalmente
+        add_action('init', [$this, 'enable_theme_editor']);
     }
     
-    public static function filter_loco_context($context, $file) {
+    public function filter_loco_context($context, $file) {
         // Permitir modificaciones para contextos de traducción
         if (in_array($context, ['download_language_pack', 'loco_translate'])) {
             return 'loco_translate';
@@ -44,16 +42,16 @@ class FileModificationManager {
         return $context;
     }
     
-    public static function filter_file_mod($allowed, $context) {
+    public function filter_file_mod($allowed, $context) {
         // Verificar si el contexto está permitido
-        if (isset(self::$allowed_contexts[$context])) {
-            return self::$allowed_contexts[$context];
+        if (isset($this->allowed_contexts[$context])) {
+            return $this->allowed_contexts[$context];
         }
         
         // Para edición de temas, verificar que sea child theme
         if ($context === 'theme_editor' && isset($_GET['file'])) {
             $file = $_GET['file'];
-            foreach (self::$allowed_paths as $pattern) {
+            foreach ($this->allowed_paths as $pattern) {
                 if (preg_match('#' . $pattern . '#', $file)) {
                     return true;
                 }
@@ -64,7 +62,7 @@ class FileModificationManager {
         return $allowed;
     }
     
-    public static function increase_upload_limits($size) {
+    public function increase_upload_limits($size) {
         // Solo para admin y requests específicos
         if (is_admin() && (
             (isset($_GET['page']) && $_GET['page'] === 'loco-plugin') ||
@@ -76,7 +74,7 @@ class FileModificationManager {
         return $size;
     }
     
-    public static function set_php_limits() {
+    public function set_php_limits(): void {
         if ((isset($_GET['page']) && in_array($_GET['page'], ['loco-plugin', 'theme-editor']))) {
             @ini_set('memory_limit', '512M');
             @ini_set('max_execution_time', 300);
@@ -84,14 +82,16 @@ class FileModificationManager {
             @ini_set('upload_max_filesize', '50M');
         }
     }
-}
-
-// Inicializar el manager
-FileModificationManager::init();
-
-// Información sobre preservación de archivos
-add_action('admin_notices', function() {
-    if (isset($_GET['page']) && $_GET['page'] === 'theme-editor') {
-        echo '<div class="notice notice-info"><p><strong>Información:</strong> Los child themes se preservan durante las actualizaciones. Los temas padre se sobrescriben.</p></div>';
+    
+    public function enable_theme_editor(): void {
+        // Permitir Theme Editor solo para child themes
+        if (is_admin() && current_user_can('edit_themes')) {
+            // Deshabilitar DISALLOW_FILE_EDIT temporalmente para theme editor
+            if (isset($_GET['page']) && $_GET['page'] === 'theme-editor.php') {
+                if (!defined('DISALLOW_FILE_EDIT')) {
+                    define('DISALLOW_FILE_EDIT', false);
+                }
+            }
+        }
     }
-});
+}

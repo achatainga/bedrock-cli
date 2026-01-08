@@ -11,6 +11,7 @@ use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
 use Roots\BedrockCli\Commands\Database\SnapshotCommand as DatabaseSnapshotCommand;
 use Roots\BedrockCli\Commands\Database\MigrateCommand as DatabaseMigrateCommand;
 use Roots\BedrockCli\Commands\Docker\DockerCommand;
+use Roots\BedrockCli\Commands\Docker\UpdateConfigCommand;
 use Roots\BedrockCli\Commands\Options\MenuCommand as OptionsMenuCommand;
 use Roots\BedrockCli\Commands\Options\PullCommand as OptionsPullCommand;
 use Roots\BedrockCli\Commands\Options\PushCommand as OptionsPushCommand;
@@ -118,6 +119,7 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
+            new UpdateConfigCommand(),
             new OptionsMenuCommand(),
             new OptionsPullCommand(),
             new OptionsPushCommand(),
