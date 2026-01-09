@@ -3,9 +3,12 @@
 namespace Roots\BedrockCli\Services;
 
 use Roots\BedrockCli\Services\ProjectValidationService;
+use Roots\BedrockCli\Traits\EnvReaderTrait;
 
 class StateService
 {
+    use EnvReaderTrait;
+    
     private ProjectValidationService $validationService;
     
     public function __construct(ProjectValidationService $validationService = null)
@@ -223,25 +226,24 @@ class StateService
 
     private function detectHttpPort(string $path): string
     {
-        $envFile = "{$path}/.env";
-        if (file_exists($envFile)) {
-            $content = file_get_contents($envFile);
-            // Buscar WP_HOME con puerto
-            if (preg_match('/WP_HOME=.*:(\d+)/', $content, $matches)) {
-                return $matches[1];
-            }
-            // Buscar HTTP_PORT directamente
-            if (preg_match('/HTTP_PORT=(\d+)/', $content, $matches)) {
-                return $matches[1];
-            }
-        }
+        $env = $this->readEnvFile($path);
         
-        // Verificar docker-compose.yml
-        $dockerFile = "{$path}/docker-compose.yml";
-        if (file_exists($dockerFile)) {
-            $content = file_get_contents($dockerFile);
-            if (preg_match('/(\d+):80/', $content, $matches)) {
-                return $matches[1];
+        // Buscar WP_HOME con puerto
+        if (isset($env['WP_HOME']) && preg_match('/:(\d+)/', $env['WP_HOME'], $matches)) {
+            return $matches[1];
+        }
+
+        // Buscar HTTP_PORT / WP_PORT directamente
+        if (isset($env['HTTP_PORT'])) return $env['HTTP_PORT'];
+        if (isset($env['WP_PORT'])) return $env['WP_PORT'];
+        
+        // Verificar docker-compose.yml (delegar a validation service para consistencia)
+        $config = $this->validationService->getProjectConfiguration($path);
+        if (isset($config['docker_compose']['services']['web']['ports'])) {
+             foreach ($config['docker_compose']['services']['web']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
+                    return explode(':', $portMapping)[0];
+                }
             }
         }
         
@@ -250,14 +252,8 @@ class StateService
     
     private function detectDbName(string $path): string
     {
-        $envFile = "{$path}/.env";
-        if (file_exists($envFile)) {
-            $content = file_get_contents($envFile);
-            if (preg_match('/DB_NAME=(.+)/', $content, $matches)) {
-                return trim($matches[1]);
-            }
-        }
-        return basename($path);
+        $env = $this->readEnvFile($path);
+        return $env['DB_NAME'] ?? basename($path);
     }
 
     private function hasAcorn(string $path): bool
@@ -457,6 +453,14 @@ class StateService
     public function validateDatabaseAccess(string $projectPath): bool
     {
         return $this->validationService->validateDatabase($projectPath)->isValid;
+    }
+
+    /**
+     * Obtiene la configuración completa del proyecto
+     */
+    public function getProjectConfiguration(string $projectPath): array
+    {
+        return $this->validationService->getProjectConfiguration($projectPath);
     }
 
     /**

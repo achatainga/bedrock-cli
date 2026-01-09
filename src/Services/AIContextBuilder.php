@@ -3,11 +3,22 @@ namespace Roots\BedrockCli\Services;
 
 class AIContextBuilder
 {
+    private StateService $stateService;
+
+    public function __construct(StateService $stateService)
+    {
+        $this->stateService = $stateService;
+    }
+
     public function buildContext(): array
     {
         $projectPath = getcwd();
-        $stateDetector = new StateDetectorService();
-        $state = $stateDetector->detectProjectState();
+        $state = [
+            'docker_running' => $this->stateService->validateDockerRunning($projectPath),
+            'wp_installed' => $this->stateService->validateWordPressInstalled($projectPath),
+            'acorn_configured' => $this->stateService->validateAcornConfigured($projectPath),
+            // ... otros datos relevantes
+        ];
         
         return [
             'project' => [
@@ -15,12 +26,8 @@ class AIContextBuilder
                 'type' => 'bedrock',
                 'path' => $projectPath
             ],
-            'state' => [
-                'docker_running' => $state['docker_running'],
-                'wp_installed' => $state['wp_installed'],
-                'acorn_configured' => $state['acorn_configured'] ?? false,
-            ],
-            'config' => $state['config']['env'] ?? []
+            'state' => $state,
+            'config' => $this->stateService->getProjectConfiguration($projectPath)['env'] ?? []
         ];
     }
 }

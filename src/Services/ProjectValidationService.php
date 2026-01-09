@@ -8,9 +8,13 @@ use Roots\BedrockCli\ValueObjects\WordPressValidation;
 use Roots\BedrockCli\ValueObjects\AcornValidation;
 use Roots\BedrockCli\Services\Management\ContextDetector;
 use Roots\BedrockCli\Enums\ExecutionMode;
+use Symfony\Component\Yaml\Yaml;
+use Roots\BedrockCli\Traits\EnvReaderTrait;
 
 class ProjectValidationService
 {
+    use EnvReaderTrait;
+    
     private ContextDetector $contextDetector;
 
     public function __construct(ContextDetector $contextDetector)
@@ -69,13 +73,13 @@ class ProjectValidationService
             }
 
             // Test database connection via Docker usando docker exec directo
-            $dbName = trim($env['DB_NAME'], '"\'');
-            $dbUser = trim($env['DB_USER'], '"\'');
-            $dbPass = trim($env['DB_PASSWORD'], '"\'');
-            $projectName = basename($projectPath);
+            $dbNameEscaped = escapeshellarg($dbName);
+            $dbUserEscaped = escapeshellarg($dbUser);
+            $dbPassEscaped = escapeshellarg($dbPass);
+            $containerName = escapeshellarg("{$projectName}_mysql");
             
             // Usar docker exec directo con el nombre del contenedor (más robusto que docker-compose exec)
-            $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>&1";
+            $cmd = "docker exec {$containerName} mysql -u{$dbUserEscaped} -p{$dbPassEscaped} -e \"SHOW DATABASES LIKE $dbNameEscaped\" 2>&1";
             $output = shell_exec($cmd);
             
             // Verificar si la salida contiene el nombre de la base de datos (ignorar warnings de MySQL)
@@ -84,7 +88,7 @@ class ProjectValidationService
             }
             
             // Si falla, intentar solo verificar que MySQL responde (más permisivo)
-            $pingCmd = "docker exec {$projectName}_mysql mysqladmin -u{$dbUser} -p{$dbPass} ping 2>&1";
+            $pingCmd = "docker exec {$containerName} mysqladmin -u{$dbUserEscaped} -p{$dbPassEscaped} ping 2>&1";
             $pingOutput = shell_exec($pingCmd);
             
             if ($pingOutput && strpos($pingOutput, 'mysqld is alive') !== false && strpos($pingOutput, 'ERROR') === false) {
@@ -100,7 +104,12 @@ class ProjectValidationService
         $dbUser = trim($env['DB_USER'], '"\'');
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
 
-        exec("mysql -h{$dbHost} -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>/dev/null", $output, $returnCode);
+        $dbHostEscaped = escapeshellarg($dbHost);
+        $dbNameEscaped = escapeshellarg($dbName);
+        $dbUserEscaped = escapeshellarg($dbUser);
+        $dbPassEscaped = escapeshellarg($dbPass);
+
+        exec("mysql -h{$dbHostEscaped} -u{$dbUserEscaped} -p{$dbPassEscaped} -e \"SHOW DATABASES LIKE $dbNameEscaped\" 2>/dev/null", $output, $returnCode);
 
         if ($returnCode === 0 && !empty($output)) {
             foreach ($output as $line) {
@@ -375,26 +384,7 @@ class ProjectValidationService
         ];
     }
 
-    public function readEnvFile(string $projectPath): array
-    {
-        $envPath = $projectPath . '/.env';
-        
-        if (!file_exists($envPath)) {
-            return [];
-        }
 
-        $env = [];
-        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        
-        foreach ($lines as $line) {
-            if (strpos($line, '=') !== false && !str_starts_with(trim($line), '#')) {
-                [$key, $value] = explode('=', $line, 2);
-                $env[trim($key)] = trim($value, '"\'');
-            }
-        }
-
-        return $env;
-    }
 
     public function readDockerCompose(string $projectPath): array
     {
@@ -404,25 +394,11 @@ class ProjectValidationService
             return [];
         }
 
-        // Fallback to manual parsing if yaml extension not available
-        if (function_exists('yaml_parse_file')) {
-            return yaml_parse_file($dockerComposePath) ?: [];
+        try {
+            return Yaml::parseFile($dockerComposePath) ?: [];
+        } catch (\Exception $e) {
+            return [];
         }
-        
-        // Simple regex-based parsing for basic docker-compose structure
-        $content = file_get_contents($dockerComposePath);
-        $config = ['services' => []];
-        
-        // Extract service ports
-        if (preg_match_all('/^\s*(\w+):\s*$/m', $content, $serviceMatches)) {
-            foreach ($serviceMatches[1] as $service) {
-                if (preg_match('/^\s*' . $service . ':[\s\S]*?ports:[\s\S]*?"(\d+):(\d+)"/m', $content, $portMatches)) {
-                    $config['services'][$service]['ports'] = [$portMatches[1] . ':' . $portMatches[2]];
-                }
-            }
-        }
-        
-        return $config;
     }
 
     private function isDockerRunning(): bool
@@ -448,13 +424,14 @@ class ProjectValidationService
             return false;
         }
 
-        $dbName = trim($env['DB_NAME'], '"\'');
-        $dbUser = trim($env['DB_USER'], '"\'');
-        $dbPass = trim($env['DB_PASSWORD'], '"\'');
-        $prefix = trim($env['DB_PREFIX'] ?? 'wp_', '"\'');
+        $dbNameEscaped = escapeshellarg($dbName);
+        $dbUserEscaped = escapeshellarg($dbUser);
+        $dbPassEscaped = escapeshellarg($dbPass);
+        $prefixEscaped = escapeshellarg("{$prefix}options");
         
         $projectName = basename($projectPath);
-        $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e 'SHOW TABLES LIKE \"{$prefix}options\"' 2>/dev/null";
+        $containerName = escapeshellarg("{$projectName}_mysql");
+        $cmd = "docker exec {$containerName} mysql -u{$dbUserEscaped} -p{$dbPassEscaped} {$dbNameEscaped} -e \"SHOW TABLES LIKE $prefixEscaped\" 2>/dev/null";
         
         $output = shell_exec($cmd);
         

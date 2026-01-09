@@ -4,9 +4,12 @@ namespace Roots\BedrockCli\Services\Management;
 
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Enums\ExecutionMode;
+use Roots\BedrockCli\Traits\EnvReaderTrait;
 
 class ContextDetector
 {
+    use EnvReaderTrait;
+    
     private ?string $projectRoot = null;
     private ?array $profileData = null;
     private DockerService $dockerService;
@@ -26,7 +29,7 @@ class ContextDetector
         }
 
         // 2. Leer configuración de BD del .env
-        $env = $this->readEnv($root);
+        $env = $this->readEnvFile($root);
         $dbHost = $env['DB_HOST'] ?? '';
 
         // 3. Lógica Híbrida: Hay Docker, pero config apunta a local
@@ -40,20 +43,7 @@ class ContextDetector
         return ExecutionMode::DOCKER;
     }
 
-    private function readEnv(string $path): array
-    {
-        if (!file_exists($path . '/.env')) return [];
-        $env = [];
-        $lines = file($path . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (str_starts_with(trim($line), '#')) continue;
-            if (strpos($line, '=') !== false) {
-                [$key, $value] = explode('=', $line, 2);
-                $env[trim($key)] = trim($value, "'\"");
-            }
-        }
-        return $env;
-    }
+
 
     public function isBedrockProject(?string $path = null): bool
     {

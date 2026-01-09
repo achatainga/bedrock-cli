@@ -39,16 +39,29 @@ class AICommand extends Command
         $output->writeln('<info>🤖 Inicializando Bedrock AI Copilot (wrapper para gemini-cli)...</info>');
 
         $context = $this->contextBuilder->buildContext();
-        $contextFile = tempnam(sys_get_temp_dir(), 'GEMINI_CONTEXT') . '.md';
+        $contextFileName = 'GEMINI_CONTEXT_' . uniqid() . '.md';
+        $contextHostFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $contextFileName;
+        $contextContainerPath = '/tmp/' . $contextFileName;
+        
         $contextString = "## Contexto del Proyecto Bedrock\n\n```json\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n```";
-        file_put_contents($contextFile, $contextString);
+        file_put_contents($contextHostFile, $contextString);
 
         $projectName = basename(getcwd());
         $containerName = "{$projectName}_web";
         
+        // Copiar el archivo al contenedor
+        $cpProcess = new Process(['docker', 'cp', $contextHostFile, "{$containerName}:{$contextContainerPath}"]);
+        $cpProcess->run();
+
+        if (!$cpProcess->isSuccessful()) {
+            $output->writeln('<error>Fallo al copiar el contexto al contenedor.</error>');
+            unlink($contextHostFile);
+            return Command::FAILURE;
+        }
+
         $command = [
             'docker', 'exec', '-i', $containerName,
-            'gemini', '--context', $contextFile, $prompt,
+            'gemini', '--context', $contextContainerPath, $prompt,
         ];
         
         $output->writeln('<comment>  -> Ejecutando gemini-cli en Docker...</comment>');
@@ -59,7 +72,9 @@ class AICommand extends Command
             $output->write($buffer);
         });
 
-        unlink($contextFile);
+        // Limpieza
+        unlink($contextHostFile);
+        (new Process(['docker', 'exec', $containerName, 'rm', $contextContainerPath]))->run();
 
         if (!$process->isSuccessful()) {
             $output->writeln('');

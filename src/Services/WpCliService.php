@@ -42,14 +42,7 @@ class WpCliService
         }
 
         // Docker Pure mode
-        // Escapar argumentos para evitar problemas con espacios y caracteres especiales
-        $escapedArgs = array_map(function($arg) {
-            // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas
-            if (preg_match('/[\s\$\&\|\;\(\)\<\>]/', $arg)) {
-                return "'" . str_replace("'", "'\\''" , $arg) . "'";
-            }
-            return $arg;
-        }, $args);
+        $escapedArgs = array_map('escapeshellarg', $args);
         
         $wpCommand = array_merge(
             ['bash', '-c'],
@@ -190,6 +183,8 @@ class WpCliService
 
     public function custom(string $command): Process
     {
-        return $this->exec(explode(' ', $command));
+        // Usar str_getcsv para separar por espacios respetando comillas
+        $args = str_getcsv($command, ' ');
+        return $this->exec(array_filter($args));
     }
 }
