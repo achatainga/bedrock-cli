@@ -34,16 +34,16 @@ class CommandRegistryService
             'Roots\BedrockCli\Commands\Plugins\ActivateCommand' => ['DockerService', 'WpCliService', 'StateService'],
             'Roots\BedrockCli\Commands\Plugins\ActivateMultipleCommand' => ['PluginActivationService'],
             'Roots\BedrockCli\Commands\Plugins\DeactivateCommand' => ['DockerService', 'WpCliService'],
-            'Roots\BedrockCli\Commands\Plugins\CompressCommand' => ['UnzipService', 'ZipService'],
-            'Roots\BedrockCli\Commands\Plugins\StatusCommand' => ['DockerService', 'WpCliService'],
+            'Roots\BedrockCli\Commands\Plugins\CompressCommand' => ['ZipService'],
+            'Roots\BedrockCli\Commands\Plugins\StatusCommand' => ['WpCliService'],
             'Roots\BedrockCli\Commands\Plugins\OrderCommand' => [],
             'Roots\BedrockCli\Commands\Plugins\OrderMenuCommand' => [],
             'Roots\BedrockCli\Commands\Plugins\OrderBuilderCommand' => [],
             'Roots\BedrockCli\Commands\Themes\MenuCommand' => ['DockerService', 'WpCliService', 'UnzipService', 'ZipService'],
-            'Roots\BedrockCli\Commands\Themes\ListCommand' => ['UnzipService'],
+            'Roots\BedrockCli\Commands\Themes\ListCommand' => [],
             'Roots\BedrockCli\Commands\Themes\ActivateCommand' => ['DockerService', 'WpCliService', 'StateService'],
-            'Roots\BedrockCli\Commands\Themes\CompressCommand' => [],
-            'Roots\BedrockCli\Commands\Themes\StatusCommand' => [],
+            'Roots\BedrockCli\Commands\Themes\CompressCommand' => ['ZipService'],
+            'Roots\BedrockCli\Commands\Themes\StatusCommand' => ['WpCliService'],
             'Roots\BedrockCli\Commands\Setup\SetupCommand' => ['StateService', 'DockerService', 'WpCliService', 'ProjectValidationService'],
             'Roots\BedrockCli\Commands\Setup\NewCommand' => ['ProfileService', 'ComposerService', 'BlueprintService', 'AuthService', 'StateService', 'ProjectValidationService', 'WebServerService'],
             'Roots\BedrockCli\Commands\Setup\NewWizardCommand' => ['WebServerService'],
@@ -106,7 +106,7 @@ class CommandRegistryService
         foreach ($commands as $commandClass => $dependencies) {
             $deps = array_map(function($dep) {
                 // Handle nested services
-                $serviceName = strpos($dep, '\\') === false ? "Roots\\BedrockCli\\Services\\{$dep}" : "Roots\\BedrockCli\\Services\\{$dep}";
+                $serviceName = str_starts_with($dep, 'Roots\\') ? $dep : "Roots\\BedrockCli\\Services\\{$dep}";
                 return $this->container->get($serviceName);
             }, $dependencies);
             $commandInstances[] = new $commandClass(...$deps);

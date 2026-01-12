@@ -34,26 +34,28 @@ class UpdateCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $docker = $this->dockerService;
         $wpcli = $this->wpCliService;
         
         $output->writeln('');
-        $output->writeln('<fg=cyan;options=bold>===== ACTUALIZACIÓN DEL SISTEMA =====</>');
+        $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+        $output->writeln('<fg=cyan;options=bold>║</>   🔄 ACTUALIZACIÓN TOTAL DEL SISTEMA  <fg=cyan;options=bold>║</>');
+        $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
+        $output->writeln('');
+        $output->writeln('<comment>Iniciando proceso de actualización de Core, Plugins y Themes...</comment>');
         $output->writeln('');
         
         $process = $wpcli->coreUpdate();
-        $this->runWithLoader($process, $output, 'Actualizando WordPress core');
+        $this->runWithLoader($process, $output, 'WordPress Core');
         
-        $output->writeln('');
         $process = $wpcli->pluginUpdate();
-        $this->runWithLoader($process, $output, 'Actualizando plugins');
+        $this->runWithLoader($process, $output, 'Plugins (Todos)');
         
-        $output->writeln('');
         $process = $wpcli->themeUpdate();
-        $this->runWithLoader($process, $output, 'Actualizando temas');
+        $this->runWithLoader($process, $output, 'Temas (Todos)');
         
         $output->writeln('');
-        $output->writeln('<info>✓ Sistema actualizado completamente</info>');
+        $output->writeln('<info>✅ PROCESO FINALIZADO:</info>');
+        $output->writeln(' Todos los componentes han sido procesados y actualizados.');
         $output->writeln('');
         
         return Command::SUCCESS;

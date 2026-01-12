@@ -14,10 +14,11 @@ use Roots\BedrockCli\Services\WpCliService;
 use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Services\StateService;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
+use Roots\BedrockCli\Traits\SpinnerTrait;
 
 class SetupCommand extends Command
 {
-    use ProjectSelectorTrait;
+    use ProjectSelectorTrait, SpinnerTrait;
     
     private StateService $stateService;
     private DockerService $dockerService;
@@ -868,21 +869,7 @@ class SetupCommand extends Command
         }
     }
     
-    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
+
     
     private function fixPortInconsistencies(OutputInterface $output, array $inconsistencies): void
     {

@@ -632,20 +632,7 @@ class NewCommand extends Command
         $output->writeln('<info>✓ Seeders copiados (compatibles con Acorn y wp eval-file)</info>');
     }
 
-    private function runWithLoader(Process $process, OutputInterface $output, string $message): void
-    {
-        $output->writeln("<comment>{$message}...</comment>");
 
-        $process->start(function ($type, $buffer) use ($output) {
-            $output->write($buffer);
-        });
-
-        $process->wait();
-
-        if ($process->isSuccessful()) {
-            $output->writeln("<info>✓ {$message} completado</info>");
-        }
-    }
 
     private function getStubsDir(): string
     {

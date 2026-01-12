@@ -8,9 +8,12 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
+use Roots\BedrockCli\Traits\SpinnerTrait;
 
 class SeedCommand extends Command
 {
+    use SpinnerTrait;
+    
     private DockerService $dockerService;
     private WpCliService $wpCliService;
 
@@ -116,19 +119,5 @@ class SeedCommand extends Command
         return Command::SUCCESS;
     }
 
-    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
+
 }

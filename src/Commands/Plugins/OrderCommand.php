@@ -451,29 +451,7 @@ PHP;
         return $deps;
     }
 
-    protected function runWithSpinner(Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        $startTime = microtime(true);
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $elapsed = round(microtime(true) - $startTime, 1);
-            $output->write("\r  <comment>{$message}...</comment> <fg=cyan>{$frames[$frameIndex]}</> <fg=gray>({$elapsed}s)</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(100000); // 100ms
-        }
-        
-        $elapsed = round(microtime(true) - $startTime, 1);
-        
-        if ($process->isSuccessful()) {
-            $output->write("\r  <comment>{$message}...</comment> <info>✓</info> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
-        } else {
-            $output->write("\r  <comment>{$message}...</comment> <error>✗</error> <fg=gray>({$elapsed}s)</>" . str_repeat(' ', 10) . "\n");
-        }
-    }
+
 
 
 
@@ -615,7 +593,7 @@ PHP;
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->setTimeout(120);
         
-        $this->runWithSpinner($process, $output, "Activando nivel {$levelNum}");
+        $this->runWithLoader($process, $output, "Activando nivel {$levelNum}");
         
         if (!$process->isSuccessful()) {
             return null;

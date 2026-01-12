@@ -110,65 +110,65 @@ class Application extends BaseApplication
 
     private function configureServices(): void
     {
-        // Register core services
+        // Core Utilities
+        $this->container->register('Roots\BedrockCli\Services\ErrorLoggerService', 'Roots\BedrockCli\Services\ErrorLoggerService');
+        $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
+        $this->container->register('Roots\BedrockCli\Services\ProgressService', 'Roots\BedrockCli\Services\ProgressService');
+        $this->container->register('Roots\BedrockCli\Services\WebServerService', 'Roots\BedrockCli\Services\WebServerService');
+        $this->container->register('Roots\BedrockCli\Services\UnzipService', 'Roots\BedrockCli\Services\UnzipService');
+        $this->container->register('Roots\BedrockCli\Services\ZipService', 'Roots\BedrockCli\Services\ZipService');
+        
+        // Base Services
         $this->container->register('Roots\BedrockCli\Services\ProfileService', 'Roots\BedrockCli\Services\ProfileService');
         $this->container->register('Roots\BedrockCli\Services\ComposerService', 'Roots\BedrockCli\Services\ComposerService');
         $this->container->register('Roots\BedrockCli\Services\DockerService', 'Roots\BedrockCli\Services\DockerService');
-        $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService');
         $this->container->register('Roots\BedrockCli\Services\WordPressApiService', 'Roots\BedrockCli\Services\WordPressApiService');
-        $this->container->register('Roots\BedrockCli\Services\PremiumRepoService', 'Roots\BedrockCli\Services\PremiumRepoService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\AuthService'));
-        $this->container->register('Roots\BedrockCli\Services\AuthService', 'Roots\BedrockCli\Services\AuthService');
         $this->container->register('Roots\BedrockCli\Services\BlueprintService', 'Roots\BedrockCli\Services\BlueprintService');
-        $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
-        $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
-        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
-        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
-        $this->container->register('Roots\BedrockCli\Services\Management\ManagementService', 'Roots\BedrockCli\Services\Management\ManagementService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
-        $this->container->register('Roots\BedrockCli\Services\Management\PluginManager', 'Roots\BedrockCli\Services\Management\PluginManager')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
-        $this->container->register('Roots\BedrockCli\Services\Management\ThemeManager', 'Roots\BedrockCli\Services\Management\ThemeManager')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
-        $this->container->register('Roots\BedrockCli\Services\Management\DependencyManager', 'Roots\BedrockCli\Services\Management\DependencyManager')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
         $this->container->register('Roots\BedrockCli\Services\VcsValidator', 'Roots\BedrockCli\Services\VcsValidator');
         $this->container->register('Roots\BedrockCli\Services\PremiumCacheService', 'Roots\BedrockCli\Services\PremiumCacheService');
-        $this->container->register('Roots\BedrockCli\Services\UnzipService', 'Roots\BedrockCli\Services\UnzipService');
-        $this->container->register('Roots\BedrockCli\Services\ZipService', 'Roots\BedrockCli\Services\ZipService');
-        $this->container->register('Roots\BedrockCli\Services\PluginActivationService', 'Roots\BedrockCli\Services\PluginActivationService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\WpCliService'));
-        $this->container->register('Roots\BedrockCli\Services\ProgressService', 'Roots\BedrockCli\Services\ProgressService');
-        $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
         $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');
-        $this->container->register('Roots\BedrockCli\Services\AIContextBuilder', 'Roots\BedrockCli\Services\AIContextBuilder');
-        $this->container->register('Roots\BedrockCli\Services\ErrorLoggerService', 'Roots\BedrockCli\Services\ErrorLoggerService');
+        $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
+
+        // Services with Dependencies
+        $this->container->register('Roots\BedrockCli\Services\AuthService', 'Roots\BedrockCli\Services\AuthService');
         
-        // Add WpCliService with DockerService dependency
+        $this->container->register('Roots\BedrockCli\Services\PremiumRepoService', 'Roots\BedrockCli\Services\PremiumRepoService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\AuthService'));
+
+        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
+
+        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
+
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'))
             ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
-        
-        // Add StateService with ProjectValidationService dependency
+
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\ProjectValidationService'));
-        
-        // Add SecurityService
-        $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
-        
-        // Add ErrorLoggerService
-        $this->container->register('Roots\BedrockCli\Services\ErrorLoggerService', 'Roots\BedrockCli\Services\ErrorLoggerService');
-        
-        // Add CliRunnerService with ErrorLoggerService dependency
+
+        $this->container->register('Roots\BedrockCli\Services\Management\ManagementService', 'Roots\BedrockCli\Services\Management\ManagementService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
+
+        $this->container->register('Roots\BedrockCli\Services\Management\PluginManager', 'Roots\BedrockCli\Services\Management\PluginManager')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
+
+        $this->container->register('Roots\BedrockCli\Services\Management\ThemeManager', 'Roots\BedrockCli\Services\Management\ThemeManager')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
+
+        $this->container->register('Roots\BedrockCli\Services\Management\DependencyManager', 'Roots\BedrockCli\Services\Management\DependencyManager')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ManagementService'));
+
+        $this->container->register('Roots\BedrockCli\Services\PluginActivationService', 'Roots\BedrockCli\Services\PluginActivationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\WpCliService'));
+
         $this->container->register('Roots\BedrockCli\Services\CliRunnerService', 'Roots\BedrockCli\Services\CliRunnerService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\ErrorLoggerService'));
-        
-        // Add WebServerService
-        $this->container->register('Roots\BedrockCli\Services\WebServerService', 'Roots\BedrockCli\Services\WebServerService');
-        
-        // Add CommandRegistryService
+
+        $this->container->register('Roots\BedrockCli\Services\AIContextBuilder', 'Roots\BedrockCli\Services\AIContextBuilder')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\StateService'));
+
         $this->container->register('Roots\BedrockCli\Services\CommandRegistryService', 'Roots\BedrockCli\Services\CommandRegistryService')
             ->addArgument($this->container);
     }

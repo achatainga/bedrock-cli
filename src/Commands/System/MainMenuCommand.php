@@ -116,47 +116,41 @@ class MainMenuCommand extends Command
                 }
             }
             
-            $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
-            $this->printMenuItem($output, 'N', 'N', '🆕 New      - Crear proyecto desde cero', $currentStep);
-            $this->printMenuItem($output, '1', '1', '🩺 Doctor   - Verificar dependencias', $currentStep);
-            $this->printMenuItem($output, '2', '2', '⚙️  Setup    - Configuración inicial', $currentStep);
-            $this->printMenuItem($output, '3', '3', '📋 Profiles - Crear/gestionar profiles', $currentStep);
+            $output->writeln('<fg=yellow;options=bold>🚀 INICIO RÁPIDO</>');
+            $this->printMenuItem($output, 'N', 'N', '🆕 New         - Crear proyecto desde cero', $currentStep);
+            $this->printMenuItem($output, '1', '1', '🩺 Doctor      - Verificar dependencias locales', $currentStep);
+            $this->printMenuItem($output, '2', '2', '⚙️  Setup       - Configuración inicial del proyecto', $currentStep);
+            $this->printMenuItem($output, '3', '3', '📋 Profiles    - Gestión de perfiles y blueprints', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=green>⚡ DESARROLLO</>');
-            $this->printMenuItem($output, '4', 'D', '🐳 Docker   - Levantar/bajar contenedores', $currentStep);
-            $this->printMenuItem($output, '5', 'M', '🎛️  Manage   - Plugins, Themes, Dependencies', $currentStep);
-            $this->printMenuItem($output, '6', 'B', '🗄️  Database - Gestión de base de datos', $currentStep);
+            $output->writeln('<fg=green;options=bold>⚡ DESARROLLO</>');
+            $this->printMenuItem($output, '4', '4', '🐳 Docker      - Control de contenedores (up/down/logs)', $currentStep);
+            $this->printMenuItem($output, '5', '5', '🎛️  Manage      - Gestión de Plugins, Themes y Deps', $currentStep);
+            $this->printMenuItem($output, '6', '6', '🗄️  Database    - Snapshots, migraciones y resets', $currentStep);
+            $this->printMenuItem($output, '7', '7', '🔃 Order       - Orden de activación de plugins', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
-            $this->printMenuItem($output, '7', '7', '🔍 Search   - Buscar en WordPress.org', $currentStep);
-            $this->printMenuItem($output, '8', '8', 'ℹ️  Info     - Estado del proyecto', $currentStep);
+            $output->writeln('<fg=cyan;options=bold>🔍 INSPECCIÓN & BÚSQUEDA</>');
+            $this->printMenuItem($output, '8', '8', '🔍 Search      - Buscar en WordPress.org', $currentStep);
+            $this->printMenuItem($output, '9', '9', 'ℹ️  Info        - Estado actual del proyecto', $currentStep);
+            $this->printMenuItem($output, 'D', 'D', '🩺 Diagnostics - Diagnóstico profundo del sistema', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=magenta>🔧 AVANZADO</>');
-            $this->printMenuItem($output, '9', '9', '🚀 Init     - Inicializar ambiente', $currentStep);
-            $this->printMenuItem($output, 'I', 'I', '🤖 AI       - Copiloto inteligente', $currentStep);
-            $output->writeln('');
-            
-            $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
-            $this->printMenuItem($output, 'L', 'L', '🌐 Language - Cambiar idioma', $currentStep);
-            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
-            
-            if ($needsAuth) {
-                $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
-            } else {
-                $this->printMenuItem($output, 'T', 'T', '🔐 Auth     - Credenciales repos privados', $currentStep);
-            }
-            $this->printMenuItem($output, 'U', 'U', '🔄 Update   - Actualizar MU-Plugin', $currentStep);
-            $this->printMenuItem($output, 'B', 'B', '💾 Backup   - Crear backup', $currentStep);
-            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall - Reinstalar (DESTRUCTIVO)', $currentStep);
+            $output->writeln('<fg=magenta;options=bold>🔧 AVANZADO & IA</>');
+            $this->printMenuItem($output, 'I', 'I', '🤖 AI Chat     - Copiloto inteligente (Gemini)', $currentStep);
+            $this->printMenuItem($output, 'U', 'U', '🔄 Update      - Actualización total (WP/Plugs/Themes)', $currentStep);
+            $this->printMenuItem($output, 'T', 'T', '🔐 Auth        - Credenciales de repositorios privados', $currentStep);
+            $this->printMenuItem($output, 'O', 'O', '⚙️  Options     - Sincronización de wp_options', $currentStep);
+            $this->printMenuItem($output, 'L', 'L', '🌐 Language    - Cambiar idioma de WordPress', $currentStep);
+            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn       - Roots Acorn (config/publish)', $currentStep);
+            $this->printMenuItem($output, 'B', 'B', '💾 Backup      - Crear copia de seguridad completa', $currentStep);
+            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall   - Reset destructivo del ambiente', $currentStep);
             $output->writeln('');
             
             $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, L, A, T, U, B, R]:</> ', '0');
+            $question = new Question('<fg=yellow>Selecciona una opción [0-9, N, D, I, U, T, O, L, A, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -165,16 +159,16 @@ class MainMenuCommand extends Command
             
             $selectedIndex = strtoupper($selectedIndex);
             
-            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'L', 'A', 'T', 'U', 'B', 'R'];
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'D', 'I', 'U', 'T', 'O', 'L', 'A', 'B', 'R'];
             if (!in_array($selectedIndex, $validOptions)) {
-                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, L, A, T, B, R.</error>');
+                $output->writeln('<error>Opción inválida.</error>');
                 sleep(1);
                 continue;
             }
             
             if ($selectedIndex === '0') {
                 $output->writeln('');
-                $output->writeln('<info>Hasta luego!</info>');
+                $output->writeln('<info>¡Hasta pronto!</info>');
                 return Command::SUCCESS;
             }
 
@@ -186,15 +180,16 @@ class MainMenuCommand extends Command
                 '4' => 'docker',
                 '5' => 'manage',
                 '6' => 'db',
-                '7' => 'search:menu',
-                '8' => 'info',
-                '9' => 'init:menu',
+                '7' => 'plugins:order',
+                '8' => 'search:menu',
+                '9' => 'info',
+                'D' => 'diagnostics',
                 'I' => 'ai',
+                'U' => 'update',
+                'T' => 'auth:menu',
                 'O' => 'options',
                 'L' => 'language',
                 'A' => 'acorn',
-                'T' => 'auth:menu',
-                'U' => 'install:update-mu-plugin',
                 'B' => 'backup',
                 'R' => 'reinstall',
             ];
@@ -203,7 +198,6 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                // FASE 3: Fix propagación de flags - crear input limpio
                 $cleanInput = new ArrayInput([]);
                 $command->run($cleanInput, $output);
             }

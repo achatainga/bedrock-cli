@@ -4,9 +4,12 @@ namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
 use Roots\BedrockCli\DTOs\Profile;
+use Roots\BedrockCli\Traits\AssetScannerTrait;
 
 class ProfileService
 {
+    use AssetScannerTrait;
+    
     private string $bedrockCliPath;
     private string $profilesPath;
     private string $configPath;
@@ -174,221 +177,17 @@ class ProfileService
 
     public function scanCustomPlugins(string $path): array
     {
-        // Detectar si es archivo .zip
-        if (is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip') {
-            $slug = pathinfo($path, PATHINFO_FILENAME);
-            return [
-                $slug => [
-                    'slug' => $slug,
-                    'name' => $slug,
-                    'version' => 'N/A',
-                    'description' => 'Plugin desde archivo ZIP',
-                    'path' => $path,
-                    'source' => 'zip'
-                ]
-            ];
-        }
-        
-        if (!is_dir($path)) {
-            throw new RuntimeException("Path '{$path}' no existe o no es un directorio válido");
-        }
-
-        $plugins = [];
-        
-        // Primero verificar si el path mismo es un plugin
-        $slug = basename($path);
-        $mainFile = $path . '/' . $slug . '.php';
-        
-        if (!file_exists($mainFile)) {
-            $phpFiles = glob($path . '/*.php');
-            $mainFile = !empty($phpFiles) ? $phpFiles[0] : null;
-        }
-        
-        if ($mainFile && file_exists($mainFile)) {
-            $headers = $this->getPluginHeaders($mainFile);
-            if (!empty($headers['Name'])) {
-                return [
-                    $slug => [
-                        'slug' => $slug,
-                        'name' => $headers['Name'],
-                        'version' => $headers['Version'] ?? 'N/A',
-                        'description' => $headers['Description'] ?? '',
-                        'path' => $path
-                    ]
-                ];
-            }
-        }
-        
-        // Si no es plugin, buscar en subdirectorios
-        $items = scandir($path);
-
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
-                continue;
-            }
-
-            $pluginPath = $path . '/' . $item;
-            
-            if (!is_dir($pluginPath)) {
-                continue;
-            }
-
-            $mainFile = $pluginPath . '/' . $item . '.php';
-            
-            if (!file_exists($mainFile)) {
-                $phpFiles = glob($pluginPath . '/*.php');
-                $mainFile = !empty($phpFiles) ? $phpFiles[0] : null;
-            }
-
-            if (!$mainFile || !file_exists($mainFile)) {
-                continue;
-            }
-
-            $headers = $this->getPluginHeaders($mainFile);
-            
-            if (!empty($headers['Name'])) {
-                // Validar composer.json si existe
-                $composerFile = $pluginPath . '/composer.json';
-                if (file_exists($composerFile)) {
-                    $composerData = json_decode(file_get_contents($composerFile), true);
-                    if (empty($composerData['name'])) {
-                        // Omitir plugin sin nombre en composer.json
-                        continue;
-                    }
-                }
-                
-                $plugins[$item] = [
-                    'slug' => $item,
-                    'name' => $headers['Name'],
-                    'version' => $headers['Version'] ?? 'N/A',
-                    'description' => $headers['Description'] ?? '',
-                    'path' => $pluginPath
-                ];
-            }
-        }
-
-        return $plugins;
+        return $this->scanAssets($path, 'plugin');
     }
 
-    private function getPluginHeaders(string $file): array
-    {
-        $content = file_get_contents($file, false, null, 0, 8192);
-        $headers = [];
 
-        $fields = [
-            'Name' => 'Plugin Name',
-            'Version' => 'Version',
-            'Description' => 'Description',
-            'Author' => 'Author'
-        ];
-
-        foreach ($fields as $key => $field) {
-            if (preg_match('/^[ \t\/*#@]*' . preg_quote($field, '/') . ':(.*)$/mi', $content, $match)) {
-                $headers[$key] = trim($match[1]);
-            }
-        }
-
-        return $headers;
-    }
     
     public function scanCustomThemes(string $path): array
     {
-        // Detectar si es archivo .zip
-        if (is_file($path) && strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'zip') {
-            $slug = pathinfo($path, PATHINFO_FILENAME);
-            return [
-                $slug => [
-                    'slug' => $slug,
-                    'name' => $slug,
-                    'version' => 'N/A',
-                    'description' => 'Theme desde archivo ZIP',
-                    'path' => $path,
-                    'source' => 'zip'
-                ]
-            ];
-        }
-        
-        if (!is_dir($path)) {
-            throw new RuntimeException("Path '{$path}' no existe o no es un directorio válido");
-        }
-
-        $themes = [];
-        
-        // Primero verificar si el path mismo es un theme
-        $slug = basename($path);
-        $styleFile = $path . '/style.css';
-        
-        if (file_exists($styleFile)) {
-            $headers = $this->getThemeHeaders($styleFile);
-            if (!empty($headers['Name'])) {
-                return [
-                    $slug => [
-                        'slug' => $slug,
-                        'name' => $headers['Name'],
-                        'version' => $headers['Version'] ?? 'N/A',
-                        'description' => $headers['Description'] ?? '',
-                        'path' => $path
-                    ]
-                ];
-            }
-        }
-        
-        // Si no es theme, buscar en subdirectorios
-        $items = scandir($path);
-
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
-                continue;
-            }
-
-            $themePath = $path . '/' . $item;
-            
-            if (!is_dir($themePath)) {
-                continue;
-            }
-
-            $styleFile = $themePath . '/style.css';
-            
-            if (!file_exists($styleFile)) {
-                continue;
-            }
-
-            $headers = $this->getThemeHeaders($styleFile);
-            
-            if (!empty($headers['Name'])) {
-                $themes[$item] = [
-                    'slug' => $item,
-                    'name' => $headers['Name'],
-                    'version' => $headers['Version'] ?? 'N/A',
-                    'description' => $headers['Description'] ?? '',
-                    'path' => $themePath
-                ];
-            }
-        }
-
-        return $themes;
+        return $this->scanAssets($path, 'theme');
     }
     
-    private function getThemeHeaders(string $file): array
-    {
-        $content = file_get_contents($file, false, null, 0, 8192);
-        $headers = [];
 
-        $fields = [
-            'Name' => 'Theme Name',
-            'Version' => 'Version',
-            'Description' => 'Description',
-            'Author' => 'Author'
-        ];
-
-        foreach ($fields as $key => $field) {
-            if (preg_match('/^[ \t\/*#@]*' . preg_quote($field, '/') . ':(.*)$/mi', $content, $match)) {
-                $headers[$key] = trim($match[1]);
-            }
-        }
-
-        return $headers;
-    }
     
     public function detectDockerMode(string $projectPath = null): bool
     {

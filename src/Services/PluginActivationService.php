@@ -3,9 +3,13 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Roots\BedrockCli\Traits\SpinnerTrait;
+use Roots\BedrockCli\Traits\FileSystemTrait;
 
 class PluginActivationService
 {
+    use SpinnerTrait, FileSystemTrait;
+    
     private WpCliService $wpCliService;
 
     public function __construct(WpCliService $wpCliService)
@@ -18,17 +22,7 @@ class PluginActivationService
      */
     public function getAvailablePlugins(string $projectRoot): array
     {
-        $pluginsDir = $projectRoot . '/web/app/plugins';
-
-        if (!is_dir($pluginsDir)) {
-            return [];
-        }
-
-        $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
-            return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
-        });
-
-        return array_values($plugins);
+        return $this->scanDirectory($projectRoot . '/web/app/plugins');
     }
 
     /**
@@ -93,19 +87,5 @@ class PluginActivationService
         return $results;
     }
 
-    private function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $frameIndex = 0;
-        
-        $process->start();
-        
-        while ($process->isRunning()) {
-            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
-            $frameIndex = ($frameIndex + 1) % count($frames);
-            usleep(80000);
-        }
-        
-        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
-    }
+
 }
