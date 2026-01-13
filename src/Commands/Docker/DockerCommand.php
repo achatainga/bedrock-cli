@@ -41,7 +41,8 @@ class DockerCommand extends Command
             ->addOption('down', null, InputOption::VALUE_NONE, 'Bajar contenedores')
             ->addOption('restart', null, InputOption::VALUE_NONE, 'Reiniciar contenedores')
             ->addOption('status', null, InputOption::VALUE_NONE, 'Ver estado')
-            ->addOption('build', null, InputOption::VALUE_NONE, 'Rebuild al levantar');
+            ->addOption('build', null, InputOption::VALUE_NONE, 'Rebuild al levantar')
+            ->addOption('update-config', null, InputOption::VALUE_NONE, 'Actualizar configuración Docker');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -105,6 +106,9 @@ class DockerCommand extends Command
         }
         if ($input->getOption('status')) {
             return $this->status($docker, $output);
+        }
+        if ($input->getOption('update-config')) {
+            return $this->updateConfig($output);
         }
 
         // Menú interactivo
