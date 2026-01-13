@@ -1,5 +1,10 @@
 version: '3.8'
 
+# ==============================================================================
+# BEDROCK-CLI: PREMIUM DOCKER COMPOSE STACK
+# Optimized for high-performance WordPress/Bedrock development.
+# ==============================================================================
+
 services:
   web:
     build:
@@ -20,7 +25,7 @@ services:
       - mysql
 
   nginx:
-    image: nginx:alpine
+    image: nginx:stable-alpine
     container_name: {{PROJECT_NAME}}_nginx
     ports:
       - "{{HTTP_PORT}}:80"
@@ -31,10 +36,11 @@ services:
       - web
 
   mysql:
-    image: mysql:5.7
+    image: mysql:8.0 # PREMIUM UPGRADE: Using modern MySQL 8.0
     container_name: {{PROJECT_NAME}}_mysql
     restart: always
-    command: --skip-ssl --require_secure_transport=OFF
+    # Added mysql_native_password for maximum compatibility with older drivers and WP tools
+    command: --skip-ssl --require_secure_transport=OFF --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: {{DB_PASSWORD}}
       MYSQL_DATABASE: {{DB_NAME}}
