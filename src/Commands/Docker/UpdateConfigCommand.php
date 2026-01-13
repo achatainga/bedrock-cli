@@ -35,7 +35,7 @@ class UpdateConfigCommand extends Command
 
         $updated = false;
 
-        // Actualizar Dockerfile.web
+        // 1. Actualizar Dockerfile.web
         $dockerfileStub = $stubsDir . '/Dockerfile.web.stub';
         if (file_exists($dockerfileStub)) {
             copy($dockerfileStub, 'Dockerfile.web');
@@ -43,8 +43,61 @@ class UpdateConfigCommand extends Command
             $updated = true;
         }
 
-        // NO actualizar docker-compose.yml (requiere variables)
-        $output->writeln('<comment>⚠ docker-compose.yml no actualizado (requiere variables del proyecto)</comment>');
+        // 2. Intentar actualizar docker-compose.yml detectando variables
+        $dockerComposeFile = 'docker-compose.yml';
+        $dockerComposeStub = $stubsDir . '/docker-compose.yml.stub';
+
+        if (file_exists($dockerComposeFile) && file_exists($dockerComposeStub)) {
+            $content = file_get_contents($dockerComposeFile);
+            $vars = [];
+
+            // Detect PROJECT_NAME
+            if (preg_match('/container_name: (.*)_web/', $content, $matches)) {
+                $vars['{{PROJECT_NAME}}'] = trim($matches[1]);
+            }
+
+            // Detect DB_NAME
+            if (preg_match('/MYSQL_DATABASE: (.*)/', $content, $matches)) {
+                $vars['{{DB_NAME}}'] = trim($matches[1]);
+            }
+
+            // Detect DB_PASSWORD (from environment or MYSQL_PWD)
+            if (preg_match('/MYSQL_ROOT_PASSWORD: (.*)/', $content, $matches)) {
+                $vars['{{DB_PASSWORD}}'] = trim($matches[1]);
+            } elseif (preg_match('/MYSQL_PWD=(.*)/', $content, $matches)) {
+                $vars['{{DB_PASSWORD}}'] = trim($matches[1]);
+            }
+
+            // Detect Ports
+            // Nginx port
+            if (preg_match('/"(\d+):80"/', $content, $matches)) {
+                $vars['{{HTTP_PORT}}'] = $matches[1];
+            }
+            // MySQL port
+            if (preg_match('/"(\d+):3306"/', $content, $matches)) {
+                $vars['{{MYSQL_PORT}}'] = $matches[1];
+            }
+            // Redis port
+            if (preg_match('/"(\d+):6379"/', $content, $matches)) {
+                $vars['{{REDIS_PORT}}'] = $matches[1];
+            }
+
+            // Si detectamos las variables clave, actualizamos
+            if (isset($vars['{{PROJECT_NAME}}'])) {
+                // Asegurar que tenemos todas las variables con fallbacks
+                $vars['{{DB_NAME}}'] = $vars['{{DB_NAME}}'] ?? 'database';
+                $vars['{{DB_PASSWORD}}'] = $vars['{{DB_PASSWORD}}'] ?? 'mysql';
+                $vars['{{HTTP_PORT}}'] = $vars['{{HTTP_PORT}}'] ?? '80';
+                $vars['{{MYSQL_PORT}}'] = $vars['{{MYSQL_PORT}}'] ?? '3306';
+                $vars['{{REDIS_PORT}}'] = $vars['{{REDIS_PORT}}'] ?? '6379';
+
+                $this->copyStub($dockerComposeStub, $dockerComposeFile, $vars);
+                $output->writeln('<info>✓ docker-compose.yml actualizado (variables auto-detectadas)</info>');
+                $updated = true;
+            } else {
+                $output->writeln('<comment>⚠ docker-compose.yml no actualizado (no se detectaron variables)</comment>');
+            }
+        }
 
         if (!$updated) {
             $output->writeln('<comment>No se encontraron stubs para actualizar</comment>');
@@ -52,8 +105,9 @@ class UpdateConfigCommand extends Command
         }
 
         $output->writeln('');
-        $output->writeln('<info>✓ Configuración Docker actualizada</info>');
-        $output->writeln('<comment>Ejecuta "docker-compose build --no-cache web" para aplicar cambios</comment>');
+        $output->writeln('<info>✓ Todo el entorno Docker ha sido actualizado satisfactoriamente</info>');
+        $output->writeln('<comment>Siguiente paso:</comment>');
+        $output->writeln('<info>docker-compose up -d --build</info>');
 
         return Command::SUCCESS;
     }
