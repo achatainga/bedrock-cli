@@ -2,15 +2,12 @@
 
 namespace Roots\BedrockCli\Commands\Docker;
 
-use Roots\BedrockCli\Traits\StubTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class UpdateConfigCommand extends Command
 {
-    use StubTrait;
-
     protected function configure(): void
     {
         $this
@@ -64,5 +61,12 @@ class UpdateConfigCommand extends Command
         $output->writeln('<comment>Ejecuta "docker-compose build --no-cache web" para aplicar cambios</comment>');
 
         return Command::SUCCESS;
+    }
+    
+    private function copyStub(string $stub, string $destination, array $vars): void
+    {
+        $content = file_get_contents($stub);
+        $content = str_replace(array_keys($vars), array_values($vars), $content);
+        file_put_contents($destination, $content);
     }
 }
