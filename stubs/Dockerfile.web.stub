@@ -1,129 +1,76 @@
 FROM php:8.4-fpm-bookworm
 
-# 1. FIX CRÍTICO para cPanel/Docker antiguos: Desactivar sandbox de XZ
-# Esto soluciona el error "xz: Failed to enable the sandbox" durante la descompresión
+# ==============================================================================
+# BEDROCK-CLI: STUNNING DOCKERFILE FOR WORDPRESS/BEDROCK
+# Optimized for: Production, cPanel, and Legacy Environments
+# ==============================================================================
+
+# 1. CRITICAL FIX: Disable XZ Sandbox
+# Workaround for "xz: Failed to enable the sandbox" on older kernels/cPanel seccomp.
 ENV XZ_DEFAULTS="--no-sandbox"
 
-# 2. OPTIMIZACIÓN SENTINEL: Usar mlocati installer
-# Descarga extensiones pre-compiladas (binarios) en lugar de compilar desde fuente.
-# Mucho más rápido, ligero y robusto ante fallos de compilador.
+# 2. DESIGN SYSTEM: mlocati extension installer
+# We use pre-compiled binaries to avoid heavy compilation in restricted environments.
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 # Instalar extensiones requeridas por WordPress + Bedrock
-# - mysqli, pdo_mysql: Base de datos
-# - gd, zip: Requeridos por WP
-# - intl: Recomendado para Bedrock/Composer
-# - opcache: Performance
-# - redis: Para el object cache configurado
-# - bcmath, exif, soap: Comunes en plugins premium
-RUN install-php-extensions \\
-    mysqli \\
-    pdo_mysql \\
-    gd \\
-    zip \\
-    intl \\
-    opcache \\
-    redis \\
-    bcmath \\
-    exif \\
-    soap \\
+RUN install-php-extensions \
+    mysqli \
+    pdo_mysql \
+    gd \
+    zip \
+    intl \
+    opcache \
+    redis \
+    bcmath \
+    exif \
+    soap \
     @composer
 
-# 3. Instalar herramientas del sistema y Cliente MySQL
-# Usamos 'mariadb-client' que es nativo en Debian Bookworm
-RUN apt-get update && \\
-    apt-get install -y --no-install-recommends \\
-    git \\
-    unzip \\
-    mariadb-client \\
-    less \\
-    nano \\
+# 3. CORE UTILITIES
+# 'mariadb-client' is native and fully compatible with MySQL in Debian Bookworm.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    unzip \
+    mariadb-client \
+    less \
+    nano \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Instalar WP-CLI (Binario directo)
-RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \\
-    && chmod +x wp-cli.phar \\
+# 4. POWER TOOLS: WP-CLI
+# The standard CLI tool for WordPress management.
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
 
-# 5. Configuración PHP para Producción/cPanel
-# Ajustes de memoria y uploads
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" && \\
-    sed -i 's/memory_limit = .*/memory_limit = 512M/' "$PHP_INI_DIR/php.ini" && \\
-    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 64M/' "$PHP_INI_DIR/php.ini" && \\
-    sed -i 's/post_max_size = .*/post_max_size = 64M/' "$PHP_INI_DIR/php.ini" && \\
+# 5. PHP & FPM CRAFTSMANSHIP
+# Implementing premium performance settings for consistent experience.
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" && \
+    sed -i 's/memory_limit = .*/memory_limit = 512M/' "$PHP_INI_DIR/php.ini" && \
+    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 64M/' "$PHP_INI_DIR/php.ini" && \
+    sed -i 's/post_max_size = .*/post_max_size = 64M/' "$PHP_INI_DIR/php.ini" && \
     sed -i 's/max_execution_time = .*/max_execution_time = 300/' "$PHP_INI_DIR/php.ini"
 
-# Configuración FPM para estabilidad
-RUN echo "pm.max_children = 50" >> /usr/local/etc/php-fpm.d/www.conf && \\
-    echo "pm.start_servers = 10" >> /usr/local/etc/php-fpm.d/www.conf && \\
-    echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/www.conf && \\
-    echo "pm.max_spare_servers = 20" >> /usr/local/etc/php-fpm.d/www.conf
-
-# 6. Permisos y Directorios
-WORKDIR /var/www/html
-COPY . /var/www/html
-
-RUN mkdir -p /var/www/html/storage/framework/{cache,views,sessions,testing} && \\
-    chown -R www-data:www-data /var/www/html/storage && \\
-    chmod -R 775 /var/www/html/storage
-
-# Entrypoint estándar
-ENTRYPOINT ["docker-php-entrypoint"]
-CMD ["php-fpm"]
-
-EXPOSE 9000
-
-RUN echo '#!/bin/bash' > /usr/local/bin/mariadb-wrapper.sh && \
-    echo 'args=()' >> /usr/local/bin/mariadb-wrapper.sh && \
-    echo 'for arg in "$@"; do' >> /usr/local/bin/mariadb-wrapper.sh && \
-    echo '  [[ "$arg" != "--no-defaults" ]] && args+=("$arg")' >> /usr/local/bin/mariadb-wrapper.sh && \
-    echo 'done' >> /usr/local/bin/mariadb-wrapper.sh && \
-    echo 'exec "/usr/bin/mariadb.real" --skip-ssl "${args[@]}"' >> /usr/local/bin/mariadb-wrapper.sh && \
-    echo '#!/bin/bash' > /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo 'args=()' >> /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo 'for arg in "$@"; do' >> /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo '  [[ "$arg" != "--no-defaults" ]] && args+=("$arg")' >> /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo 'done' >> /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo 'exec "/usr/bin/mariadb-check.real" --skip-ssl "${args[@]}"' >> /usr/local/bin/mariadb-check-wrapper.sh && \
-    echo '#!/bin/bash' > /usr/local/bin/mariadb-dump-wrapper.sh && \
-    echo 'args=()' >> /usr/local/bin/mariadb-dump-wrapper.sh && \
-    echo 'for arg in "$@"; do' >> /usr/local/bin/mariadb-dump-wrapper.sh && \
-    echo '  [[ "$arg" != "--no-defaults" ]] && args+=("$arg")' >> /usr/local/bin/mariadb-dump-wrapper.sh && \
-    echo 'done' >> /usr/local/bin/mariadb-dump-wrapper.sh && \
-    echo 'exec "/usr/bin/mariadb-dump.real" --skip-ssl "${args[@]}"' >> /usr/local/bin/mariadb-dump-wrapper.sh && \
-    chmod +x /usr/local/bin/mariadb-wrapper.sh /usr/local/bin/mariadb-check-wrapper.sh /usr/local/bin/mariadb-dump-wrapper.sh && \
-    mv /usr/bin/mariadb /usr/bin/mariadb.real && \
-    mv /usr/bin/mariadb-check /usr/bin/mariadb-check.real && \
-    mv /usr/bin/mariadb-dump /usr/bin/mariadb-dump.real && \
-    rm -f /usr/bin/mysql /usr/bin/mysqlcheck /usr/bin/mysqldump && \
-    ln -s /usr/local/bin/mariadb-wrapper.sh /usr/bin/mariadb && \
-    ln -s /usr/local/bin/mariadb-check-wrapper.sh /usr/bin/mariadb-check && \
-    ln -s /usr/local/bin/mariadb-dump-wrapper.sh /usr/bin/mariadb-dump && \
-    ln -s /usr/bin/mariadb /usr/bin/mysql && \
-    ln -s /usr/bin/mariadb-check /usr/bin/mysqlcheck && \
-    ln -s /usr/bin/mariadb-dump /usr/bin/mysqldump
-
-WORKDIR /var/www/html
-
-COPY . /var/www/html
-
+# Advanced FPM tuning for high concurrency
 RUN echo "pm.max_children = 50" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "pm.start_servers = 10" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/www.conf && \
     echo "pm.max_spare_servers = 20" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Configuración PHP para uploads grandes
-RUN echo "upload_max_filesize = 50M" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "post_max_size = 50M" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini
+# 6. WORKSPACE & PERMISSIONS
+WORKDIR /var/www/html
 
+# Copy application files with proper ownership in mind
+COPY . /var/www/html
+
+# Ensure storage directories exist and are writable by the web server
 RUN mkdir -p /var/www/html/storage/framework/{cache,views,sessions,testing} && \
     chown -R www-data:www-data /var/www/html/storage && \
     chmod -R 775 /var/www/html/storage
 
+# 7. BOOTSTRAP
 ENTRYPOINT ["docker-php-entrypoint"]
-
 CMD ["php-fpm"]
 
 EXPOSE 9000
