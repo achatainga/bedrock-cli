@@ -16,14 +16,18 @@ COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr
 RUN install-php-extensions \
     mysqli \
     pdo_mysql \
-    gd \
-    zip \
-    intl \
     opcache \
-    redis \
+    intl \
     bcmath \
+    zip \
     exif \
+    gd \
+    imagick \
+    redis \
+    pcntl \
+    calendar \
     soap \
+    && echo "variables_order = EGPCS" > /usr/local/etc/php/conf.d/variables_order.ini \
     @composer
 
 # 3. CORE UTILITIES
