@@ -1,36 +1,25 @@
 FROM php:8.4-fpm
 
+# Instalar dependencias del sistema
 RUN apt-get update && \
     apt-get install -y zlib1g-dev libzip-dev wget build-essential mariadb-client unzip python3 python3-pip zip git subversion curl \
     libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
     rm -rf /var/lib/apt/lists/*
 
+# Instalar Composer
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
     && rm composer-setup.php
 
+# Instalar WP-CLI
 RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
 
-RUN wget --timeout=600 https://www.php.net/distributions/php-8.4.0.tar.gz -O /tmp/php.tar.gz && \
-    tar -xzf /tmp/php.tar.gz -C /tmp && \
-    rm /tmp/php.tar.gz
-
-WORKDIR /tmp/php-8.4.0/ext/zip
-
-RUN phpize && ./configure --with-zlib=/usr && make && make install
-
-RUN rm -rf /tmp/php-8.4.0
-
-RUN echo "extension=zip.so" > /usr/local/etc/php/conf.d/docker-php-ext-zip.ini
-
-RUN docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd && \
-    docker-php-ext-configure mysqli --with-mysqli=mysqlnd && \
-    docker-php-ext-install pdo_mysql mysqli pdo
-
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install -j$(nproc) gd
+# Instalar extensiones PHP usando apt (más confiable en cPanel)
+RUN apt-get update && \
+    apt-get install -y php8.4-mysql php8.4-zip php8.4-gd && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN echo '#!/bin/bash' > /usr/local/bin/mariadb-wrapper.sh && \
     echo 'args=()' >> /usr/local/bin/mariadb-wrapper.sh && \
