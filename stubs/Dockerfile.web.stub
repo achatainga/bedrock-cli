@@ -1,25 +1,77 @@
-FROM php:8.4-fpm
+FROM php:8.4-fpm-bookworm
 
-# Instalar dependencias del sistema
-RUN apt-get update && \
-    apt-get install -y zlib1g-dev libzip-dev wget build-essential mariadb-client unzip python3 python3-pip zip git subversion curl \
-    libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
-    rm -rf /var/lib/apt/lists/*
+# 1. FIX CRÍTICO para cPanel/Docker antiguos: Desactivar sandbox de XZ
+# Esto soluciona el error "xz: Failed to enable the sandbox" durante la descompresión
+ENV XZ_DEFAULTS="--no-sandbox"
 
-# Instalar Composer
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
-    && rm composer-setup.php
+# 2. OPTIMIZACIÓN SENTINEL: Usar mlocati installer
+# Descarga extensiones pre-compiladas (binarios) en lugar de compilar desde fuente.
+# Mucho más rápido, ligero y robusto ante fallos de compilador.
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
-# Instalar WP-CLI
-RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
-    && chmod +x wp-cli.phar \
+# Instalar extensiones requeridas por WordPress + Bedrock
+# - mysqli, pdo_mysql: Base de datos
+# - gd, zip: Requeridos por WP
+# - intl: Recomendado para Bedrock/Composer
+# - opcache: Performance
+# - redis: Para el object cache configurado
+# - bcmath, exif, soap: Comunes en plugins premium
+RUN install-php-extensions \\
+    mysqli \\
+    pdo_mysql \\
+    gd \\
+    zip \\
+    intl \\
+    opcache \\
+    redis \\
+    bcmath \\
+    exif \\
+    soap \\
+    @composer
+
+# 3. Instalar herramientas del sistema y Cliente MySQL
+# Usamos 'mariadb-client' que es nativo en Debian Bookworm
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+    git \\
+    unzip \\
+    mariadb-client \\
+    less \\
+    nano \\
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. Instalar WP-CLI (Binario directo)
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \\
+    && chmod +x wp-cli.phar \\
     && mv wp-cli.phar /usr/local/bin/wp
 
-# Instalar extensiones PHP usando apt (más confiable en cPanel)
-RUN apt-get update && \
-    apt-get install -y php8.4-mysql php8.4-zip php8.4-gd && \
-    rm -rf /var/lib/apt/lists/*
+# 5. Configuración PHP para Producción/cPanel
+# Ajustes de memoria y uploads
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" && \\
+    sed -i 's/memory_limit = .*/memory_limit = 512M/' "$PHP_INI_DIR/php.ini" && \\
+    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 64M/' "$PHP_INI_DIR/php.ini" && \\
+    sed -i 's/post_max_size = .*/post_max_size = 64M/' "$PHP_INI_DIR/php.ini" && \\
+    sed -i 's/max_execution_time = .*/max_execution_time = 300/' "$PHP_INI_DIR/php.ini"
+
+# Configuración FPM para estabilidad
+RUN echo "pm.max_children = 50" >> /usr/local/etc/php-fpm.d/www.conf && \\
+    echo "pm.start_servers = 10" >> /usr/local/etc/php-fpm.d/www.conf && \\
+    echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/www.conf && \\
+    echo "pm.max_spare_servers = 20" >> /usr/local/etc/php-fpm.d/www.conf
+
+# 6. Permisos y Directorios
+WORKDIR /var/www/html
+COPY . /var/www/html
+
+RUN mkdir -p /var/www/html/storage/framework/{cache,views,sessions,testing} && \\
+    chown -R www-data:www-data /var/www/html/storage && \\
+    chmod -R 775 /var/www/html/storage
+
+# Entrypoint estándar
+ENTRYPOINT ["docker-php-entrypoint"]
+CMD ["php-fpm"]
+
+EXPOSE 9000
 
 RUN echo '#!/bin/bash' > /usr/local/bin/mariadb-wrapper.sh && \
     echo 'args=()' >> /usr/local/bin/mariadb-wrapper.sh && \
