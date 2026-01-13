@@ -7,7 +7,6 @@ FROM php:8.4-fpm-bookworm
 
 # 1. CRITICAL FIX: Disable XZ Sandbox
 # Workaround for "xz: Failed to enable the sandbox" on older kernels/cPanel seccomp.
-ENV XZ_DEFAULTS="--no-sandbox"
 
 # 2. DESIGN SYSTEM: mlocati extension installer
 # We use pre-compiled binaries to avoid heavy compilation in restricted environments.
