@@ -38,18 +38,13 @@ class UpdateConfigCommand extends Command
         // Actualizar Dockerfile.web
         $dockerfileStub = $stubsDir . '/Dockerfile.web.stub';
         if (file_exists($dockerfileStub)) {
-            $this->copyStub($dockerfileStub, 'Dockerfile.web', []);
+            copy($dockerfileStub, 'Dockerfile.web');
             $output->writeln('<info>✓ Dockerfile.web actualizado</info>');
             $updated = true;
         }
 
-        // Actualizar docker-compose.yml si existe el stub
-        $composeStub = $stubsDir . '/docker-compose.yml.stub';
-        if (file_exists($composeStub)) {
-            $this->copyStub($composeStub, 'docker-compose.yml', []);
-            $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
-            $updated = true;
-        }
+        // NO actualizar docker-compose.yml (requiere variables)
+        $output->writeln('<comment>⚠ docker-compose.yml no actualizado (requiere variables del proyecto)</comment>');
 
         if (!$updated) {
             $output->writeln('<comment>No se encontraron stubs para actualizar</comment>');
