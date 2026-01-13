@@ -25,7 +25,10 @@ RUN rm -rf /tmp/php-8.4.0
 
 RUN echo "extension=zip.so" > /usr/local/etc/php/conf.d/docker-php-ext-zip.ini
 
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+RUN docker-php-ext-install mysqli pdo pdo_mysql || \
+    (apt-get update && apt-get install -y php8.4-mysql && \
+    echo "extension=mysqli.so" > /usr/local/etc/php/conf.d/mysqli.ini && \
+    echo "extension=pdo_mysql.so" > /usr/local/etc/php/conf.d/pdo_mysql.ini)
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install -j$(nproc) gd
