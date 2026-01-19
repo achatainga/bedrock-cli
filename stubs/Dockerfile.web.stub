@@ -27,8 +27,10 @@ RUN install-php-extensions \
     pcntl \
     calendar \
     soap \
-    && echo "variables_order = EGPCS" > /usr/local/etc/php/conf.d/variables_order.ini \
-    @composer
+    && echo "variables_order = EGPCS" > /usr/local/etc/php/conf.d/variables_order.ini
+
+# Instalar Composer
+RUN install-php-extensions @composer
 
 # 3. CORE UTILITIES
 # 'mariadb-client' is native and fully compatible with MySQL in Debian Bookworm.
