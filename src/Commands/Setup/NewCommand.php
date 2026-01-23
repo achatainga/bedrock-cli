@@ -17,7 +17,7 @@ use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\SpinnerTrait;
 use Roots\BedrockCli\Traits\ProjectCreationTrait;
-use BedrockCli\Traits\DockerComposeTrait;
+use Roots\BedrockCli\Traits\DockerComposeTrait;
 use Roots\BedrockCli\Services\WebServerService;
 
 class NewCommand extends Command

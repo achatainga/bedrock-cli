@@ -2,7 +2,7 @@
 
 namespace Roots\BedrockCli\Services;
 
-use BedrockCli\Services\DockerComposeDetector;
+use Roots\BedrockCli\Services\DockerComposeDetector;
 use Symfony\Component\Process\Process;
 
 class DockerService

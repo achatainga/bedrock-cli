@@ -1,8 +1,8 @@
 <?php
 
-namespace BedrockCli\Traits;
+namespace Roots\BedrockCli\Traits;
 
-use BedrockCli\Services\DockerComposeDetector;
+use Roots\BedrockCli\Services\DockerComposeDetector;
 
 trait DockerComposeTrait
 {
