@@ -17,11 +17,12 @@ use Roots\BedrockCli\Services\ProjectValidationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 use Roots\BedrockCli\Traits\SpinnerTrait;
 use Roots\BedrockCli\Traits\ProjectCreationTrait;
+use BedrockCli\Traits\DockerComposeTrait;
 use Roots\BedrockCli\Services\WebServerService;
 
 class NewCommand extends Command
 {
-    use PremiumAssetsTrait, SpinnerTrait, ProjectCreationTrait;
+    use PremiumAssetsTrait, SpinnerTrait, ProjectCreationTrait, DockerComposeTrait;
 
     private ProfileService $profileService;
     private ComposerService $composerService;
@@ -142,10 +143,10 @@ class NewCommand extends Command
         
         if ($mode === 'full') {
             // Modo Full Docker
-            $output->writeln('  docker-compose up -d');
+            $output->writeln('  ' . $this->getDockerComposeCommand() . ' up -d');
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
-            $output->writeln('  docker-compose exec web wp core install \\');
+            $output->writeln('  ' . $this->getDockerComposeCommand() . ' exec web wp core install \\');
             $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->webServerService->findFreePort(80)) . ' \\');
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
@@ -157,9 +158,9 @@ class NewCommand extends Command
             if (!$input->getOption('no-acorn')) {
                 $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
                 $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
-                $output->writeln('<comment>    docker-compose exec web wp plugin activate acorn</comment>');
-                $output->writeln('<comment>    docker-compose exec web wp acorn acorn:init storage</comment>');
-                $output->writeln('<comment>    docker-compose exec web wp acorn vendor:publish --tag=acorn</comment>');
+                $output->writeln('<comment>    ' . $this->getDockerComposeCommand() . ' exec web wp plugin activate acorn</comment>');
+                $output->writeln('<comment>    ' . $this->getDockerComposeCommand() . ' exec web wp acorn acorn:init storage</comment>');
+                $output->writeln('<comment>    ' . $this->getDockerComposeCommand() . ' exec web wp acorn vendor:publish --tag=acorn</comment>');
                 $output->writeln('');
                 $output->writeln('<comment>  Esto creará automáticamente:</comment>');
                 $output->writeln('<comment>    • app/Providers/AppServiceProvider.php</comment>');
@@ -170,7 +171,7 @@ class NewCommand extends Command
             }
         } elseif ($mode === 'hybrid') {
             // Modo Híbrido
-            $output->writeln('  docker-compose up -d  # Solo MySQL + Redis');
+            $output->writeln('  ' . $this->getDockerComposeCommand() . ' up -d  # Solo MySQL + Redis');
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress (wp-cli nativo):</comment>');
             $output->writeln('  wp core install \\');

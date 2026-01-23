@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Docker;
 
 use Roots\BedrockCli\Traits\SpinnerTrait;
+use BedrockCli\Traits\DockerComposeTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -18,6 +19,7 @@ class DockerCommand extends Command
 {
     use ProjectSelectorTrait;
     use SpinnerTrait;
+    use DockerComposeTrait;
     
     private DockerService $dockerService;
     private StateService $stateService;
@@ -189,8 +191,8 @@ class DockerCommand extends Command
     private function up(DockerService $docker, OutputInterface $output, bool $build): int
     {
         $output->writeln('<info>Levantando contenedores...</info>');
-        $cmd = $build ? 'docker-compose up -d --build' : 'docker-compose up -d';
-        passthru($cmd, $exitCode);
+        $args = $build ? 'up -d --build' : 'up -d';
+        $this->dockerComposeExec($args, $exitCode);
         
         if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
@@ -242,10 +244,10 @@ class DockerCommand extends Command
     {
         if ($useCache) {
             $output->writeln('<info>Reconstruyendo contenedores con caché...</info>');
-            passthru('docker-compose build --progress=plain web', $exitCode);
+            $this->dockerComposeExec('build --progress=plain web', $exitCode);
         } else {
             $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
-            passthru('docker-compose build --no-cache --progress=plain web', $exitCode);
+            $this->dockerComposeExec('build --no-cache --progress=plain web', $exitCode);
         }
         
         if ($exitCode !== 0) {
@@ -256,7 +258,7 @@ class DockerCommand extends Command
         $output->writeln('<info>Build completado. Levantando contenedores...</info>');
         
         // Paso 2: Up
-        passthru('docker-compose up -d', $exitCode);
+        $this->dockerComposeExec('up -d', $exitCode);
         
         if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores reconstruidos y levantados</info>');
@@ -270,7 +272,7 @@ class DockerCommand extends Command
     private function logs(DockerService $docker, OutputInterface $output): int
     {
         $output->writeln('<info>Mostrando últimas 100 líneas de logs...</info>');
-        $output->writeln('<fg=yellow>Tip: Para seguir logs en tiempo real usa: docker-compose logs -f</>');
+        $output->writeln('<fg=yellow>Tip: Para seguir logs en tiempo real usa: ' . $this->getDockerComposeCommand() . ' logs -f</>');
         $output->writeln('');
         
         $process = $docker->logs(false);

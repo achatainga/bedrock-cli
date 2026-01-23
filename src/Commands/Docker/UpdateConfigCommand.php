@@ -2,12 +2,14 @@
 
 namespace Roots\BedrockCli\Commands\Docker;
 
+use BedrockCli\Traits\DockerComposeTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class UpdateConfigCommand extends Command
 {
+    use DockerComposeTrait;
     protected function configure(): void
     {
         $this
@@ -107,7 +109,7 @@ class UpdateConfigCommand extends Command
         $output->writeln('');
         $output->writeln('<info>✓ Todo el entorno Docker ha sido actualizado satisfactoriamente</info>');
         $output->writeln('<comment>Siguiente paso:</comment>');
-        $output->writeln('<info>docker-compose up -d --build</info>');
+        $output->writeln('<info>' . $this->getDockerComposeCommand() . ' up -d --build</info>');
 
         return Command::SUCCESS;
     }
