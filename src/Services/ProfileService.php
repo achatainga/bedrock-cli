@@ -92,8 +92,12 @@ class ProfileService
         return Profile::fromArray($data);
     }
 
-    public function saveProfile(string $name, Profile $profile): void
+    public function saveProfile(string $name, Profile|array $profile): void
     {
+        if (is_array($profile)) {
+            $profile = Profile::fromArray($profile);
+        }
+        
         $json = json_encode($profile->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
