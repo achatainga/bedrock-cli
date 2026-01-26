@@ -15,6 +15,21 @@ if (!class_exists(\Roots\Acorn\Application::class)) {
     return;
 }
 
+// Helper functions - DEBEN estar disponibles ANTES de que los plugins se carguen
+if (!function_exists('acorn_app')) {
+    function acorn_app(): ?\Roots\Acorn\Application
+    {
+        return AcornBootloader::getApp();
+    }
+}
+
+if (!function_exists('acorn_register_plugin')) {
+    function acorn_register_plugin(string $slug, string $path, array $providers = []): void
+    {
+        AcornBootloader::registerPlugin($slug, $path, $providers);
+    }
+}
+
 /**
  * Acorn Global Bootloader para Bedrock
  */
@@ -124,18 +139,3 @@ final class AcornBootloader
 
 // Bootear Acorn
 AcornBootloader::getInstance()->boot();
-
-// Helper functions
-if (!function_exists('acorn_app')) {
-    function acorn_app(): ?\Roots\Acorn\Application
-    {
-        return AcornBootloader::getApp();
-    }
-}
-
-if (!function_exists('acorn_register_plugin')) {
-    function acorn_register_plugin(string $slug, string $path, array $providers = []): void
-    {
-        AcornBootloader::registerPlugin($slug, $path, $providers);
-    }
-}
