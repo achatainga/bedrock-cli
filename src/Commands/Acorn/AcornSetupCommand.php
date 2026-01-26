@@ -24,7 +24,7 @@ class AcornSetupCommand extends Command
             return Command::FAILURE;
         }
 
-        $output->writeln('<fg=cyan;options=bold>🌱 ACORN SETUP COMPLETO</>')
+        $output->writeln('<fg=cyan;options=bold>🌱 ACORN SETUP COMPLETO</>');
         $output->writeln('');
         
         // 1. Detectar entorno
