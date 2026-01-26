@@ -180,9 +180,37 @@ class AcornSetupCommand extends Command
         if (file_exists($stubPath)) {
             copy($stubPath, $bootloaderFile);
             $output->writeln('<info>✓ Bootloader avanzado instalado (carga temprana)</info>');
+            
+            // Agregar require a application.php para carga antes de plugins
+            $this->addBootloaderToApplication($output);
         } else {
             $output->writeln('<error>✗ Stub del bootloader no encontrado</error>');
         }
+    }
+    
+    private function addBootloaderToApplication(OutputInterface $output): void
+    {
+        $applicationFile = 'config/application.php';
+        
+        if (!file_exists($applicationFile)) {
+            $output->writeln('<error>✗ config/application.php no encontrado</error>');
+            return;
+        }
+        
+        $content = file_get_contents($applicationFile);
+        $bootloaderCode = "// Acorn Global Bootloader - Load before plugins\nif (file_exists(__DIR__ . '/web/app/mu-plugins/000-acorn-boot.php')) {\n    require_once __DIR__ . '/web/app/mu-plugins/000-acorn-boot.php';\n}\n\n";
+        
+        // Verificar si ya existe
+        if (strpos($content, 'Acorn Global Bootloader') !== false) {
+            $output->writeln('<info>✓ Bootloader ya configurado en application.php</info>');
+            return;
+        }
+        
+        // Agregar antes del comentario "Bootstrap WordPress"
+        $content = str_replace('/**\n * Bootstrap WordPress', $bootloaderCode . '/**\n * Bootstrap WordPress', $content);
+        
+        file_put_contents($applicationFile, $content);
+        $output->writeln('<info>✓ Bootloader agregado a application.php (carga antes de plugins)</info>');
     }
 
     private function setupActiveTheme(OutputInterface $output, string $environment): void
