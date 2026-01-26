@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name:  Acorn Bootloader
+Plugin Name:  Acorn Bootloader (Early Load)
 Plugin URI:   https://roots.io/acorn/
-Description:  Boots the Acorn framework globally for WordPress Bedrock with multi-plugin support.
+Description:  Boots the Acorn framework globally for WordPress Bedrock with multi-plugin support. Loads early with 000- prefix.
 Version:      1.0.0
 Author:       Roots/Detodo24
 */

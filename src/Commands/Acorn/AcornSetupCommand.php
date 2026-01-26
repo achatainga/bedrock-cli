@@ -168,12 +168,18 @@ class AcornSetupCommand extends Command
 
     private function installAdvancedBootloader(OutputInterface $output): void
     {
-        $bootloaderFile = 'web/app/mu-plugins/acorn-boot.php';
+        $bootloaderFile = 'web/app/mu-plugins/000-acorn-boot.php';
+        $oldBootloaderFile = 'web/app/mu-plugins/acorn-boot.php';
         $stubPath = __DIR__ . '/../../../stubs/mu-plugins/acorn-boot.php.stub';
+        
+        // Eliminar bootloader anterior si existe
+        if (file_exists($oldBootloaderFile)) {
+            unlink($oldBootloaderFile);
+        }
         
         if (file_exists($stubPath)) {
             copy($stubPath, $bootloaderFile);
-            $output->writeln('<info>✓ Bootloader avanzado instalado</info>');
+            $output->writeln('<info>✓ Bootloader avanzado instalado (carga temprana)</info>');
         } else {
             $output->writeln('<error>✗ Stub del bootloader no encontrado</error>');
         }
@@ -307,7 +313,7 @@ class AcornSetupCommand extends Command
         // Verificar archivos críticos
         $criticalFiles = [
             'app/Providers/AppServiceProvider.php' => 'AppServiceProvider global',
-            'web/app/mu-plugins/acorn-boot.php' => 'Bootloader avanzado',
+            'web/app/mu-plugins/000-acorn-boot.php' => 'Bootloader avanzado (carga temprana)',
         ];
         
         foreach ($criticalFiles as $file => $description) {

@@ -120,7 +120,7 @@ class AcornCommand extends Command
         
         // Diagnóstico avanzado
         $globalProviderExists = file_exists('app/Providers/AppServiceProvider.php');
-        $bootloaderExists = file_exists('web/app/mu-plugins/acorn-boot.php');
+        $bootloaderExists = file_exists('web/app/mu-plugins/000-acorn-boot.php') || file_exists('web/app/mu-plugins/acorn-boot.php');
         $composerAutoload = $this->hasComposerAutoload();
         
         $output->writeln('');
