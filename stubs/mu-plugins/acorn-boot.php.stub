@@ -1,32 +1,141 @@
 <?php
 /*
 Plugin Name:  Acorn Bootloader
-Description:  Boots the Acorn framework.
+Plugin URI:   https://roots.io/acorn/
+Description:  Boots the Acorn framework globally for WordPress Bedrock with multi-plugin support.
+Version:      1.0.0
+Author:       Roots/Detodo24
 */
 
-// Solo cargar si WordPress está instalado
-if (! defined('ABSPATH') || ! is_blog_installed()) {
+if (!defined('ABSPATH') || !is_blog_installed()) {
     return;
 }
 
-if (! class_exists(\Roots\Acorn\Application::class)) {
+if (!class_exists(\Roots\Acorn\Application::class)) {
     return;
 }
 
-// Boot Acorn after WordPress is fully loaded
-add_action('after_setup_theme', function () {
-    try {
-        \Roots\Acorn\Application::configure()
-            ->withProviders([
-                \App\Providers\AppServiceProvider::class,
-            ])
-            ->boot();
-    } catch (\Throwable $e) {
-        if (defined('WP_CLI') && WP_CLI) {
-            WP_CLI::error('Acorn boot failed: ' . $e->getMessage());
+/**
+ * Acorn Global Bootloader para Bedrock
+ */
+final class AcornBootloader
+{
+    private static ?self $instance = null;
+    private static ?\Roots\Acorn\Application $app = null;
+    private static array $registeredPlugins = [];
+    private string $bedrockRoot;
+
+    private function __construct()
+    {
+        $this->bedrockRoot = dirname(__DIR__, 3);
+    }
+
+    public static function getInstance(): self
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
+        return self::$instance;
+    }
+
+    public static function getApp(): ?\Roots\Acorn\Application
+    {
+        return self::$app;
+    }
+
+    public function getBedrockRoot(): string
+    {
+        return $this->bedrockRoot;
+    }
+
+    public static function registerPlugin(string $slug, string $path, array $providers = []): void
+    {
+        self::$registeredPlugins[$slug] = [
+            'path' => $path,
+            'providers' => $providers,
+        ];
+    }
+
+    public static function getRegisteredPlugins(): array
+    {
+        return self::$registeredPlugins;
+    }
+
+    private function isPluginAcornContext(): bool
+    {
+        if (!defined('WP_CLI') || !WP_CLI) {
+            return false;
+        }
+
+        global $argv;
+        if (is_array($argv)) {
+            foreach ($argv as $arg) {
+                if ($arg === 'plugin-acorn') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function isCliContext(): bool
+    {
+        return defined('WP_CLI') && WP_CLI;
+    }
+
+    public function boot(): void
+    {
+        if ($this->isPluginAcornContext()) {
+            return;
+        }
+
+        add_action('after_setup_theme', function () {
+            try {
+                self::$app = \Roots\Acorn\Application::configure(basePath: $this->bedrockRoot)
+                    ->withProviders([
+                        \App\Providers\AppServiceProvider::class,
+                    ])
+                    ->boot();
+
+                do_action('acorn/init', self::$app);
+                do_action('acorn/ready', self::$app);
+
+            } catch (\Throwable $e) {
+                $this->handleError($e);
+            }
+        }, 0);
+    }
+
+    private function handleError(\Throwable $e): void
+    {
+        $message = 'Error al iniciar Acorn: ' . $e->getMessage();
+
+        if ($this->isCliContext()) {
+            \WP_CLI::error($message);
+        }
+
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('Acorn boot error: ' . $e->getMessage());
+            error_log($message);
+            error_log($e->getTraceAsString());
         }
     }
-}, 0);
+}
+
+// Bootear Acorn
+AcornBootloader::getInstance()->boot();
+
+// Helper functions
+if (!function_exists('acorn_app')) {
+    function acorn_app(): ?\Roots\Acorn\Application
+    {
+        return AcornBootloader::getApp();
+    }
+}
+
+if (!function_exists('acorn_register_plugin')) {
+    function acorn_register_plugin(string $slug, string $path, array $providers = []): void
+    {
+        AcornBootloader::registerPlugin($slug, $path, $providers);
+    }
+}

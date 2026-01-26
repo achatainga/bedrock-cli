@@ -53,13 +53,14 @@ class AcornCommand extends Command
         $output->writeln('<fg=cyan>[10]</> ❓ ¿Qué es Acorn? (Ayuda)');
         $output->writeln('<fg=cyan>[11]</> ⚖️  Ventajas y desventajas');
         $output->writeln('<fg=cyan>[12]</> 🔧 Reparar tema actual (hacer compatible)');
+        $output->writeln('<fg=cyan>[13]</> ✨ Setup Completo - Configuración completa de Acorn');
         $output->writeln('<fg=cyan>[0]</> ⬅️  Volver');
         $output->writeln('');
         
-        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Opción [0-12]: </>', '0');
+        $question = new \Symfony\Component\Console\Question\Question('<fg=yellow>Opción [0-13]: </>', '0');
         $choice = $helper->ask($input, $output, $question);
         
-        if (!is_numeric($choice) || $choice < 0 || $choice > 12) {
+        if (!is_numeric($choice) || $choice < 0 || $choice > 13) {
             $output->writeln('<error>Opción inválida</error>');
             return Command::SUCCESS;
         }
@@ -89,6 +90,8 @@ class AcornCommand extends Command
                 return $this->showProsAndCons($output);
             case '12':
                 return $this->repairCurrentTheme($output);
+            case '13':
+                return $this->setupComplete($input, $output);
             case '0':
                 return Command::SUCCESS;
         }
@@ -114,6 +117,23 @@ class AcornCommand extends Command
         $output->writeln(sprintf(' Paquete Composer: %s', $packageInstalled ? '<info>✓ Instalado</info>' : '<error>✗ No instalado</error>'));
         $output->writeln(sprintf(' Storage:          %s', $storageExists ? '<info>✓ Inicializado</info>' : '<error>✗ No inicializado</error>'));
         $output->writeln(sprintf(' Configs:          %s', $configsExist ? '<info>✓ Publicados</info>' : '<error>✗ No publicados</error>'));
+        
+        // Diagnóstico avanzado
+        $globalProviderExists = file_exists('app/Providers/AppServiceProvider.php');
+        $bootloaderExists = file_exists('web/app/mu-plugins/acorn-boot.php');
+        $composerAutoload = $this->hasComposerAutoload();
+        
+        $output->writeln('');
+        $output->writeln('<comment>Diagnóstico Avanzado:</comment>');
+        $output->writeln(sprintf(' Global Provider:  %s', $globalProviderExists ? '<info>✓ Existe</info>' : '<error>✗ Falta AppServiceProvider</error>'));
+        $output->writeln(sprintf(' Bootloader:       %s', $bootloaderExists ? '<info>✓ Activo</info>' : '<error>✗ No encontrado</error>'));
+        $output->writeln(sprintf(' Autoload PSR-4:   %s', $composerAutoload ? '<info>✓ Configurado</info>' : '<error>✗ Falta App\\\\ namespace</error>'));
+        
+        if (!$globalProviderExists || !$composerAutoload) {
+            $output->writeln('');
+            $output->writeln('<fg=yellow>💡 Recomendación: Ejecuta [13] Setup Completo para corregir problemas</>');
+        }
+        
         $output->writeln('');
     }
 
@@ -174,7 +194,7 @@ class AcornCommand extends Command
         $output->writeln('');
         
         // Obtener tema activo
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp theme list --status=active --field=name');
+        $process = $this->executeWpCommand('theme list --status=active --field=name');
         $process->run();
         
         if (!$process->isSuccessful()) {
@@ -268,7 +288,7 @@ PHP;
         
         // 5. Limpiar cache de Acorn
         $output->writeln('<comment>Limpiando cache de Acorn...</comment>');
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn optimize:clear');
+        $process = $this->executeWpCommand('acorn optimize:clear');
         $process->run();
         if ($process->isSuccessful()) {
             $output->writeln('✓ Cache limpiado');
@@ -276,11 +296,14 @@ PHP;
         
         // 6. Arreglar permisos
         $output->writeln('<comment>Ajustando permisos...</comment>');
-        $process = Process::fromShellCommandline('docker-compose exec -T web chown -R www-data:www-data /var/www/html/web/app/cache');
-        $process->run();
-        $process = Process::fromShellCommandline('docker-compose exec -T web chmod -R 755 /var/www/html/web/app/cache');
-        $process->run();
-        $output->writeln('✓ Permisos ajustados');
+        $environment = $this->detectEnvironment();
+        if ($environment === 'docker') {
+            $process = Process::fromShellCommandline('docker-compose exec -T web chown -R www-data:www-data /var/www/html/web/app/cache');
+            $process->run();
+            $process = Process::fromShellCommandline('docker-compose exec -T web chmod -R 755 /var/www/html/web/app/cache');
+            $process->run();
+            $output->writeln('✓ Permisos ajustados');
+        }
         
         $output->writeln('');
         $output->writeln('<info>✅ Tema reparado y compatible con Acorn</info>');
@@ -529,9 +552,53 @@ PHP;
         return Command::SUCCESS;
     }
 
+    private function setupComplete(InputInterface $input, OutputInterface $output): int
+    {
+        $output->writeln('');
+        $output->writeln('<fg=green;options=bold>🔧 EJECUTANDO SETUP COMPLETO</>');
+        $output->writeln('');
+        
+        // Ejecutar AcornSetupCommand
+        $setupCommand = $this->getApplication()->find('acorn:setup');
+        $setupInput = new \Symfony\Component\Console\Input\ArrayInput(['command' => 'acorn:setup']);
+        
+        return $setupCommand->run($setupInput, $output);
+    }
+
+    private function detectEnvironment(): string 
+    {
+        if (file_exists('.ddev/config.yaml')) return 'ddev';
+        if (file_exists('docker-compose.yml')) return 'docker';
+        return 'native';
+    }
+
+    private function executeWpCommand(string $command): Process 
+    {
+        $environment = $this->detectEnvironment();
+        
+        switch ($environment) {
+            case 'ddev': 
+                return Process::fromShellCommandline("ddev wp {$command}");
+            case 'docker': 
+                return Process::fromShellCommandline("docker-compose exec -T web wp {$command}");
+            default: 
+                return Process::fromShellCommandline("wp {$command}");
+        }
+    }
+
+    private function hasComposerAutoload(): bool
+    {
+        if (!file_exists('composer.json')) {
+            return false;
+        }
+        
+        $composer = json_decode(file_get_contents('composer.json'), true);
+        return isset($composer['autoload']['psr-4']['App\\']);
+    }
+
     private function initStorage(OutputInterface $output): int
     {
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn acorn:init storage');
+        $process = $this->executeWpCommand('acorn acorn:init storage');
         $process->setTimeout(60);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -548,7 +615,7 @@ PHP;
 
     private function publishConfigs(OutputInterface $output): int
     {
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn vendor:publish --tag=acorn');
+        $process = $this->executeWpCommand('acorn vendor:publish --tag=acorn');
         $process->setTimeout(60);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);

@@ -6,6 +6,7 @@ use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 use Roots\BedrockCli\Commands\Acorn\AcornCommand;
+use Roots\BedrockCli\Commands\Acorn\AcornSetupCommand;
 use Roots\BedrockCli\Commands\Database\MenuCommand as DatabaseMenuCommand;
 use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
 use Roots\BedrockCli\Commands\Database\SnapshotCommand as DatabaseSnapshotCommand;
@@ -109,6 +110,7 @@ class Application extends BaseApplication
             new AcornCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
+            new AcornSetupCommand(),
             new DatabaseMenuCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService')

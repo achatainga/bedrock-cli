@@ -1,0 +1,87 @@
+<?php
+namespace App\Providers;
+
+use Roots\Acorn\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        // Registrar servicios globales
+    }
+
+    public function boot(): void
+    {
+        // Auto-detectar y cargar providers del tema activo
+        $this->loadThemeProviders();
+        
+        // Auto-detectar y cargar providers de plugins registrados
+        $this->loadRegisteredPluginProviders();
+        
+        // Auto-detectar plugins con config/app.php
+        $this->loadPluginProvidersFromConfig();
+    }
+    
+    /**
+     * Carga providers del tema activo desde config/app.php
+     */
+    private function loadThemeProviders(): void
+    {
+        $theme = get_template_directory();
+        $configFile = $theme . '/config/app.php';
+        
+        if (file_exists($configFile)) {
+            $config = require $configFile;
+            $providers = $config['providers'] ?? [];
+            
+            foreach ($providers as $provider) {
+                if (class_exists($provider)) {
+                    $this->app->register($provider);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Carga providers de plugins registrados via AcornBootloader::registerPlugin()
+     */
+    private function loadRegisteredPluginProviders(): void
+    {
+        if (!class_exists('AcornBootloader')) {
+            return;
+        }
+        
+        $plugins = \AcornBootloader::getRegisteredPlugins();
+        foreach ($plugins as $slug => $plugin) {
+            foreach ($plugin['providers'] as $provider) {
+                if (class_exists($provider)) {
+                    $this->app->register($provider);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Auto-detecta plugins activos con config/app.php
+     */
+    private function loadPluginProvidersFromConfig(): void
+    {
+        $activePlugins = get_option('active_plugins', []);
+        
+        foreach ($activePlugins as $plugin) {
+            $pluginDir = WP_PLUGIN_DIR . '/' . dirname($plugin);
+            $configFile = $pluginDir . '/config/app.php';
+            
+            if (file_exists($configFile)) {
+                $config = require $configFile;
+                $providers = $config['providers'] ?? [];
+                
+                foreach ($providers as $provider) {
+                    if (class_exists($provider)) {
+                        $this->app->register($provider);
+                    }
+                }
+            }
+        }
+    }
+}
