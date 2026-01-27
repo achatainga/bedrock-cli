@@ -41,7 +41,14 @@ fi
 # Commit y push
 echo "📤 Haciendo commit y push..."
 git commit -m "$MESSAGE" || echo "ℹ️  No hay cambios para commit"
-git push
+
+# Verificar si la rama tiene upstream configurado
+if ! git rev-parse --abbrev-ref "$CURRENT_BRANCH@{upstream}" >/dev/null 2>&1; then
+    echo "🔗 Configurando upstream para rama $CURRENT_BRANCH..."
+    git push --set-upstream origin "$CURRENT_BRANCH"
+else
+    git push
+fi
 
 # Obtener hash del último commit
 HASH=$(git rev-parse --short HEAD)
