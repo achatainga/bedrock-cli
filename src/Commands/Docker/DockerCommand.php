@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Docker;
 
 use Roots\BedrockCli\Traits\SpinnerTrait;
+use Roots\BedrockCli\Traits\DockerComposeTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -18,6 +19,7 @@ class DockerCommand extends Command
 {
     use ProjectSelectorTrait;
     use SpinnerTrait;
+    use DockerComposeTrait;
     
     private DockerService $dockerService;
     private StateService $stateService;
@@ -185,10 +187,11 @@ class DockerCommand extends Command
     private function up(DockerService $docker, OutputInterface $output, bool $build): int
     {
         $output->writeln('<info>Levantando contenedores...</info>');
-        $cmd = $build ? 'docker-compose up -d --build' : 'docker-compose up -d';
-        passthru($cmd, $exitCode);
         
-        if ($exitCode === 0) {
+        $process = $docker->up($build);
+        $this->runWithLoader($process, $output, 'Levantando contenedores Docker');
+        
+        if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
             $this->markStepCompleted(1);
             return Command::SUCCESS;
@@ -226,6 +229,11 @@ class DockerCommand extends Command
 
     private function status(DockerService $docker, OutputInterface $output): int
     {
+        // Mostrar información de Docker Compose
+        $composeInfo = $docker->getComposeInfo();
+        $output->writeln("<info>Docker Compose: {$composeInfo['command']} v{$composeInfo['version']}</info>");
+        $output->writeln('');
+        
         $process = $docker->status();
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -238,10 +246,10 @@ class DockerCommand extends Command
     {
         if ($useCache) {
             $output->writeln('<info>Reconstruyendo contenedores con caché...</info>');
-            passthru('docker-compose build --progress=plain web', $exitCode);
+            $this->dockerComposeExec('build --progress=plain web', $exitCode);
         } else {
             $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
-            passthru('docker-compose build --no-cache --progress=plain web', $exitCode);
+            $this->dockerComposeExec('build --no-cache --progress=plain web', $exitCode);
         }
         
         if ($exitCode !== 0) {
@@ -252,7 +260,7 @@ class DockerCommand extends Command
         $output->writeln('<info>Build completado. Levantando contenedores...</info>');
         
         // Paso 2: Up
-        passthru('docker-compose up -d', $exitCode);
+        $this->dockerComposeExec('up -d', $exitCode);
         
         if ($exitCode === 0) {
             $output->writeln('<info>✓ Contenedores reconstruidos y levantados</info>');

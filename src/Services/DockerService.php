@@ -3,9 +3,12 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Process\Process;
+use Roots\BedrockCli\Traits\DockerComposeTrait;
 
 class DockerService
 {
+    use DockerComposeTrait;
+
     public function isRunning(): bool
     {
         $process = new Process(['docker', 'info']);
@@ -20,65 +23,72 @@ class DockerService
             return false;
         }
         
-        $process = new Process(['docker-compose', 'ps', '-q']);
-        $process->run();
-        return !empty(trim($process->getOutput()));
+        return $this->areDockerContainersRunning();
     }
 
     public function up(bool $build = false): Process
     {
-        $cmd = ['docker-compose', 'up', '-d'];
+        $args = 'up -d';
         if ($build) {
-            $cmd[] = '--build';
+            $args .= ' --build';
         }
-        $process = new Process($cmd);
+        $process = $this->dockerComposeProcess($args);
         $process->setTimeout(300);
         return $process;
     }
 
     public function down(): Process
     {
-        return new Process(['docker-compose', 'down']);
+        return $this->dockerComposeProcess('down');
     }
 
     public function restart(): Process
     {
-        return new Process(['docker-compose', 'restart']);
+        return $this->dockerComposeProcess('restart');
     }
 
     public function status(): Process
     {
-        return new Process(['docker-compose', 'ps']);
+        return $this->dockerComposeProcess('ps');
     }
 
     public function exec(string $service, array $command): Process
     {
-        return new Process(array_merge(['docker-compose', 'exec', $service], $command));
+        $args = 'exec ' . $service . ' ' . implode(' ', $command);
+        return $this->dockerComposeProcess($args);
     }
 
     public function rebuild(): Process
     {
         // Build servicio web sin caché
-        $process = new Process(['docker-compose', 'build', '--no-cache', 'web']);
+        $process = $this->dockerComposeProcess('build --no-cache web');
         $process->setTimeout(600);
         return $process;
     }
     
     public function rebuildAndUp(): Process
     {
-        $process = new Process(['docker-compose', 'up', '-d']);
+        $process = $this->dockerComposeProcess('up -d');
         $process->setTimeout(600);
         return $process;
     }
 
     public function logs(bool $follow = false): Process
     {
-        $cmd = ['docker-compose', 'logs'];
+        $args = 'logs';
         if ($follow) {
-            $cmd[] = '-f';
+            $args .= ' -f';
         } else {
-            $cmd[] = '--tail=100'; // Últimas 100 líneas
+            $args .= ' --tail=100'; // Últimas 100 líneas
         }
-        return new Process($cmd);
+        return $this->dockerComposeProcess($args);
+    }
+
+    /**
+     * Obtiene información de Docker Compose para diagnósticos
+     */
+    public function getComposeInfo(): array
+    {
+        return $this->getDockerComposeInfo();
     }
 }
