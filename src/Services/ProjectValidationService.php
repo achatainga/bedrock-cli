@@ -73,6 +73,11 @@ class ProjectValidationService
             }
 
             // Test database connection via Docker usando docker exec directo
+            $dbName = trim($env['DB_NAME'], '"\'');
+            $dbUser = trim($env['DB_USER'], '"\'');
+            $dbPass = trim($env['DB_PASSWORD'], '"\'');
+            $projectName = basename($projectPath);
+            
             $dbNameEscaped = escapeshellarg($dbName);
             $dbUserEscaped = escapeshellarg($dbUser);
             $dbPassEscaped = escapeshellarg($dbPass);
@@ -424,6 +429,11 @@ class ProjectValidationService
             return false;
         }
 
+        $dbName = trim($env['DB_NAME'], '"\'');
+        $dbUser = trim($env['DB_USER'], '"\'');
+        $dbPass = trim($env['DB_PASSWORD'], '"\'');
+        $prefix = $env['DB_PREFIX'] ?? 'wp_';
+        
         $dbNameEscaped = escapeshellarg($dbName);
         $dbUserEscaped = escapeshellarg($dbUser);
         $dbPassEscaped = escapeshellarg($dbPass);
