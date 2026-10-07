@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
+use Symfony\Component\Process\Process;
 
 class AuthService
 {
@@ -118,11 +119,12 @@ class AuthService
 
     private function getComposerHome(): string
     {
-        $output = [];
-        exec('composer config --global home 2>&1', $output, $returnCode);
+        $process = new Process(['composer', 'config', '--global', 'home']);
+        $process->setTimeout(10);
+        $process->run();
         
-        if ($returnCode === 0 && !empty($output[0])) {
-            $path = trim($output[0]);
+        if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
+            $path = trim($process->getOutput());
             // Normalizar separadores de directorio
             return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         }

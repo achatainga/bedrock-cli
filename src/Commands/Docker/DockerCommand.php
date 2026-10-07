@@ -154,10 +154,12 @@ class DockerCommand extends Command
     private function up(DockerService $docker, OutputInterface $output, bool $build): int
     {
         $output->writeln('<info>Levantando contenedores...</info>');
-        $cmd = $build ? 'docker-compose up -d --build' : 'docker-compose up -d';
-        passthru($cmd, $exitCode);
+        $process = $docker->up($build);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
         
-        if ($exitCode === 0) {
+        if ($process->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores levantados</info>');
             $this->markStepCompleted(1);
             return Command::SUCCESS;
@@ -205,15 +207,15 @@ class DockerCommand extends Command
 
     private function rebuild(DockerService $docker, OutputInterface $output, bool $useCache = false): int
     {
-        if ($useCache) {
-            $output->writeln('<info>Reconstruyendo contenedores con caché...</info>');
-            passthru('docker-compose build --progress=plain web', $exitCode);
-        } else {
-            $output->writeln('<info>Reconstruyendo contenedores sin caché...</info>');
-            passthru('docker-compose build --no-cache --progress=plain web', $exitCode);
-        }
+        $output->writeln($useCache ? '<info>Reconstruyendo contenedores con caché...</info>' : '<info>Reconstruyendo contenedores sin caché...</info>');
+        $buildCmd = $useCache ? ['docker-compose', 'build', '--progress=plain', 'web'] : ['docker-compose', 'build', '--no-cache', '--progress=plain', 'web'];
+        $process = new \Symfony\Component\Process\Process($buildCmd);
+        $process->setTimeout(600);
+        $process->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
         
-        if ($exitCode !== 0) {
+        if (!$process->isSuccessful()) {
             $output->writeln('<error>✗ Error al reconstruir contenedores</error>');
             return Command::FAILURE;
         }
@@ -221,9 +223,12 @@ class DockerCommand extends Command
         $output->writeln('<info>Build completado. Levantando contenedores...</info>');
         
         // Paso 2: Up
-        passthru('docker-compose up -d', $exitCode);
+        $upProcess = $docker->up();
+        $upProcess->run(function ($type, $buffer) use ($output) {
+            $output->write($buffer);
+        });
         
-        if ($exitCode === 0) {
+        if ($upProcess->isSuccessful()) {
             $output->writeln('<info>✓ Contenedores reconstruidos y levantados</info>');
             return Command::SUCCESS;
         }

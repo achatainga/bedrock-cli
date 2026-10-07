@@ -4,6 +4,7 @@ namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 class UnzipService
 {
@@ -75,13 +76,15 @@ class UnzipService
         }
 
         // Intentar Python local
-        exec('python --version 2>&1', $pythonCheck, $pythonCode);
-        if ($pythonCode === 0) {
+        $pyCheck = new Process(['python', '--version']);
+        $pyCheck->run();
+        if ($pyCheck->isSuccessful()) {
             $output->writeln('<comment>[Python Local]</comment>');
-            $command = sprintf('python "%s" "%s" "%s" 2>&1', $pythonScript, $zipPath, $destination);
-            exec($command, $output_lines, $return_code);
+            $pyProcess = new Process(['python', $pythonScript, $zipPath, $destination]);
+            $pyProcess->setTimeout(300);
+            $pyProcess->run();
             
-            if ($return_code === 0) {
+            if ($pyProcess->isSuccessful()) {
                 return true;
             }
         }
@@ -116,16 +119,13 @@ class UnzipService
             $dockerDestination = str_replace('\\', '/', $dockerDestination);
             $dockerScriptPath = str_replace('\\', '/', $dockerScriptPath);
             
-            $command = sprintf(
-                'docker exec %s python "%s" "%s" "%s" 2>&1',
-                $containerName,
-                $dockerScriptPath,
-                $dockerZipPath,
-                $dockerDestination
-            );
-            
-            exec($command, $output_lines, $return_code);
-            return $return_code === 0;
+            $dockerPyProcess = new Process([
+                'docker', 'exec', $containerName,
+                'python', $dockerScriptPath, $dockerZipPath, $dockerDestination
+            ]);
+            $dockerPyProcess->setTimeout(300);
+            $dockerPyProcess->run();
+            return $dockerPyProcess->isSuccessful();
         }
 
         return false;
@@ -179,17 +179,15 @@ class UnzipService
         $dockerZipPath = str_replace('\\', '/', $dockerZipPath);
         $dockerDestination = str_replace('\\', '/', $dockerDestination);
         
-        $command = sprintf(
-            'docker exec %s unzip -q -o "%s" -d "%s" 2>&1',
-            $containerName,
-            $dockerZipPath,
-            $dockerDestination
-        );
-        
-        exec($command, $output_lines, $return_code);
+        $dockerUnzipProcess = new Process([
+            'docker', 'exec', $containerName,
+            'unzip', '-q', '-o', $dockerZipPath, '-d', $dockerDestination
+        ]);
+        $dockerUnzipProcess->setTimeout(300);
+        $dockerUnzipProcess->run();
 
-        if ($return_code !== 0) {
-            $output->writeln("<error>Error al descomprimir: " . implode("\n", $output_lines) . "</error>");
+        if (!$dockerUnzipProcess->isSuccessful()) {
+            $output->writeln("<error>Error al descomprimir: " . trim($dockerUnzipProcess->getErrorOutput() ?: $dockerUnzipProcess->getOutput()) . "</error>");
             return false;
         }
 

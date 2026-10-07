@@ -12,6 +12,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Process\Process;
 
 class SearchCommand extends Command
 {
@@ -211,7 +212,12 @@ class SearchCommand extends Command
             $constraint = $version === '*' ? '' : ":{$version}";
             $command = "composer require {$package}{$constraint} --working-dir={$projectPath}";
             $output->writeln("<comment>$ {$command}</comment>");
-            passthru($command, $exitCode);
+                $process = new Process(['composer', 'require', "{$package}{$constraint}", "--working-dir={$projectPath}"]);
+                $process->setTimeout(600);
+                $process->run(function ($type, $buffer) use ($output) {
+                    $output->write($buffer);
+                });
+                $exitCode = $process->getExitCode();
             
             if ($exitCode === 0) {
                 $output->writeln("<info>✓ {$slug} instalado</info>");
