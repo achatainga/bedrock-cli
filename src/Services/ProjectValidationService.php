@@ -6,6 +6,7 @@ use Roots\BedrockCli\ValueObjects\DockerValidation;
 use Roots\BedrockCli\ValueObjects\DatabaseValidation;
 use Roots\BedrockCli\ValueObjects\WordPressValidation;
 use Roots\BedrockCli\ValueObjects\AcornValidation;
+use Symfony\Component\Process\Process;
 
 class ProjectValidationService
 {
@@ -47,7 +48,22 @@ class ProjectValidationService
         $dbUser = trim($env['DB_USER'], '"\'');
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
         
-        $output = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u{$dbUser} -p{$dbPass} -e \"SHOW DATABASES LIKE '{$dbName}';\" 2>/dev/null");
+        $process = new Process([
+            'docker', 'compose', 'exec', '-T', 'mysql',
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", '-e', "SHOW DATABASES LIKE '{$dbName}';"
+        ], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = $process->getOutput();
+        if (!$process->isSuccessful()) {
+            $fallback = new Process([
+                'docker-compose', 'exec', '-T', 'mysql',
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", '-e', "SHOW DATABASES LIKE '{$dbName}';"
+            ], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = $fallback->getOutput();
+        }
         
         if ($output && strpos($output, $dbName) !== false) {
             return new DatabaseValidation(true, 'Database connection successful');
@@ -318,15 +334,19 @@ class ProjectValidationService
 
     private function isDockerRunning(): bool
     {
-        $output = shell_exec('docker info 2>/dev/null');
-        return $output !== null && strpos($output, 'Server Version') !== false;
+        $process = new Process(['docker', 'info']);
+        $process->setTimeout(10);
+        $process->run();
+        return $process->isSuccessful() && strpos($process->getOutput(), 'Server Version') !== false;
     }
 
     private function areContainersRunning(string $projectPath): bool
     {
         $projectName = basename($projectPath);
-        $output = shell_exec("docker ps --filter name={$projectName} --format '{{.Names}}' 2>/dev/null");
-        return !empty(trim($output ?? ''));
+        $process = new Process(['docker', 'ps', '--filter', "name={$projectName}", '--format', '{{.Names}}']);
+        $process->setTimeout(10);
+        $process->run();
+        return !empty(trim($process->getOutput()));
     }
 
     private function hasWordPressTables(string $projectPath): bool
@@ -342,9 +362,24 @@ class ProjectValidationService
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
         $prefix = trim($env['DB_PREFIX'] ?? 'wp_', '"\'');
         
-        $output = shell_exec("cd {$projectPath} && docker-compose exec -T mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e \"SHOW TABLES LIKE '{$prefix}options';\" 2>/dev/null");
+        $process = new Process([
+            'docker', 'compose', 'exec', '-T', 'mysql',
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName, '-e', "SHOW TABLES LIKE '{$prefix}options';"
+        ], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = $process->getOutput();
+        if (!$process->isSuccessful()) {
+            $fallback = new Process([
+                'docker-compose', 'exec', '-T', 'mysql',
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName, '-e', "SHOW TABLES LIKE '{$prefix}options';"
+            ], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = $fallback->getOutput();
+        }
         
-        return $output && strpos($output, $prefix . 'options') !== false;
+        return !empty($output) && strpos($output, $prefix . 'options') !== false;
     }
 
     private function isAcornPackageInstalled(string $projectPath): bool

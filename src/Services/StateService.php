@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use Roots\BedrockCli\Services\ProjectValidationService;
+use Symfony\Component\Process\Process;
 
 class StateService
 {
@@ -280,10 +281,18 @@ class StateService
      */
     public function validateThemeActive(string $projectPath, string $themeName): bool
     {
-        $projectName = basename($projectPath);
-        $activeTheme = shell_exec("cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null");
+        $process = new Process(['docker', 'compose', 'exec', '-T', 'web', 'wp', 'theme', 'status', $themeName], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = $process->getOutput();
+        if (!$process->isSuccessful()) {
+            $fallback = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'status', $themeName], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = $fallback->getOutput();
+        }
         
-        return $activeTheme && strpos($activeTheme, 'Active') !== false;
+        return !empty($output) && strpos($output, 'Active') !== false;
     }
 
     /**
@@ -291,10 +300,18 @@ class StateService
      */
     public function validatePluginsActive(string $projectPath): bool
     {
-        $projectName = basename($projectPath);
-        $plugins = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null");
+        $process = new Process(['docker', 'compose', 'exec', '-T', 'web', 'wp', 'plugin', 'list', '--status=active', '--format=count'], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = trim($process->getOutput());
+        if (!$process->isSuccessful()) {
+            $fallback = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'list', '--status=active', '--format=count'], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = trim($fallback->getOutput());
+        }
         
-        return $plugins && (int)trim($plugins) > 0;
+        return is_numeric($output) && (int)$output > 0;
     }
 
     /**
@@ -332,13 +349,21 @@ class StateService
         return $hasOpenAI || $hasGemini || $hasAnthropic;
     }
 
+    private function isCliCommandAvailable(string $command): bool
+    {
+        $process = new Process([$command, '--version']);
+        $process->setTimeout(5);
+        $process->run();
+        return $process->isSuccessful();
+    }
+
     /**
      * Verifica acceso a GitHub (token o CLI)
      */
     public function validateGitHubAccess(): bool
     {
         $hasGitHubToken = !empty(getenv('GITHUB_TOKEN'));
-        $hasGitHubCLI = shell_exec('which gh 2>/dev/null') !== null;
+        $hasGitHubCLI = $this->isCliCommandAvailable('gh');
         
         return $hasGitHubToken || $hasGitHubCLI;
     }
@@ -349,7 +374,7 @@ class StateService
     public function validateGitLabAccess(): bool
     {
         $hasGitLabToken = !empty(getenv('GITLAB_TOKEN'));
-        $hasGitLabCLI = shell_exec('which glab 2>/dev/null') !== null;
+        $hasGitLabCLI = $this->isCliCommandAvailable('glab');
         
         return $hasGitLabToken || $hasGitLabCLI;
     }
