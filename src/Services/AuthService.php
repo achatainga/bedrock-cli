@@ -133,7 +133,11 @@ class AuthService
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('APPDATA') . DIRECTORY_SEPARATOR . 'Composer';
         }
-        return (getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir']) . DIRECTORY_SEPARATOR . '.composer';
+        $home = getenv('HOME');
+        if (!$home && function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+            $home = posix_getpwuid(posix_getuid())['dir'] ?? null;
+        }
+        return ($home ?: sys_get_temp_dir()) . DIRECTORY_SEPARATOR . '.composer';
     }
 
     public function getAuthFile(): string
