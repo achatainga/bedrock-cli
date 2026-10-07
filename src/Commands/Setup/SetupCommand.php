@@ -72,7 +72,7 @@ class SetupCommand extends Command
         $state = [
             'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
             'env_exists' => file_exists($projectPath . '/.env'),
-            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_installed' => $dockerValidation->isValid || $this->isDockerInstalled(),
             'docker_running' => $dockerValidation->isValid,
             'containers_running' => $dockerValidation->isValid,
             'db_exists' => $dbValidation->isValid,
@@ -732,5 +732,13 @@ class SetupCommand extends Command
         }
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
+
+    private function isDockerInstalled(): bool
+    {
+        $process = new Process(['docker', '--version']);
+        $process->setTimeout(5);
+        $process->run();
+        return $process->isSuccessful();
     }
 }

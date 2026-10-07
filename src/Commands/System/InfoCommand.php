@@ -6,6 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\ProjectValidationService;
+use Symfony\Component\Process\Process;
 
 class InfoCommand extends Command
 {
@@ -40,7 +41,7 @@ class InfoCommand extends Command
         $state = [
             'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
             'env_exists' => file_exists($projectPath . '/.env'),
-            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_installed' => $dockerValidation->isValid || $this->isDockerInstalled(),
             'docker_running' => $dockerValidation->isValid,
             'containers_running' => $dockerValidation->isValid,
             'wp_installed' => $wpValidation->isValid,
@@ -339,5 +340,13 @@ class InfoCommand extends Command
         }
         
         $output->writeln('');
+    }
+
+    private function isDockerInstalled(): bool
+    {
+        $process = new Process(['docker', '--version']);
+        $process->setTimeout(5);
+        $process->run();
+        return $process->isSuccessful();
     }
 }
