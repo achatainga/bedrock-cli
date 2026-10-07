@@ -67,6 +67,9 @@ class ProfileService
 
     public function profileExists(string $name): bool
     {
+        if (empty($name) || basename($name) !== $name || !preg_match('/^[a-zA-Z0-9_\-\.]+$/', $name)) {
+            return false;
+        }
         return file_exists($this->profilesPath . '/' . $name . '.json');
     }
 
@@ -88,6 +91,10 @@ class ProfileService
 
     public function saveProfile(string $name, array $data): void
     {
+        if (empty($name) || basename($name) !== $name || !preg_match('/^[a-zA-Z0-9_\-\.]+$/', $name)) {
+            throw new \InvalidArgumentException("Nombre de profile inválido: '{$name}'");
+        }
+
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         
         if (json_last_error() !== JSON_ERROR_NONE) {

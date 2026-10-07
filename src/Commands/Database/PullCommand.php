@@ -84,9 +84,9 @@ class PullCommand extends Command
 
             $remoteDumpScript = sprintf(
                 'MYSQL_PWD=%s mysqldump -u %s %s --default-character-set=utf8mb4 --single-transaction --quick',
-                escapeshellarg($dbPass),
-                escapeshellarg($dbUser),
-                escapeshellarg($dbName)
+                $this->escapePosixArg($dbPass),
+                $this->escapePosixArg($dbUser),
+                $this->escapePosixArg($dbName)
             );
 
             $dumpProcess = new Process(['ssh', $remote, $remoteDumpScript]);
@@ -198,5 +198,10 @@ class PullCommand extends Command
         $output->writeln('<info>🎉 Sincronización de base de datos finalizada con éxito.</info>');
 
         return Command::SUCCESS;
+    }
+
+    private function escapePosixArg(string $arg): string
+    {
+        return "'" . str_replace("'", "'\\''", $arg) . "'";
     }
 }
