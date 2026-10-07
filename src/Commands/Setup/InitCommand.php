@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\StateService;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
@@ -114,10 +115,19 @@ class InitCommand extends Command
         return null;
     }
 
+    private function runWp(string $projectRoot, array $args): Process
+    {
+        $process = new Process(array_merge(['wp'], $args), $projectRoot);
+        $process->setTimeout(300);
+        $process->run();
+        return $process;
+    }
+
     private function isWpCliAvailable(): bool
     {
-        exec('wp --version 2>&1', $output, $returnCode);
-        return $returnCode === 0;
+        $process = new Process(['wp', '--version']);
+        $process->run();
+        return $process->isSuccessful();
     }
 
     private function importDatabase(SymfonyStyle $io, string $projectRoot, string $snapshotPath): void
@@ -131,13 +141,12 @@ class InitCommand extends Command
 
         $io->section('📦 Importing database snapshot');
         
-        $command = "cd {$projectRoot} && wp db import {$fullPath} 2>&1";
-        exec($command, $output, $returnCode);
+        $process = $this->runWp($projectRoot, ['db', 'import', $fullPath]);
         
-        if ($returnCode === 0) {
+        if ($process->isSuccessful()) {
             $io->success('Database imported successfully');
         } else {
-            $io->error('Failed to import database: ' . implode("\n", $output));
+            $io->error('Failed to import database: ' . trim($process->getErrorOutput() ?: $process->getOutput()));
         }
     }
 
@@ -156,19 +165,17 @@ class InitCommand extends Command
             }
 
             // Try Acorn first, fallback to wp eval-file
-            $command = "cd {$projectRoot} && wp acorn db:seed --class={$seeder} 2>&1";
-            exec($command, $output, $returnCode);
+            $process = $this->runWp($projectRoot, ['acorn', 'db:seed', "--class={$seeder}"]);
             
-            if ($returnCode !== 0) {
+            if (!$process->isSuccessful()) {
                 // Fallback to wp eval-file
-                $command = "cd {$projectRoot} && wp eval-file {$seederPath} 2>&1";
-                exec($command, $output, $returnCode);
+                $process = $this->runWp($projectRoot, ['eval-file', $seederPath]);
             }
             
-            if ($returnCode === 0) {
+            if ($process->isSuccessful()) {
                 $io->success("{$seeder} executed");
             } else {
-                $io->error("Failed to execute {$seeder}: " . implode("\n", $output));
+                $io->error("Failed to execute {$seeder}: " . trim($process->getErrorOutput() ?: $process->getOutput()));
             }
         }
     }
@@ -178,13 +185,12 @@ class InitCommand extends Command
         $io->section('🔌 Activating plugins');
 
         if ($pluginsConfig['activate'] === 'all') {
-            $command = "cd {$projectRoot} && wp plugin activate --all 2>&1";
-            exec($command, $output, $returnCode);
+            $process = $this->runWp($projectRoot, ['plugin', 'activate', '--all']);
             
-            if ($returnCode === 0) {
+            if ($process->isSuccessful()) {
                 $io->success('All plugins activated');
             } else {
-                $io->error('Failed to activate plugins: ' . implode("\n", $output));
+                $io->error('Failed to activate plugins: ' . trim($process->getErrorOutput() ?: $process->getOutput()));
             }
         }
 
@@ -213,20 +219,20 @@ class InitCommand extends Command
             // Plugin-specific license configuration
             switch ($plugin) {
                 case 'acf-pro':
-                    $command = "cd {$projectRoot} && wp option update acf_pro_license '{$licenseKey}' 2>&1";
+                    $process = $this->runWp($projectRoot, ['option', 'update', 'acf_pro_license', $licenseKey]);
                     break;
                 case 'gravityforms':
-                    $command = "cd {$projectRoot} && wp option update rg_gforms_key '{$licenseKey}' 2>&1";
+                    $process = $this->runWp($projectRoot, ['option', 'update', 'rg_gforms_key', $licenseKey]);
                     break;
                 default:
                     $io->warning("Unknown license configuration for {$plugin}");
                     continue 2;
             }
-
-            exec($command, $output, $returnCode);
             
-            if ($returnCode === 0) {
+            if ($process->isSuccessful()) {
                 $io->text("✓ {$plugin} license configured");
+            } else {
+                $io->warning("Failed to configure license for {$plugin}: " . trim($process->getErrorOutput() ?: $process->getOutput()));
             }
         }
     }
@@ -250,13 +256,12 @@ class InitCommand extends Command
             return;
         }
 
-        $command = "cd {$projectRoot} && wp theme activate {$themeName} 2>&1";
-        exec($command, $output, $returnCode);
+        $process = $this->runWp($projectRoot, ['theme', 'activate', $themeName]);
         
-        if ($returnCode === 0) {
+        if ($process->isSuccessful()) {
             $io->success("Theme '{$themeName}' activated");
         } else {
-            $io->error('Failed to activate theme: ' . implode("\n", $output));
+            $io->error('Failed to activate theme: ' . trim($process->getErrorOutput() ?: $process->getOutput()));
         }
     }
 
@@ -265,10 +270,9 @@ class InitCommand extends Command
         $io->section('⚙️  Configuring WordPress options');
 
         foreach ($options as $key => $value) {
-            $command = "cd {$projectRoot} && wp option update {$key} '{$value}' 2>&1";
-            exec($command, $output, $returnCode);
+            $process = $this->runWp($projectRoot, ['option', 'update', (string) $key, (string) $value]);
             
-            if ($returnCode === 0) {
+            if ($process->isSuccessful()) {
                 $io->text("✓ {$key} = {$value}");
             }
         }
@@ -279,15 +283,13 @@ class InitCommand extends Command
         $io->section('🔄 Running search-replace for URLs');
 
         // Get current URL
-        $command = "cd {$projectRoot} && wp option get siteurl 2>&1";
-        exec($command, $output, $returnCode);
+        $process = $this->runWp($projectRoot, ['option', 'get', 'siteurl']);
+        $oldUrl = trim($process->getOutput());
         
-        if ($returnCode !== 0 || empty($output[0])) {
+        if (!$process->isSuccessful() || empty($oldUrl)) {
             $io->warning('Could not detect current URL, skipping search-replace');
             return;
         }
-
-        $oldUrl = trim($output[0]);
         
         if ($oldUrl === $newUrl) {
             $io->text('URLs match, skipping search-replace');
@@ -296,13 +298,12 @@ class InitCommand extends Command
 
         $io->text("Replacing {$oldUrl} → {$newUrl}");
         
-        $command = "cd {$projectRoot} && wp search-replace '{$oldUrl}' '{$newUrl}' --all-tables 2>&1";
-        exec($command, $output, $returnCode);
+        $replaceProcess = $this->runWp($projectRoot, ['search-replace', $oldUrl, $newUrl, '--all-tables']);
         
-        if ($returnCode === 0) {
+        if ($replaceProcess->isSuccessful()) {
             $io->success('URLs replaced successfully');
         } else {
-            $io->error('Failed to replace URLs: ' . implode("\n", $output));
+            $io->error('Failed to replace URLs: ' . trim($replaceProcess->getErrorOutput() ?: $replaceProcess->getOutput()));
         }
     }
 
@@ -310,10 +311,8 @@ class InitCommand extends Command
     {
         $io->section('🔄 Flushing rewrite rules');
 
-        $command = "cd {$projectRoot} && wp rewrite flush 2>&1";
-        exec($command, $output, $returnCode);
-        
-        if ($returnCode === 0) {
+        $process = $this->runWp($projectRoot, ['rewrite', 'flush']);
+        if ($process->isSuccessful()) {
             $io->success('Rewrite rules flushed');
         }
     }

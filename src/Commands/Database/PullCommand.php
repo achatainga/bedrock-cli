@@ -74,20 +74,33 @@ class PullCommand extends Command
                 return Command::SUCCESS;
             }
 
-            $dumpCmd = sprintf(
-                'ssh %s "mysqldump -u %s -p\'%s\' %s --default-character-set=utf8mb4 --single-transaction --quick" > %s',
-                escapeshellarg($remote),
+            $output->writeln('<comment>Descargando esquema y datos en streaming utf8mb4...</comment>');
+
+            $fp = fopen($dumpFile, 'wb');
+            if (!$fp) {
+                $output->writeln("<error>✗ No se pudo abrir el archivo de volcado '{$dumpFile}' para escritura.</error>");
+                return Command::FAILURE;
+            }
+
+            $remoteDumpScript = sprintf(
+                'MYSQL_PWD=%s mysqldump -u %s %s --default-character-set=utf8mb4 --single-transaction --quick',
+                escapeshellarg($dbPass),
                 escapeshellarg($dbUser),
-                addcslashes($dbPass, "'\\"),
-                escapeshellarg($dbName),
-                escapeshellarg($dumpFile)
+                escapeshellarg($dbName)
             );
 
-            $output->writeln('<comment>Descargando esquema y datos en streaming utf8mb4...</comment>');
-            exec($dumpCmd, $cmdOutput, $returnVar);
+            $dumpProcess = new Process(['ssh', $remote, $remoteDumpScript]);
+            $dumpProcess->setTimeout(1200);
 
-            if ($returnVar !== 0 || !file_exists($dumpFile) || filesize($dumpFile) < 1000) {
-                $output->writeln('<error>✗ Error durante la descarga del volcado remoto.</error>');
+            $dumpProcess->run(function ($type, $buffer) use ($fp) {
+                if ($type === Process::OUT) {
+                    fwrite($fp, $buffer);
+                }
+            });
+            fclose($fp);
+
+            if (!$dumpProcess->isSuccessful() || !file_exists($dumpFile) || filesize($dumpFile) < 1000) {
+                $output->writeln('<error>✗ Error durante la descarga del volcado remoto: ' . trim($dumpProcess->getErrorOutput()) . '</error>');
                 return Command::FAILURE;
             }
 
@@ -124,15 +137,25 @@ class PullCommand extends Command
 
         // Importación a contenedor MySQL
         $output->writeln('<comment>Importando datos a contenedor Docker MySQL...</comment>');
-        $importCmd = sprintf(
-            'docker compose exec -T mysql mysql -uroot -pmysql %s < %s',
-            escapeshellarg($dbName),
-            escapeshellarg($dumpFile)
-        );
-        exec($importCmd, $importOutput, $importReturn);
+        $sqlStream = fopen($dumpFile, 'rb');
+        if (!$sqlStream) {
+            $output->writeln("<error>✗ No se pudo leer el archivo de volcado '{$dumpFile}'.</error>");
+            return Command::FAILURE;
+        }
 
-        if ($importReturn !== 0) {
-            $output->writeln('<error>✗ Error al importar los datos en el contenedor MySQL.</error>');
+        $importProcess = new Process([
+            'docker', 'compose', 'exec', '-T', 'mysql',
+            'mysql', '-uroot', '-pmysql', $dbName
+        ]);
+        $importProcess->setInput($sqlStream);
+        $importProcess->setTimeout(1200);
+        $importProcess->run();
+        if (is_resource($sqlStream)) {
+            fclose($sqlStream);
+        }
+
+        if (!$importProcess->isSuccessful()) {
+            $output->writeln('<error>✗ Error al importar los datos en el contenedor MySQL: ' . trim($importProcess->getErrorOutput()) . '</error>');
             return Command::FAILURE;
         }
         $output->writeln('<info>✓ Base de datos importada exitosamente</info>');
@@ -140,16 +163,33 @@ class PullCommand extends Command
         // Search and Replace
         if (!$skipReplace) {
             $output->writeln("<comment>Ejecutando search-replace: {$sourceUrl} -> {$targetUrl}...</comment>");
-            $replaceCmd = sprintf(
-                'docker compose exec -T web wp search-replace %s %s --all-tables --precise --skip-columns=guid --allow-root',
-                escapeshellarg($sourceUrl),
-                escapeshellarg($targetUrl)
-            );
-            exec($replaceCmd, $replaceOutput, $replaceReturn);
+            $replaceProcess = new Process([
+                'docker', 'compose', 'exec', '-T', 'web',
+                'wp', 'search-replace', $sourceUrl, $targetUrl,
+                '--all-tables', '--precise', '--skip-columns=guid', '--allow-root'
+            ]);
+            $replaceProcess->setTimeout(600);
+            $replaceProcess->run();
+
+            if (!$replaceProcess->isSuccessful()) {
+                $output->writeln('<error>✗ Error durante wp search-replace: ' . trim($replaceProcess->getErrorOutput()) . '</error>');
+                return Command::FAILURE;
+            }
 
             // Actualizar opciones de siteurl y home
-            exec(sprintf('docker compose exec -T web wp option update siteurl "%s/wp" --allow-root', $targetUrl));
-            exec(sprintf('docker compose exec -T web wp option update home "%s" --allow-root', $targetUrl));
+            $siteurlProcess = new Process([
+                'docker', 'compose', 'exec', '-T', 'web',
+                'wp', 'option', 'update', 'siteurl', rtrim($targetUrl, '/') . '/wp', '--allow-root'
+            ]);
+            $siteurlProcess->setTimeout(60);
+            $siteurlProcess->run();
+
+            $homeProcess = new Process([
+                'docker', 'compose', 'exec', '-T', 'web',
+                'wp', 'option', 'update', 'home', $targetUrl, '--allow-root'
+            ]);
+            $homeProcess->setTimeout(60);
+            $homeProcess->run();
 
             $output->writeln('<info>✓ Reemplazo de URLs completado y opciones de sitio actualizadas</info>');
         }

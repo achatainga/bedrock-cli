@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Process\Process;
 
 class LinkCommand extends Command
 {
@@ -93,14 +94,15 @@ class LinkCommand extends Command
             }
 
             if ($isWindows) {
-                // En Windows usamos NTFS Junction para máxima compatibilidad sin permisos de admin
-                $cmd = sprintf('cmd /c mklink /J "%s" "%s"', $linkDestination, $itemPath);
-                exec($cmd, $cmdOutput, $returnVar);
-                if ($returnVar === 0) {
+                // En Windows usamos NTFS Junction de forma segura con Symfony Process
+                $process = new Process(['cmd', '/c', 'mklink', '/J', $linkDestination, $itemPath]);
+                $process->setTimeout(30);
+                $process->run();
+                if ($process->isSuccessful()) {
                     $output->writeln('<info>✓ Junction creado</info>');
                     $linkedCount++;
                 } else {
-                    $output->writeln("<error>✗ Error creando Junction: " . implode(' ', $cmdOutput) . "</error>");
+                    $output->writeln("<error>✗ Error creando Junction: " . trim($process->getErrorOutput() ?: $process->getOutput()) . "</error>");
                 }
             } else {
                 // En Linux / macOS usamos symlink estándar
