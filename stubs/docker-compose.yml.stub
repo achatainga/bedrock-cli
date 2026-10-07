@@ -28,10 +28,10 @@ services:
       - web
 
   mysql:
-    image: mysql:5.7
+    image: mysql:8.0
     container_name: {{PROJECT_NAME}}_mysql
     restart: always
-    command: --skip-ssl --require_secure_transport=OFF
+    command: --skip-ssl --require_secure_transport=OFF --lower_case_table_names=0 --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: {{DB_PASSWORD}}
       MYSQL_DATABASE: {{DB_NAME}}
@@ -40,6 +40,31 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
       - ./docker/mysql/my.cnf:/etc/mysql/conf.d/ssl.cnf:ro
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: {{PROJECT_NAME}}_worker
+    working_dir: /var/www/html
+    restart: unless-stopped
+    command: >
+      bash -c "while true; do
+        wp cron event run --due-now --path=/var/www/html/web/wp --allow-root || true;
+        wp action-scheduler run --batch-size=50 --path=/var/www/html/web/wp --allow-root || true;
+        sleep 60;
+      done"
+    environment:
+      - MYSQL_PWD={{DB_PASSWORD}}
+      - WP_CLI_ALLOW_ROOT=1
+      - WP_CLI_STRICT_ARGS_MODE=0
+    volumes:
+      - ./:/var/www/html
+      - ./docker/mysql/client.cnf:/etc/mysql/conf.d/client.cnf:ro
+    depends_on:
+      - mysql
+      - redis
+      - web
 
   redis:
     image: redis:7-alpine

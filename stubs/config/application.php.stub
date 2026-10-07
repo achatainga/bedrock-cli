@@ -179,6 +179,32 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
     $_SERVER['HTTPS'] = 'on';
 }
 
+/**
+ * Cookie Settings for Bedrock Structure
+ */
+if (!defined('COOKIEPATH')) {
+    Config::define('COOKIEPATH', '/');
+}
+if (!defined('SITECOOKIEPATH')) {
+    Config::define('SITECOOKIEPATH', '/');
+}
+if (!defined('ADMIN_COOKIE_PATH')) {
+    Config::define('ADMIN_COOKIE_PATH', '/');
+}
+if (!defined('COOKIE_DOMAIN')) {
+    Config::define('COOKIE_DOMAIN', '');
+}
+
+/**
+ * Filesystem permissions for themes/plugins (e.g. Kirki webfonts)
+ */
+if (!defined('FS_CHMOD_DIR')) {
+    define('FS_CHMOD_DIR', 0755);
+}
+if (!defined('FS_CHMOD_FILE')) {
+    define('FS_CHMOD_FILE', 0644);
+}
+
 $env_config = __DIR__ . '/environments/' . WP_ENV . '.php';
 
 if (file_exists($env_config)) {

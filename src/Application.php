@@ -8,6 +8,7 @@ use Roots\BedrockCli\Commands\Database\MenuCommand as DatabaseMenuCommand;
 use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
 use Roots\BedrockCli\Commands\Database\SnapshotCommand as DatabaseSnapshotCommand;
 use Roots\BedrockCli\Commands\Database\MigrateCommand as DatabaseMigrateCommand;
+use Roots\BedrockCli\Commands\Database\PullCommand as DatabasePullCommand;
 use Roots\BedrockCli\Commands\Docker\DockerCommand;
 use Roots\BedrockCli\Commands\Options\MenuCommand as OptionsMenuCommand;
 use Roots\BedrockCli\Commands\Options\PullCommand as OptionsPullCommand;
@@ -19,6 +20,7 @@ use Roots\BedrockCli\Commands\Plugins\ListCommand as PluginsListCommand;
 use Roots\BedrockCli\Commands\Plugins\ActivateCommand as PluginsActivateCommand;
 use Roots\BedrockCli\Commands\Plugins\DeactivateCommand as PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\Plugins\CompressCommand as PluginsCompressCommand;
+use Roots\BedrockCli\Commands\Plugins\LinkCommand as PluginsLinkCommand;
 use Roots\BedrockCli\Commands\Plugins\StatusCommand as PluginsStatusCommand;
 use Roots\BedrockCli\Commands\Plugins\OrderCommand as PluginsOrderCommand;
 use Roots\BedrockCli\Commands\Plugins\OrderMenuCommand as PluginsOrderMenuCommand;
@@ -100,6 +102,7 @@ class Application extends BaseApplication
             new DatabaseCleanCommand(),
             new DatabaseSnapshotCommand(),
             new DatabaseMigrateCommand(),
+            new DatabasePullCommand(),
             new DockerCommand(),
             new OptionsMenuCommand(),
             new OptionsPullCommand(),
@@ -111,6 +114,7 @@ class Application extends BaseApplication
             new PluginsActivateCommand(),
             new PluginsDeactivateCommand(),
             new PluginsCompressCommand(),
+            new PluginsLinkCommand(),
             new PluginsStatusCommand(),
             new PluginsOrderCommand(),
             new PluginsOrderMenuCommand(),

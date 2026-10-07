@@ -402,6 +402,14 @@ class NewCommand extends Command
         } else {
             $output->writeln('<comment>⚠ MU-Plugin no encontrado, omitiendo...</comment>');
         }
+
+        // Instalar guard para Simple JWT Login en CLI
+        $jwtCliStub = $this->getStubsDir() . '/mu-plugins/disable-jwt-cli.php.stub';
+        if (file_exists($jwtCliStub)) {
+            @mkdir("{$name}/web/app/mu-plugins", 0755, true);
+            copy($jwtCliStub, "{$name}/web/app/mu-plugins/disable-jwt-cli.php");
+            $output->writeln('<info>✓ Guard disable-jwt-cli.php instalado</info>');
+        }
     }
     
     private function recursiveCopy(string $source, string $destination): void

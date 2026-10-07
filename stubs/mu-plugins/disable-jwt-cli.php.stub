@@ -1,0 +1,11 @@
+<?php
+/**
+ * Plugin Name: Disable Simple JWT Login on CLI
+ * Description: Prevents Simple JWT Login from blocking WP-CLI commands in Bedrock
+ * Author: DeTodo24 SRE
+ * Version: 1.0.0
+ */
+
+if (defined('WP_CLI') && WP_CLI) {
+    add_filter('option_simple_jwt_login_settings', '__return_empty_array', 9999);
+}

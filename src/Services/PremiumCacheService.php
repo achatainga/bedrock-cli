@@ -13,7 +13,7 @@ class PremiumCacheService
 
     public function __construct()
     {
-        $home = $this->getHomeDirectory();
+        $home = str_replace('\\', '/', $this->getHomeDirectory());
         $this->cachePath = $home . '/.bedrock-cli/cache/premium';
         $this->authService = new AuthService();
         $this->ensureCacheDirectory();

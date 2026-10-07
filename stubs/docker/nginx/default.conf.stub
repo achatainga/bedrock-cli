@@ -8,10 +8,16 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
+    location ~ ^/(wp/)?wp-json/(.*)$ {
+        try_files $uri $uri/ /index.php?rest_route=/$2&$args;
+    }
+
     location ~ \.php$ {
         fastcgi_pass web:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_pass_header Authorization;
     }
 }
