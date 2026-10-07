@@ -43,6 +43,7 @@ use Roots\BedrockCli\Commands\System\BackupCommand;
 use Roots\BedrockCli\Commands\System\ReinstallCommand;
 use Roots\BedrockCli\Commands\System\SeedCommand;
 use Roots\BedrockCli\Commands\System\ExportConfigCommand;
+use Roots\BedrockCli\Commands\Snapshot\CloneCommand;
 use Roots\BedrockCli\Commands\System\ImportCoreCommand;
 use Roots\BedrockCli\Commands\Profile\MenuCommand as ProfileMenuCommand;
 use Roots\BedrockCli\Commands\Profile\CreateCommand as ProfileCreateCommand;
@@ -126,6 +127,7 @@ class Application extends BaseApplication
             new ThemesStatusCommand(),
             new SetupCommand(),
             new NewCommand(),
+            new CloneCommand(),
             new NewWizardCommand(),
             new InitCommand(),
             new MainMenuCommand(),
