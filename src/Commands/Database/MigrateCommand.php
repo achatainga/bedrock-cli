@@ -137,13 +137,10 @@ class MigrateCommand extends Command
             $output->writeln('<comment>3. Limpiando base de datos...</comment>');
             $output->writeln("<info>   Renombrando: {$oldPrefix} → {$newPrefix}</info>");
             
-            $cleanCmd = sprintf(
-                'docker-compose exec -T web php scripts/clean-database.php %s %s',
-                escapeshellarg($oldPrefix),
-                escapeshellarg($newPrefix)
-            );
-
-            $process = Process::fromShellCommandline($cleanCmd);
+            $process = new Process([
+                'docker-compose', 'exec', '-T', 'web',
+                'php', 'scripts/clean-database.php', $oldPrefix, $newPrefix
+            ]);
             $process->setTimeout(300);
             $process->run(function ($type, $buffer) use ($output) {
                 $output->write($buffer);
@@ -164,13 +161,10 @@ class MigrateCommand extends Command
         $output->writeln('<comment>4. Reemplazando URLs...</comment>');
         $output->writeln("<info>   {$oldUrl} → {$newUrl}</info>");
         
-        $replaceCmd = sprintf(
-            'docker-compose exec -T web wp search-replace %s %s --all-tables --quiet',
-            escapeshellarg($oldUrl),
-            escapeshellarg($newUrl)
-        );
-
-        $process = Process::fromShellCommandline($replaceCmd);
+        $process = new Process([
+            'docker-compose', 'exec', '-T', 'web',
+            'wp', 'search-replace', $oldUrl, $newUrl, '--all-tables', '--quiet'
+        ]);
         $process->setTimeout(300);
         $process->run();
 
@@ -193,7 +187,7 @@ class MigrateCommand extends Command
             $output->writeln('<comment>5. Configurando Acorn...</comment>');
             
             // Inicializar storage
-            $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn acorn:init storage');
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'acorn', 'acorn:init', 'storage']);
             $process->run();
             
             if ($process->isSuccessful()) {
@@ -201,7 +195,7 @@ class MigrateCommand extends Command
             }
 
             // Publicar configs
-            $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn vendor:publish --tag=acorn');
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'acorn', 'vendor:publish', '--tag=acorn']);
             $process->run();
             
             if ($process->isSuccessful()) {
@@ -217,7 +211,7 @@ class MigrateCommand extends Command
         if ($defaultTheme) {
             $output->writeln('<comment>6. Activando tema por defecto...</comment>');
             
-            $process = Process::fromShellCommandline('docker-compose exec -T web wp theme activate twentytwentyfive');
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'activate', 'twentytwentyfive']);
             $process->run();
             
             if ($process->isSuccessful()) {
@@ -242,7 +236,7 @@ class MigrateCommand extends Command
 
     private function isDockerRunning(OutputInterface $output): bool
     {
-        $process = Process::fromShellCommandline('docker-compose ps --services --filter "status=running"');
+        $process = new Process(['docker-compose', 'ps', '--services', '--filter', 'status=running']);
         $process->run();
         
         return $process->isSuccessful() && !empty(trim($process->getOutput()));

@@ -60,23 +60,32 @@ class ImportCoreCommand extends Command
         $dbPass = getenv('DB_PASSWORD') ?: 'mysql';
         $dbHost = getenv('DB_HOST') ?: 'mysql';
 
-        $sql = file_get_contents($filepath);
-        $process = new Process([
-            'docker-compose', 'exec', '-T', $dbHost,
-            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
-        ]);
-        $process->setInput($sql);
-        $process->setTimeout(300);
-
-        $this->runWithLoader($process, $output, 'Importando base de datos');
-
-        if (!$process->isSuccessful()) {
-            $output->writeln('<error>Error al importar snapshot</error>');
-            $output->writeln($process->getErrorOutput());
+        $fileHandle = fopen($filepath, 'rb');
+        if (!$fileHandle) {
+            $output->writeln("<error>No se pudo abrir snapshot: {$filepath}</error>");
             return Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        try {
+            $process = new Process([
+                'docker-compose', 'exec', '-T', $dbHost,
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
+            ]);
+            $process->setInput($fileHandle);
+            $process->setTimeout(600);
+
+            $this->runWithLoader($process, $output, 'Importando base de datos');
+
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al importar snapshot</error>');
+                $output->writeln($process->getErrorOutput());
+                return Command::FAILURE;
+            }
+
+            return Command::SUCCESS;
+        } finally {
+            fclose($fileHandle);
+        }
     }
 
     private function applyConfigs(string $projectRoot, OutputInterface $output): int

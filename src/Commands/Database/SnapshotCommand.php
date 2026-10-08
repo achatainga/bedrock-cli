@@ -62,21 +62,29 @@ class SnapshotCommand extends Command
 
         $output->writeln("<info>Creando snapshot: {$filename}</info>");
 
-        $process = new Process([
-            'docker-compose', 'exec', '-T', $dbHost,
-            'mysqldump', "-u{$dbUser}", "-p{$dbPass}", $dbName
-        ]);
-        $process->setTimeout(300);
-
-        $this->runWithLoader($process, $output, 'Exportando base de datos');
-
-        if (!$process->isSuccessful()) {
-            $output->writeln('<error>Error al crear snapshot</error>');
-            $output->writeln($process->getErrorOutput());
+        $fileHandle = fopen($filepath, 'wb');
+        if (!$fileHandle) {
+            $output->writeln("<error>No se pudo abrir archivo para escritura: {$filepath}</error>");
             return Command::FAILURE;
         }
 
-        file_put_contents($filepath, $process->getOutput());
+        try {
+            $process = new Process([
+                'docker-compose', 'exec', '-T', $dbHost,
+                'mysqldump', "-u{$dbUser}", "-p{$dbPass}", $dbName
+            ]);
+            $process->setTimeout(600);
+
+            $this->runWithLoader($process, $output, 'Exportando base de datos', $fileHandle);
+
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al crear snapshot</error>');
+                $output->writeln($process->getErrorOutput());
+                return Command::FAILURE;
+            }
+        } finally {
+            fclose($fileHandle);
+        }
 
         $output->writeln("<info>✓ Snapshot creado: {$filename}</info>");
         return Command::SUCCESS;
@@ -117,20 +125,29 @@ class SnapshotCommand extends Command
 
         $output->writeln("<info>Restaurando snapshot: {$selected}</info>");
 
-        $sql = file_get_contents($filepath);
-        $process = new Process([
-            'docker-compose', 'exec', '-T', $dbHost,
-            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
-        ]);
-        $process->setInput($sql);
-        $process->setTimeout(300);
-
-        $this->runWithLoader($process, $output, 'Importando base de datos');
-
-        if (!$process->isSuccessful()) {
-            $output->writeln('<error>Error al restaurar snapshot</error>');
-            $output->writeln($process->getErrorOutput());
+        $fileHandle = fopen($filepath, 'rb');
+        if (!$fileHandle) {
+            $output->writeln("<error>No se pudo abrir snapshot: {$filepath}</error>");
             return Command::FAILURE;
+        }
+
+        try {
+            $process = new Process([
+                'docker-compose', 'exec', '-T', $dbHost,
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
+            ]);
+            $process->setInput($fileHandle);
+            $process->setTimeout(600);
+
+            $this->runWithLoader($process, $output, 'Importando base de datos');
+
+            if (!$process->isSuccessful()) {
+                $output->writeln('<error>Error al restaurar snapshot</error>');
+                $output->writeln($process->getErrorOutput());
+                return Command::FAILURE;
+            }
+        } finally {
+            fclose($fileHandle);
         }
 
         $output->writeln("<info>✓ Snapshot restaurado: {$selected}</info>");
@@ -161,12 +178,17 @@ class SnapshotCommand extends Command
         return $env;
     }
 
-    private function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    private function runWithLoader(Process $process, OutputInterface $output, string $message, $outputStream = null): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $frameIndex = 0;
 
-        $process->start();
+        $process->start(function ($type, $buffer) use ($outputStream, $process) {
+            if ($outputStream !== null && $type === Process::OUT) {
+                fwrite($outputStream, $buffer);
+                $process->clearOutput();
+            }
+        });
 
         while ($process->isRunning()) {
             $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
