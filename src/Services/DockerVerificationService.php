@@ -16,7 +16,9 @@ class DockerVerificationService
     }
     public function verifyAndFixProject(string $projectPath, OutputInterface $output): bool
     {
-        $output->writeln('<info>Verificando configuración Docker...</info>');
+        $output->writeln('<info>Verificando configuración Docker y Filesystem...</info>');
+        
+        $this->ensureFilesystemConfig($projectPath, $output);
         
         $issues = $this->detectIssues($projectPath);
         
@@ -114,15 +116,16 @@ class DockerVerificationService
     
     private function createAcornStorage(string $projectPath, OutputInterface $output): void
     {
-        $output->writeln('<comment>  → Creando directorios Acorn storage...</comment>');
+        $output->writeln('<comment>  → Creando directorios Acorn storage y uploads...</comment>');
         
         $containerName = $this->getWebContainerName($projectPath);
         if (!$containerName) return;
         
         $commands = [
             ['docker', 'exec', $containerName, 'mkdir', '-p', '/var/www/html/storage/framework/{cache,views,sessions,testing}'],
-            ['docker', 'exec', $containerName, 'chown', '-R', 'www-data:www-data', '/var/www/html/storage'],
-            ['docker', 'exec', $containerName, 'chmod', '-R', '775', '/var/www/html/storage']
+            ['docker', 'exec', $containerName, 'mkdir', '-p', '/var/www/html/web/app/uploads'],
+            ['docker', 'exec', $containerName, 'chown', '-R', 'www-data:www-data', '/var/www/html/storage', '/var/www/html/web/app/uploads'],
+            ['docker', 'exec', $containerName, 'chmod', '-R', '775', '/var/www/html/storage', '/var/www/html/web/app/uploads']
         ];
         
         foreach ($commands as $cmd) {
@@ -130,7 +133,35 @@ class DockerVerificationService
             $process->run();
         }
         
-        $output->writeln('<info>  ✓ Directorios Acorn creados</info>');
+        $output->writeln('<info>  ✓ Directorios Acorn y uploads configurados</info>');
+    }
+
+    public function ensureFilesystemConfig(string $projectPath, OutputInterface $output): void
+    {
+        $appConfig = "{$projectPath}/config/application.php";
+        if (file_exists($appConfig)) {
+            $content = file_get_contents($appConfig);
+            if (!str_contains($content, 'FS_METHOD')) {
+                $output->writeln('<comment>  → Inyectando FS_METHOD direct en config/application.php...</comment>');
+                $fsBlock = "\n/**\n * Filesystem permissions for themes/plugins (e.g. Kirki webfonts, uploads)\n */\nif (!defined('FS_METHOD')) {\n    Config::define('FS_METHOD', env('FS_METHOD') ?: 'direct');\n}\n";
+                if (str_contains($content, 'Config::apply();')) {
+                    $content = str_replace('Config::apply();', $fsBlock . "Config::apply();", $content);
+                } else {
+                    $content .= $fsBlock;
+                }
+                file_put_contents($appConfig, $content);
+                $output->writeln('<info>  ✓ FS_METHOD configurado en config/application.php</info>');
+            }
+        }
+
+        $envFile = "{$projectPath}/.env";
+        if (file_exists($envFile)) {
+            $envContent = file_get_contents($envFile);
+            if (!str_contains($envContent, 'FS_METHOD')) {
+                $envContent .= "\n# Filesystem\nFS_METHOD='direct'\n";
+                file_put_contents($envFile, $envContent);
+            }
+        }
     }
     
     private function fixSiteResponse(string $projectPath, OutputInterface $output): void
