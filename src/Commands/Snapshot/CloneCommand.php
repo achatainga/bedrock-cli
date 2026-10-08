@@ -516,7 +516,7 @@ class CloneCommand extends Command
         $output->writeln('<comment>Asegurando permisos en contenedor web (app, uploads, storage, cache, backups)...</comment>');
         $chmodProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'sh', '-c', 'chmod 777 /var/www/html/web/app 2>/dev/null || true; mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; chmod -R 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
+            'sh', '-c', 'chmod 777 /var/www/html/web/app 2>/dev/null || true; mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; chown -R www-data:www-data /var/www/html/web/app/uploads 2>/dev/null || true; chmod -R 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
         ]), $projectDir);
         $chmodProc->setTimeout(60);
         $chmodProc->run();

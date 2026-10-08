@@ -105,4 +105,16 @@ ENV;
 
         (new \Symfony\Component\Filesystem\Filesystem())->remove($tmpDir);
     }
+
+    public function test_it_ensures_filesystem_method_in_application_and_env_stubs(): void
+    {
+        $appStub = file_get_contents(__DIR__ . '/../../../../stubs/config/application.php.stub');
+        $this->assertStringContainsString("Config::define('FS_METHOD', env('FS_METHOD') ?: 'direct');", $appStub);
+
+        $envStub = file_get_contents(__DIR__ . '/../../../../stubs/.env.stub');
+        $this->assertStringContainsString("FS_METHOD='direct'", $envStub);
+
+        $dockerfileStub = file_get_contents(__DIR__ . '/../../../../stubs/Dockerfile.web.stub');
+        $this->assertStringContainsString('/var/www/html/web/app/uploads', $dockerfileStub);
+    }
 }

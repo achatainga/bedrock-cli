@@ -196,8 +196,11 @@ if (!defined('COOKIE_DOMAIN')) {
 }
 
 /**
- * Filesystem permissions for themes/plugins (e.g. Kirki webfonts)
+ * Filesystem permissions for themes/plugins (e.g. Kirki webfonts, uploads)
  */
+if (!defined('FS_METHOD')) {
+    Config::define('FS_METHOD', env('FS_METHOD') ?: 'direct');
+}
 if (!defined('FS_CHMOD_DIR')) {
     define('FS_CHMOD_DIR', 0755);
 }
