@@ -169,13 +169,21 @@ class AssetSyncService
             $output->writeln('<info>✓ OK</info>');
         }
 
-        // Fuentes locales si existen en wp-content/fonts
+        // Fuentes locales si existen en wp-content/fonts o wp-content/uploads/fonts
         $sourceFonts = rtrim($sourceWpPath, '/\\') . '/wp-content/fonts';
         if (is_dir($sourceFonts)) {
             $targetFonts = rtrim($projectDir, '/\\') . '/web/app/fonts';
             $output->write("<comment>Sincronizando fuentes locales...</comment> ");
             $this->copyDirectory($sourceFonts, $targetFonts);
             $output->writeln('<info>✓ OK</info>');
+        }
+
+        $sourceUploadFonts = rtrim($sourceWpPath, '/\\') . '/wp-content/uploads/fonts';
+        if (is_dir($sourceUploadFonts)) {
+            $targetUploadFonts = "{$uploadsDir}/fonts";
+            $targetAppFonts = rtrim($projectDir, '/\\') . '/web/app/fonts';
+            $this->copyDirectory($sourceUploadFonts, $targetUploadFonts);
+            $this->copyDirectory($sourceUploadFonts, $targetAppFonts);
         }
     }
 

@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
@@ -45,9 +46,21 @@ class NewCommand extends Command
         $name = $input->getArgument('name');
         $force = $input->getOption('force');
         
-        if (is_dir($name) && !$force) {
-            $output->writeln("<error>El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
-            return Command::FAILURE;
+        if (is_dir($name)) {
+            if (!$force) {
+                $output->writeln("<error>El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
+                return Command::FAILURE;
+            }
+            $output->writeln("<comment>Limpiando directorio e instancias previas de '{$name}' (--force)...</comment>");
+            if (file_exists("{$name}/docker-compose.yml")) {
+                $down = new Process(['docker', 'compose', 'down', '-v'], $name);
+                $down->setTimeout(120);
+                $down->run();
+            }
+            $cleanContainers = new Process(['docker', 'rm', '-f', "{$name}_web", "{$name}_nginx", "{$name}_mysql", "{$name}_redis", "{$name}_worker"]);
+            $cleanContainers->run();
+
+            (new Filesystem())->remove($name);
         }
 
         $output->writeln("<info>Creando proyecto Bedrock: {$name}</info>");

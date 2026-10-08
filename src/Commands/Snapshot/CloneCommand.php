@@ -78,9 +78,21 @@ class CloneCommand extends Command
             return Command::FAILURE;
         }
 
-        if (is_dir($name) && !$force && !$dryRun) {
-            $output->writeln("<error>✗ El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
-            return Command::FAILURE;
+        if (is_dir($name)) {
+            if (!$force && !$dryRun) {
+                $output->writeln("<error>✗ El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
+                return Command::FAILURE;
+            }
+            if ($force && !$dryRun) {
+                $output->writeln("<comment>Desmantelando instalación y contenedores previos de '{$name}' (--force)...</comment>");
+                if (file_exists("{$name}/docker-compose.yml")) {
+                    $down = new Process(['docker', 'compose', 'down', '-v'], $name);
+                    $down->setTimeout(120);
+                    $down->run();
+                }
+                $cleanProc = new Process(['docker', 'rm', '-f', "{$name}_web", "{$name}_nginx", "{$name}_mysql", "{$name}_redis", "{$name}_worker"]);
+                $cleanProc->run();
+            }
         }
 
         // FASE 1: Detección y Asignación de Puertos
@@ -193,6 +205,7 @@ class CloneCommand extends Command
             return Command::FAILURE;
         }
         $output->writeln('<info>✓ Contenedores en ejecución</info>');
+        $this->fixContainerPermissions($name, $output);
 
         // FASE 6: Base de Datos y Search-Replace
         if (!$skipDb) {
@@ -467,13 +480,26 @@ class CloneCommand extends Command
         if ($importProc->isSuccessful()) {
             $output->writeln('<info>✓ Importación a MySQL exitosa</info>');
             // Ejecutar search-replace
-            $this->runSearchReplace($projectDir, $targetUrl, $output);
+            $sourcePath = $source ?: $remotePath;
+            $this->runSearchReplace($projectDir, $targetUrl, $sourcePath, $output);
         } else {
             $output->writeln('<error>✗ Error importando datos al contenedor MySQL: ' . trim($importProc->getErrorOutput()) . '</error>');
         }
     }
 
-    private function runSearchReplace(string $projectDir, string $targetUrl, OutputInterface $output): void
+    private function fixContainerPermissions(string $projectDir, OutputInterface $output): void
+    {
+        $compose = $this->getComposeCommand();
+        $output->writeln('<comment>Asegurando permisos en contenedor web...</comment>');
+        $chmodProc = new Process(array_merge($compose, [
+            'exec', '-T', 'web',
+            'chmod', '-R', '777', '/var/www/html/web/app/uploads'
+        ]), $projectDir);
+        $chmodProc->setTimeout(60);
+        $chmodProc->run();
+    }
+
+    private function runSearchReplace(string $projectDir, string $targetUrl, ?string $sourcePath, OutputInterface $output): void
     {
         $compose = $this->getComposeCommand();
         $output->writeln('<comment>Detectando URL original para search-replace...</comment>');
@@ -484,7 +510,7 @@ class CloneCommand extends Command
         $sourceUrl = trim($getUrlProc->getOutput());
         $cleanSource = preg_replace('#/wp$#', '', $sourceUrl) ?: 'https://detodo24.com';
 
-        $output->writeln("<info>Reemplazando {$cleanSource} -> {$targetUrl}...</info>");
+        $output->writeln("<info>Reemplazando URL: {$cleanSource} -> {$targetUrl}...</info>");
         $srProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
             'wp', 'search-replace', $cleanSource, $targetUrl,
@@ -494,6 +520,20 @@ class CloneCommand extends Command
         $srProc->run(function ($type, $buf) use ($output) {
             $output->write($buf);
         });
+
+        // Reemplazar rutas de disco absolutas si se conoce el path original
+        if ($sourcePath && !empty($sourcePath)) {
+            $cleanSourcePath = rtrim($sourcePath, '/\\');
+            $targetAppPath = '/var/www/html/web/app';
+            $output->writeln("<info>Reemplazando ruta de assets en DB: {$cleanSourcePath}/wp-content -> {$targetAppPath}...</info>");
+            $srPathProc = new Process(array_merge($compose, [
+                'exec', '-T', 'web',
+                'wp', 'search-replace', "{$cleanSourcePath}/wp-content", $targetAppPath,
+                '--all-tables', '--skip-columns=guid', '--allow-root'
+            ]), $projectDir);
+            $srPathProc->setTimeout(600);
+            $srPathProc->run();
+        }
 
         // Asegurar siteurl y home
         $siteurlProc = new Process(array_merge($compose, [
@@ -508,7 +548,19 @@ class CloneCommand extends Command
         ]), $projectDir);
         $homeProc->run();
 
-        $output->writeln('<info>✓ URLs actualizadas en la base de datos</info>');
+        // Limpieza de caché y reescritura de reglas
+        $output->writeln('<comment>Vaciando caché y regenerando permalinks...</comment>');
+        $flushCache = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'cache', 'flush', '--allow-root']), $projectDir);
+        $flushCache->run();
+
+        $flushRewrite = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'rewrite', 'flush', '--allow-root']), $projectDir);
+        $flushRewrite->run();
+
+        // Regenerar caché de Elementor si el plugin está presente
+        $flushElementor = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'elementor', 'flush-css', '--allow-root']), $projectDir);
+        $flushElementor->run();
+
+        $output->writeln('<info>✓ URLs y caché actualizadas en la base de datos</info>');
     }
 
     private function waitForMysql(string $projectDir, string $dbUser, string $dbPass, OutputInterface $output): bool

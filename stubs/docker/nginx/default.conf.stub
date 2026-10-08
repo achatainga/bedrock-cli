@@ -12,6 +12,16 @@ server {
         try_files $uri $uri/ /index.php?rest_route=/$2&$args;
     }
 
+    # Backward compatibility for legacy /wp-content/ paths (themes, plugins, fonts)
+    location ~* ^/wp-content/(themes|plugins|fonts)/(.*)$ {
+        try_files /app/$1/$2 =404;
+    }
+
+    # Backward compatibility for absolute path font references
+    location ~* ^/home/[^/]+/public_html/wp-content/fonts/(.*)$ {
+        try_files /app/fonts/$1 =404;
+    }
+
     # Proxy missing uploads transparently to production CDN/host (optional, zero-disk migration)
     # location ~* ^/(?:app|wp-content)/uploads/(?<upload_path>.*)$ {
     #     try_files $uri @production_uploads;
