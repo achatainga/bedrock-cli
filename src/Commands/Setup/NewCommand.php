@@ -186,6 +186,9 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Instalando Redis Object Cache...</info>');
 
+        $allowProc = new Process(['composer', 'config', '--no-plugins', 'allow-plugins.mnsami/composer-custom-directory-installer', 'true'], $name);
+        $allowProc->run();
+
         $process = new Process(['composer', 'require', 'rhubarbgroup/redis-cache', '--no-interaction'], $name);
         $process->setTimeout(900);
         $this->runWithLoader($process, $output, 'Instalando Redis');

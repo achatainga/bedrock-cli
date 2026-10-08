@@ -479,8 +479,11 @@ class CloneCommand extends Command
             }
         }
 
-        // Esperar disponibilidad de MySQL en el contenedor
-        $this->waitForMysql($projectDir, $dbUser, $dbPass, $output);
+        // Esperar disponibilidad real de MySQL y autenticación en el contenedor
+        if (!$this->waitForMysql($projectDir, $dbUser, $dbPass, $dbName, $output)) {
+            $output->writeln('<error>✗ No se pudo conectar a MySQL en el contenedor.</error>');
+            return;
+        }
 
         // Importar a contenedor si existe dump
         $sizeMb = round(filesize($dumpFile) / (1024 * 1024), 2);
@@ -583,20 +586,20 @@ class CloneCommand extends Command
         $output->writeln('<info>✓ URLs y caché actualizadas en la base de datos</info>');
     }
 
-    private function waitForMysql(string $projectDir, string $dbUser, string $dbPass, OutputInterface $output): bool
+    private function waitForMysql(string $projectDir, string $dbUser, string $dbPass, string $dbName, OutputInterface $output): bool
     {
         $compose = $this->getComposeCommand();
-        $output->write('<comment>Esperando disponibilidad de MySQL en el contenedor...</comment> ');
-        $maxSeconds = 60;
+        $output->write('<comment>Esperando disponibilidad real de MySQL en el contenedor...</comment> ');
+        $maxSeconds = 90;
         $start = time();
         while ((time() - $start) < $maxSeconds) {
             $proc = new Process(array_merge($compose, [
                 'exec', '-T', '-e', "MYSQL_PWD={$dbPass}", 'mysql',
-                'mysqladmin', 'ping', "-u{$dbUser}", '--silent'
+                'mysql', "-u{$dbUser}", '-e', 'SELECT 1;', $dbName
             ]), $projectDir);
             $proc->run();
             if ($proc->isSuccessful()) {
-                $output->writeln('<info>✓ Listo</info>');
+                $output->writeln('<info>✓ Listo (autenticación y BD operativas)</info>');
                 return true;
             }
             sleep(2);
