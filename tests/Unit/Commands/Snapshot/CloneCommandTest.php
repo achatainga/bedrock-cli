@@ -100,9 +100,9 @@ ENV;
         $updated = file_get_contents($tmpDir . '/.env');
         $this->assertStringContainsString("WP_HOME='https://staging.detodo24.com'", $updated);
         $this->assertStringContainsString("WP_SITEURL='https://staging.detodo24.com/wp'", $updated);
+        $this->assertStringContainsString("WP_ENV='staging'", $updated);
         $this->assertStringContainsString("DB_PREFIX='elgg_'", $updated);
 
-        unlink($tmpDir . '/.env');
-        rmdir($tmpDir);
+        (new \Symfony\Component\Filesystem\Filesystem())->remove($tmpDir);
     }
 }

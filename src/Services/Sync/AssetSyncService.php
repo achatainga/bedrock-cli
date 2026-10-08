@@ -146,6 +146,40 @@ class AssetSyncService
     }
 
     /**
+     * Sincroniza directorios esenciales y ligeros de uploads (ej. elementor css, fonts)
+     * para asegurar renderizado visual idéntico sin descargar todos los gigabytes de medios.
+     */
+    public function syncEssentialUploads(
+        string $sourceWpPath,
+        string $projectDir,
+        OutputInterface $output
+    ): void {
+        $uploadsDir = rtrim($projectDir, '/\\') . '/web/app/uploads';
+        if (!is_dir($uploadsDir)) {
+            $this->filesystem->mkdir($uploadsDir, 0777);
+        }
+        @chmod($uploadsDir, 0777);
+
+        // Elementor CSS generado dinámicamente
+        $sourceElementor = rtrim($sourceWpPath, '/\\') . '/wp-content/uploads/elementor';
+        if (is_dir($sourceElementor)) {
+            $targetElementor = "{$uploadsDir}/elementor";
+            $output->write("<comment>Sincronizando caché CSS de Elementor...</comment> ");
+            $this->copyDirectory($sourceElementor, $targetElementor);
+            $output->writeln('<info>✓ OK</info>');
+        }
+
+        // Fuentes locales si existen en wp-content/fonts
+        $sourceFonts = rtrim($sourceWpPath, '/\\') . '/wp-content/fonts';
+        if (is_dir($sourceFonts)) {
+            $targetFonts = rtrim($projectDir, '/\\') . '/web/app/fonts';
+            $output->write("<comment>Sincronizando fuentes locales...</comment> ");
+            $this->copyDirectory($sourceFonts, $targetFonts);
+            $output->writeln('<info>✓ OK</info>');
+        }
+    }
+
+    /**
      * Descomenta y configura el proxy transparente de uploads en el archivo Nginx de Bedrock.
      */
     public function enableNginxUploadsProxy(string $nginxConfPath, string $productionUrl): bool
@@ -173,12 +207,12 @@ class AssetSyncService
 
         $proxyBlock = <<<NGINX
     # Zero-Disk Media Proxy (Lazy loaded from production)
-    location ~* ^/(app|wp-content)/uploads/(.*)$ {
+    location ~* ^/(?:app|wp-content)/uploads/(?<upload_path>.*)$ {
         try_files \$uri @production_uploads;
     }
     location @production_uploads {
         resolver 8.8.8.8 1.1.1.1 valid=300s ipv6=off;
-        proxy_pass {$fullOrigin};
+        proxy_pass {$fullOrigin}/wp-content/uploads/\$upload_path;
         proxy_set_header Host {$host};
         proxy_ssl_server_name on;
         proxy_ssl_name {$host};
@@ -191,10 +225,14 @@ class AssetSyncService
 NGINX;
 
         // Reemplazar bloque comentado o insertar antes de location ~ \.php$
-        if (str_contains($content, 'location ~* ^/(app|wp-content)/uploads/(.*)$')) {
-            // Reemplazar todo el bloque comentado de uploads
-            $pattern = '/\s*#\s*Proxy missing uploads.*?location @production_uploads\s*\{.*?\}/s';
-            $content = preg_replace($pattern, "\n" . $proxyBlock, $content);
+        if (str_contains($content, 'uploads') && str_contains($content, '@production_uploads')) {
+            $pattern = '/\s*(?:#\s*)?location\s*~\*\s*\^\/(?:\?:app\|)?(?:app\|)?wp-content\/uploads\/.*?location\s*@production_uploads\s*\{.*?\}/s';
+            if (preg_match($pattern, $content)) {
+                $content = preg_replace($pattern, "\n" . $proxyBlock, $content);
+            } else {
+                $fallbackPattern = '/\s*#\s*Proxy missing uploads.*?location @production_uploads\s*\{.*?\}/s';
+                $content = preg_replace($fallbackPattern, "\n" . $proxyBlock, $content);
+            }
         } else {
             // Insertar antes del bloque php
             $content = str_replace('location ~ \.php$', $proxyBlock . "\n\n    location ~ \\.php$", $content);

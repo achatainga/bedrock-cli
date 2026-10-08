@@ -72,6 +72,21 @@ CONF;
 
         $updated = file_get_contents($confFile);
         $this->assertStringContainsString('location @production_uploads', $updated);
-        $this->assertStringContainsString('proxy_pass https://detodo24.com;', $updated);
+        $this->assertStringContainsString('proxy_pass https://detodo24.com/wp-content/uploads/$upload_path;', $updated);
+    }
+
+    public function test_it_syncs_essential_uploads(): void
+    {
+        $source = $this->tempDir . '/source';
+        $project = $this->tempDir . '/project';
+        mkdir($source . '/wp-content/uploads/elementor', 0755, true);
+        mkdir($source . '/wp-content/fonts', 0755, true);
+        file_put_contents($source . '/wp-content/uploads/elementor/post-10.css', '/* elementor css */');
+        file_put_contents($source . '/wp-content/fonts/inter.woff2', 'font');
+
+        $this->service->syncEssentialUploads($source, $project, new NullOutput());
+
+        $this->assertFileExists($project . '/web/app/uploads/elementor/post-10.css');
+        $this->assertFileExists($project . '/web/app/fonts/inter.woff2');
     }
 }

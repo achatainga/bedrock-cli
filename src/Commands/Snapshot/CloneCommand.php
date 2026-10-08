@@ -169,6 +169,7 @@ class CloneCommand extends Command
 
                 $this->assetSync->syncThemes($source, $targetThemes, ['motta', 'motta-child'], $output);
                 $this->assetSync->syncPlugins($source, $targetPlugins, $output);
+                $this->assetSync->syncEssentialUploads($source, $name, $output);
             } elseif ($remote) {
                 $output->writeln("<comment>Sincronización remota desde {$remote}:{$remotePath} vía rsync/scp...</comment>");
                 // rsync temas y plugins omitiendo uploads
@@ -286,6 +287,11 @@ class CloneCommand extends Command
         $content = preg_replace('/^WP_HOME=.*$/m', "WP_HOME='{$targetUrl}'", $content);
         $content = preg_replace('/^WP_SITEURL=.*$/m', "WP_SITEURL='{$targetUrl}/wp'", $content);
 
+        // Si es un dominio real / staging, configurar WP_ENV='staging' para suprimir warnings en API
+        if (!str_contains($targetUrl, 'localhost') && !str_contains($targetUrl, '127.0.0.1')) {
+            $content = preg_replace('/^WP_ENV=.*$/m', "WP_ENV='staging'", $content);
+        }
+
         // Configurar DB_PREFIX
         if (preg_match('/^DB_PREFIX=.*$/m', $content)) {
             $content = preg_replace('/^DB_PREFIX=.*$/m', "DB_PREFIX='{$tablePrefix}'", $content);
@@ -294,14 +300,24 @@ class CloneCommand extends Command
         }
 
         file_put_contents($envPath, $content);
+
+        // Asegurar permisos en directorio de uploads
+        $uploadsDir = "{$projectDir}/web/app/uploads";
+        if (!is_dir($uploadsDir)) {
+            @mkdir($uploadsDir, 0777, true);
+        }
+        @chmod($uploadsDir, 0777);
     }
 
     private function syncRemoteAssets(string $remote, string $remotePath, string $projectDir, OutputInterface $output): void
     {
         $targetThemes = "{$projectDir}/web/app/themes";
         $targetPlugins = "{$projectDir}/web/app/plugins";
+        $targetUploads = "{$projectDir}/web/app/uploads";
         @mkdir($targetThemes, 0755, true);
         @mkdir($targetPlugins, 0755, true);
+        @mkdir($targetUploads, 0777, true);
+        @chmod($targetUploads, 0777);
 
         // Copiar temas específicos de forma explícita (evita fallo de wildcards en OpenSSH 9 SFTP)
         foreach (['motta', 'motta-child'] as $theme) {
@@ -335,6 +351,13 @@ class CloneCommand extends Command
             }
         }
         $output->writeln('<info>✓ Plugins sincronizados</info>');
+
+        // Descargar caché CSS de Elementor si existe
+        $output->write("<comment>Descargando caché visual de Elementor desde {$remote}...</comment> ");
+        $scpElementor = new Process(['scp', '-r', "{$remote}:{$remotePath}/wp-content/uploads/elementor", "{$targetUploads}/elementor"]);
+        $scpElementor->setTimeout(180);
+        $scpElementor->run();
+        $output->writeln($scpElementor->isSuccessful() ? '<info>✓ OK</info>' : '<comment>(Elementor no presente)</comment>');
     }
 
     private function migrateDatabase(
