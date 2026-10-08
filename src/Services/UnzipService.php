@@ -141,11 +141,21 @@ class UnzipService
         try {
             $zip = new \ZipArchive();
             if ($zip->open($zipPath) === true) {
-                $zip->extractAll($destination);
+                // Zip Slip mitigation: validate entry paths
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entry = $zip->getNameIndex($i);
+                    if ($entry === false) continue;
+                    if (str_contains($entry, '..') || str_starts_with($entry, '/') || str_starts_with($entry, '\\')) {
+                        $zip->close();
+                        $output->writeln('<error>Ruta insegura detectada en zip: ' . $entry . '</error>');
+                        return false;
+                    }
+                }
+                $success = $zip->extractTo($destination);
                 $zip->close();
-                return true;
+                return $success;
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return false;
         }
 
