@@ -424,6 +424,9 @@ class CloneCommand extends Command
             }
         }
 
+        // Esperar disponibilidad de MySQL en el contenedor
+        $this->waitForMysql($projectDir, $dbUser, $dbPass, $output);
+
         // Importar a contenedor si existe dump
         $sizeMb = round(filesize($dumpFile) / (1024 * 1024), 2);
         $output->writeln("<info>Importando volcado SQL ({$sizeMb} MB) al contenedor MySQL...</info>");
@@ -483,6 +486,28 @@ class CloneCommand extends Command
         $homeProc->run();
 
         $output->writeln('<info>✓ URLs actualizadas en la base de datos</info>');
+    }
+
+    private function waitForMysql(string $projectDir, string $dbUser, string $dbPass, OutputInterface $output): bool
+    {
+        $compose = $this->getComposeCommand();
+        $output->write('<comment>Esperando disponibilidad de MySQL en el contenedor...</comment> ');
+        $maxSeconds = 60;
+        $start = time();
+        while ((time() - $start) < $maxSeconds) {
+            $proc = new Process(array_merge($compose, [
+                'exec', '-T', '-e', "MYSQL_PWD={$dbPass}", 'mysql',
+                'mysqladmin', 'ping', "-u{$dbUser}", '--silent'
+            ]), $projectDir);
+            $proc->run();
+            if ($proc->isSuccessful() && str_contains($proc->getOutput(), 'alive')) {
+                $output->writeln('<info>✓ Listo</info>');
+                return true;
+            }
+            sleep(2);
+        }
+        $output->writeln('<error>✗ Timeout esperando MySQL</error>');
+        return false;
     }
 
     private function getComposeCommand(): array

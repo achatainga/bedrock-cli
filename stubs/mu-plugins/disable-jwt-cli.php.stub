@@ -7,5 +7,7 @@
  */
 
 if (defined('WP_CLI') && WP_CLI) {
-    add_filter('option_simple_jwt_login_settings', '__return_empty_array', 9999);
+    add_filter('option_simple_jwt_login_settings', function () {
+        return '{}';
+    }, 9999);
 }
