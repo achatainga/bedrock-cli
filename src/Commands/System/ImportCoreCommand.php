@@ -122,7 +122,7 @@ class ImportCoreCommand extends Command
             $process->run();
 
             if ($process->isSuccessful() && trim($process->getOutput()) === 'OK') {
-                $output->writeln("<info>✓ {$key}</info>");
+                $output->writeln("<info>✓ {$data['key']}</info>");
                 $count++;
             }
         }

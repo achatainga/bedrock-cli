@@ -253,7 +253,8 @@ class CloneCommand extends Command
             }
         } elseif ($remote) {
             $output->writeln("<comment>Extrayendo configuración desde host remoto {$remote}:{$remotePath}/wp-config.php...</comment>");
-            $readConfProc = new Process(['ssh', $remote, "cat {$remotePath}/wp-config.php"]);
+            $catCmd = 'cat ' . escapeshellarg($remotePath . '/wp-config.php');
+            $readConfProc = new Process(['ssh', $remote, $catCmd]);
             $readConfProc->setTimeout(60);
             $readConfProc->run();
             if ($readConfProc->isSuccessful()) {
@@ -358,19 +359,32 @@ class CloneCommand extends Command
         $rsyncProc->run();
         if (!$rsyncProc->isSuccessful()) {
             // Fallback a tar stream sobre SSH
+            $tarRemoteCmd = sprintf("tar -czf - -C %s/wp-content/plugins --exclude='*.zip' --exclude='cache' .", escapeshellarg($remotePath));
             $streamProc = new Process([
                 'ssh', $remote,
-                "tar -czf - -C {$remotePath}/wp-content/plugins --exclude='*.zip' --exclude='cache' ."
+                $tarRemoteCmd
             ]);
             $streamProc->setTimeout(600);
-            $fp = popen('tar -xzf - -C ' . escapeshellarg($targetPlugins), 'wb');
-            if ($fp) {
-                $streamProc->run(function ($type, $buf) use ($fp) {
-                    if ($type === Process::OUT) {
-                        fwrite($fp, $buf);
-                    }
-                });
-                pclose($fp);
+            $descriptors = [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ];
+            $tarProcess = proc_open(['tar', '-xzf', '-', '-C', $targetPlugins], $descriptors, $pipes);
+            if (is_resource($tarProcess)) {
+                try {
+                    $streamProc->run(function ($type, $buf) use ($pipes, $streamProc) {
+                        if ($type === Process::OUT) {
+                            fwrite($pipes[0], $buf);
+                            $streamProc->clearOutput();
+                        }
+                    });
+                } finally {
+                    fclose($pipes[0]);
+                    fclose($pipes[1]);
+                    fclose($pipes[2]);
+                    proc_close($tarProcess);
+                }
             }
         }
         $output->writeln('<info>✓ Plugins sincronizados</info>');
@@ -440,12 +454,16 @@ class CloneCommand extends Command
             $dumpProc->setTimeout(600);
             $fp = fopen($dumpFile, 'wb');
             if ($fp) {
-                $dumpProc->run(function ($type, $buf) use ($fp) {
-                    if ($type === Process::OUT) {
-                        fwrite($fp, $buf);
-                    }
-                });
-                fclose($fp);
+                try {
+                    $dumpProc->run(function ($type, $buf) use ($fp, $dumpProc) {
+                        if ($type === Process::OUT) {
+                            fwrite($fp, $buf);
+                            $dumpProc->clearOutput();
+                        }
+                    });
+                } finally {
+                    fclose($fp);
+                }
             }
 
             if (!$dumpProc->isSuccessful() || !file_exists($dumpFile) || filesize($dumpFile) < 1000) {
@@ -465,12 +483,16 @@ class CloneCommand extends Command
             $dumpProc->setTimeout(1200);
             $fp = fopen($dumpFile, 'wb');
             if ($fp) {
-                $dumpProc->run(function ($type, $buf) use ($fp) {
-                    if ($type === Process::OUT) {
-                        fwrite($fp, $buf);
-                    }
-                });
-                fclose($fp);
+                try {
+                    $dumpProc->run(function ($type, $buf) use ($fp, $dumpProc) {
+                        if ($type === Process::OUT) {
+                            fwrite($fp, $buf);
+                            $dumpProc->clearOutput();
+                        }
+                    });
+                } finally {
+                    fclose($fp);
+                }
             }
 
             if (!$dumpProc->isSuccessful() || !file_exists($dumpFile) || filesize($dumpFile) < 1000) {
@@ -494,9 +516,12 @@ class CloneCommand extends Command
         $importProc->setTimeout(1200);
         $fp = fopen($dumpFile, 'rb');
         if ($fp) {
-            $importProc->setInput($fp);
-            $importProc->run();
-            fclose($fp);
+            try {
+                $importProc->setInput($fp);
+                $importProc->run();
+            } finally {
+                fclose($fp);
+            }
         }
 
         if ($importProc->isSuccessful()) {
