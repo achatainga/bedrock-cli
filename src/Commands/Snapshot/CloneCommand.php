@@ -182,6 +182,7 @@ class CloneCommand extends Command
                 $this->assetSync->syncThemes($source, $targetThemes, ['motta', 'motta-child'], $output);
                 $this->assetSync->syncPlugins($source, $targetPlugins, $output);
                 $this->assetSync->syncEssentialUploads($source, $name, $output);
+                $this->assetSync->syncLanguages($source, $name, $output);
             } elseif ($remote) {
                 $output->writeln("<comment>Sincronización remota desde {$remote}:{$remotePath} vía rsync/scp...</comment>");
                 // rsync temas y plugins omitiendo uploads
@@ -371,6 +372,15 @@ class CloneCommand extends Command
         $scpElementor->setTimeout(180);
         $scpElementor->run();
         $output->writeln($scpElementor->isSuccessful() ? '<info>✓ OK</info>' : '<comment>(Elementor no presente)</comment>');
+
+        // Descargar paquetes de idioma y traducciones si existen
+        $targetLanguages = "{$projectDir}/web/app/languages";
+        @mkdir($targetLanguages, 0755, true);
+        $output->write("<comment>Descargando traducciones e idiomas desde {$remote}...</comment> ");
+        $scpLang = new Process(['scp', '-r', "{$remote}:{$remotePath}/wp-content/languages/*", $targetLanguages]);
+        $scpLang->setTimeout(180);
+        $scpLang->run();
+        $output->writeln($scpLang->isSuccessful() ? '<info>✓ OK</info>' : '<comment>(Traducciones no presentes)</comment>');
     }
 
     private function migrateDatabase(
@@ -490,10 +500,10 @@ class CloneCommand extends Command
     private function fixContainerPermissions(string $projectDir, OutputInterface $output): void
     {
         $compose = $this->getComposeCommand();
-        $output->writeln('<comment>Asegurando permisos en contenedor web...</comment>');
+        $output->writeln('<comment>Asegurando permisos en contenedor web (uploads, storage, cache)...</comment>');
         $chmodProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'chmod', '-R', '777', '/var/www/html/web/app/uploads'
+            'sh', '-c', 'chmod -R 777 /var/www/html/web/app/uploads 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
         ]), $projectDir);
         $chmodProc->setTimeout(60);
         $chmodProc->run();

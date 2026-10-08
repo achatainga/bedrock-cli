@@ -89,4 +89,16 @@ CONF;
         $this->assertFileExists($project . '/web/app/uploads/elementor/post-10.css');
         $this->assertFileExists($project . '/web/app/fonts/inter.woff2');
     }
+
+    public function test_it_syncs_languages(): void
+    {
+        $source = $this->tempDir . '/source';
+        $project = $this->tempDir . '/project';
+        mkdir($source . '/wp-content/languages', 0755, true);
+        file_put_contents($source . '/wp-content/languages/es_ES.mo', 'binary-mo');
+
+        $this->service->syncLanguages($source, $project, new NullOutput());
+
+        $this->assertFileExists($project . '/web/app/languages/es_ES.mo');
+    }
 }

@@ -188,6 +188,29 @@ class AssetSyncService
     }
 
     /**
+     * Sincroniza traducciones (archivos .mo, .po, .l10n.php) desde wp-content/languages.
+     */
+    public function syncLanguages(
+        string $sourceWpPath,
+        string $projectDir,
+        OutputInterface $output
+    ): void {
+        $sourceLanguages = rtrim($sourceWpPath, '/\\') . '/wp-content/languages';
+        if (!is_dir($sourceLanguages)) {
+            return;
+        }
+
+        $targetLanguages = rtrim($projectDir, '/\\') . '/web/app/languages';
+        if (!is_dir($targetLanguages)) {
+            $this->filesystem->mkdir($targetLanguages, 0755);
+        }
+
+        $output->write("<comment>Sincronizando traducciones y paquetes de idioma...</comment> ");
+        $this->copyDirectory($sourceLanguages, $targetLanguages);
+        $output->writeln('<info>✓ OK</info>');
+    }
+
+    /**
      * Descomenta y configura el proxy transparente de uploads en el archivo Nginx de Bedrock.
      */
     public function enableNginxUploadsProxy(string $nginxConfPath, string $productionUrl): bool
