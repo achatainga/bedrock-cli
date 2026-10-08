@@ -111,16 +111,13 @@ class MigrateCommand extends Command
         $output->writeln('<comment>2. Importando SQL dump...</comment>');
         $output->writeln("<info>   Archivo: {$sqlFile}</info>");
         
-        $importCmd = sprintf(
-            'docker-compose exec -T %s mysql -u%s -p%s %s < "%s"',
-            $dbHost,
-            $dbUser,
-            $dbPass,
-            $dbName,
-            $sqlFile
-        );
-
-        $process = Process::fromShellCommandline($importCmd);
+        $process = new Process([
+            'docker-compose', 'exec', '-T', $dbHost,
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
+        ]);
+        if (file_exists($sqlFile)) {
+            $process->setInput(fopen($sqlFile, 'r'));
+        }
         $process->setTimeout(600); // 10 minutos
         $process->run(function ($type, $buffer) use ($output) {
             if (Process::ERR === $type && !str_contains($buffer, 'mysql: [Warning]')) {

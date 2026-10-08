@@ -62,15 +62,10 @@ class SnapshotCommand extends Command
 
         $output->writeln("<info>Creando snapshot: {$filename}</info>");
 
-        $cmd = sprintf(
-            'docker-compose exec -T %s mysqldump -u%s -p%s %s',
-            $dbHost,
-            $dbUser,
-            $dbPass,
-            $dbName
-        );
-
-        $process = Process::fromShellCommandline($cmd);
+        $process = new Process([
+            'docker-compose', 'exec', '-T', $dbHost,
+            'mysqldump', "-u{$dbUser}", "-p{$dbPass}", $dbName
+        ]);
         $process->setTimeout(300);
 
         $this->runWithLoader($process, $output, 'Exportando base de datos');
@@ -123,15 +118,10 @@ class SnapshotCommand extends Command
         $output->writeln("<info>Restaurando snapshot: {$selected}</info>");
 
         $sql = file_get_contents($filepath);
-        $cmd = sprintf(
-            'docker-compose exec -T %s mysql -u%s -p%s %s',
-            $dbHost,
-            $dbUser,
-            $dbPass,
-            $dbName
-        );
-
-        $process = Process::fromShellCommandline($cmd);
+        $process = new Process([
+            'docker-compose', 'exec', '-T', $dbHost,
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
+        ]);
         $process->setInput($sql);
         $process->setTimeout(300);
 

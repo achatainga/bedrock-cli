@@ -61,15 +61,10 @@ class ImportCoreCommand extends Command
         $dbHost = getenv('DB_HOST') ?: 'mysql';
 
         $sql = file_get_contents($filepath);
-        $cmd = sprintf(
-            'docker-compose exec -T %s mysql -u%s -p%s %s',
-            $dbHost,
-            $dbUser,
-            $dbPass,
-            $dbName
-        );
-
-        $process = Process::fromShellCommandline($cmd);
+        $process = new Process([
+            'docker-compose', 'exec', '-T', $dbHost,
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName
+        ]);
         $process->setInput($sql);
         $process->setTimeout(300);
 

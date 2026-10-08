@@ -11,3 +11,4 @@ profiles/*.json
 generate_tests.php
 fix_descriptions.php
 auto_fix_tests.php
+AUDIT-*.md
