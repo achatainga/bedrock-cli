@@ -315,12 +315,21 @@ class CloneCommand extends Command
 
         file_put_contents($envPath, $content);
 
-        // Asegurar permisos en directorio de uploads
-        $uploadsDir = "{$projectDir}/web/app/uploads";
+        // Asegurar permisos en directorio de contenido y uploads
+        $appDir = "{$projectDir}/web/app";
+        $uploadsDir = "{$appDir}/uploads";
+        $backupsDir = "{$appDir}/ai1wm-backups";
+
+        @chmod($appDir, 0777);
         if (!is_dir($uploadsDir)) {
             @mkdir($uploadsDir, 0777, true);
         }
         @chmod($uploadsDir, 0777);
+
+        if (!is_dir($backupsDir)) {
+            @mkdir($backupsDir, 0777, true);
+        }
+        @chmod($backupsDir, 0777);
     }
 
     private function syncRemoteAssets(string $remote, string $remotePath, string $projectDir, OutputInterface $output): void
@@ -500,10 +509,10 @@ class CloneCommand extends Command
     private function fixContainerPermissions(string $projectDir, OutputInterface $output): void
     {
         $compose = $this->getComposeCommand();
-        $output->writeln('<comment>Asegurando permisos en contenedor web (uploads, storage, cache)...</comment>');
+        $output->writeln('<comment>Asegurando permisos en contenedor web (app, uploads, storage, cache, backups)...</comment>');
         $chmodProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'sh', '-c', 'chmod -R 777 /var/www/html/web/app/uploads 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
+            'sh', '-c', 'chmod 777 /var/www/html/web/app 2>/dev/null || true; mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; chmod -R 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
         ]), $projectDir);
         $chmodProc->setTimeout(60);
         $chmodProc->run();
