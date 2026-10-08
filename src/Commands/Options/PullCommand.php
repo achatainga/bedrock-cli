@@ -80,12 +80,13 @@ class PullCommand extends Command
     {
         $excludeJson = json_encode(array_merge($excludePatterns, $defaultExclusions));
         $prefixJson = json_encode($prefix);
+        $allStr = $all ? 'true' : 'false';
         
         return <<<PHP
 global \$wpdb;
 \$exclude = {$excludeJson};
 \$prefix = {$prefixJson};
-\$all = " . ($all ? 'true' : 'false') . ";
+\$all = {$allStr};
 
 if (\$all) {
     \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");

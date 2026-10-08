@@ -65,12 +65,13 @@ class ExportConfigCommand extends Command
     protected function generateExportScript(bool $all, array $excludePatterns): string
     {
         $excludeJson = json_encode($excludePatterns);
+        $allStr = $all ? 'true' : 'false';
         
         return <<<PHP
 global \$wpdb;
 \$exclude = {$excludeJson};
 
-if ({$all}) {
+if ({$allStr}) {
     \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");
 } else {
     \$keys = ['blogname', 'blogdescription', 'siteurl', 'home', 'admin_email', 'timezone_string', 'date_format', 'time_format'];

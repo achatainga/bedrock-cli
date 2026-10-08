@@ -15,19 +15,15 @@ class WpCliService
 
     public function exec(array $args): Process
     {
-        // Escapar argumentos para evitar problemas con espacios y caracteres especiales
+        // Escapar todos los argumentos de forma canónica para bash POSIX
         $escapedArgs = array_map(function($arg) {
-            // Si el argumento contiene espacios, caracteres especiales, o es numérico, envolverlo en comillas
-            if (is_numeric($arg) || preg_match('/[\s\$\&\|\;\(\)\<\>]/', $arg)) {
-                return "'" . str_replace("'", "'\\''" , $arg) . "'";
-            }
-            return $arg;
+            return "'" . str_replace("'", "'\\''", (string) $arg) . "'";
         }, $args);
         
-        $wpCommand = array_merge(
-            ['bash', '-c'],
-            ['export PATH=/var/www/html/vendor/bin:$PATH && export MYSQL_TEST_LOGIN_FILE=/var/www/html/.my.cnf && wp ' . implode(' ', $escapedArgs) . ' --allow-root 2>&1']
-        );
+        $wpCommand = [
+            'bash', '-c',
+            'export PATH=/var/www/html/vendor/bin:$PATH && export MYSQL_TEST_LOGIN_FILE=/var/www/html/.my.cnf && wp ' . implode(' ', $escapedArgs) . ' --allow-root 2>&1'
+        ];
         
         return $this->docker->exec('web', $wpCommand);
     }

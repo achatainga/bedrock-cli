@@ -103,11 +103,10 @@ class ImportCoreCommand extends Command
                 continue;
             }
 
-            $key = $data['key'];
-            $value = $data['value'];
-            $valueJson = json_encode($value);
+            $keyB64 = base64_encode($data['key']);
+            $valueB64 = base64_encode(json_encode($data['value']));
 
-            $php = "update_option('{$key}', json_decode('{$valueJson}', true)); echo 'OK';";
+            $php = "update_option(base64_decode('{$keyB64}'), json_decode(base64_decode('{$valueB64}'), true)); echo 'OK';";
             
             $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
             $process->setTimeout(30);

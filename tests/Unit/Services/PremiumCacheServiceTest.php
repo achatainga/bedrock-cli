@@ -98,4 +98,30 @@ class PremiumCacheServiceTest extends TestCase
     {
         $this->markTestIncomplete('Requires mock filesystem or temp directory');
     }
+
+    public function testCacheLocalFileRejectsZipSlip(): void
+    {
+        if (!class_exists('ZipArchive')) {
+            $this->markTestSkipped('ZipArchive extension not available');
+        }
+
+        $tempDir = sys_get_temp_dir() . '/zip_slip_test_' . uniqid();
+        mkdir($tempDir, 0755, true);
+        $zipPath = $tempDir . '/malicious.zip';
+
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE);
+        $zip->addFromString('../../../evil.txt', 'malicious content');
+        $zip->close();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Zip Slip');
+
+        try {
+            $this->service->cacheLocalFile($zipPath, 'test-plugin', '1.0.0', 'plugin');
+        } finally {
+            @unlink($zipPath);
+            @rmdir($tempDir);
+        }
+    }
 }

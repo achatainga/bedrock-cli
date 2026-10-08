@@ -120,11 +120,11 @@ class PushCommand extends Command
 
     protected function generatePushScript(array $options, bool $dryRun): string
     {
-        $optionsJson = json_encode($options);
+        $optionsB64 = base64_encode(json_encode($options));
         $dryRunStr = $dryRun ? 'true' : 'false';
         
         return <<<PHP
-\$options = json_decode('{$optionsJson}', true);
+\$options = json_decode(base64_decode('{$optionsB64}'), true);
 \$dryRun = {$dryRunStr};
 \$results = [];
 

@@ -115,7 +115,7 @@ class PremiumCacheService
             throw new RuntimeException("No se pudo abrir {$zipPath}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         return $extractPath;
@@ -348,7 +348,7 @@ class PremiumCacheService
             throw new RuntimeException("Cannot open zip file: {$targetZip}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         $pluginPath = $extractPath;
@@ -437,7 +437,7 @@ class PremiumCacheService
             throw new RuntimeException("No se pudo abrir {$zipPath}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         return $extractPath;
@@ -492,5 +492,26 @@ class PremiumCacheService
             return $legacyPath . '/' . $name;
         }
         return $legacyPath;
+    }
+
+    private function extractSafely(ZipArchive $zip, string $destination): void
+    {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            if ($entry === false) {
+                continue;
+            }
+            if (str_contains($entry, '..') || str_starts_with($entry, '/') || str_starts_with($entry, '\\')) {
+                throw new RuntimeException("Ruta insegura detectada en zip (Zip Slip): {$entry}");
+            }
+        }
+
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        if (!$zip->extractTo($destination)) {
+            throw new RuntimeException("Error al extraer archivo en {$destination}");
+        }
     }
 }

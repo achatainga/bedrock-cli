@@ -123,8 +123,9 @@ class ManageCommand extends Command
     {
         $output->writeln("<comment>Importando '{$key}' a WordPress...</comment>");
         
-        $valueJson = json_encode($data['value']);
-        $php = "update_option('{$key}', json_decode('{$valueJson}', true)); echo 'OK';";
+        $keyB64 = base64_encode($key);
+        $valueB64 = base64_encode(json_encode($data['value']));
+        $php = "update_option(base64_decode('{$keyB64}'), json_decode(base64_decode('{$valueB64}'), true)); echo 'OK';";
         
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->run();
@@ -140,7 +141,8 @@ class ManageCommand extends Command
     {
         $output->writeln("<comment>Exportando '{$key}' desde WordPress...</comment>");
         
-        $php = "\$v = get_option('{$key}'); echo json_encode(['key' => '{$key}', 'value' => \$v, 'type' => gettype(\$v)]);";
+        $keyB64 = base64_encode($key);
+        $php = "\$k = base64_decode('{$keyB64}'); \$v = get_option(\$k); echo json_encode(['key' => \$k, 'value' => \$v, 'type' => gettype(\$v)]);";
         
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->run();
