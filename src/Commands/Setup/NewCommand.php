@@ -60,7 +60,13 @@ class NewCommand extends Command
             $cleanContainers = new Process(['docker', 'rm', '-f', "{$name}_web", "{$name}_nginx", "{$name}_mysql", "{$name}_redis", "{$name}_worker"]);
             $cleanContainers->run();
 
-            (new Filesystem())->remove($name);
+            try {
+                (new Filesystem())->remove($name);
+            } catch (\Throwable) {
+                // Fallback para entornos Linux con archivos de contenedores (root/www-data)
+                $sudoRm = new Process(['sudo', 'rm', '-rf', $name]);
+                $sudoRm->run();
+            }
         }
 
         $output->writeln("<info>Creando proyecto Bedrock: {$name}</info>");
