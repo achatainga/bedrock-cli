@@ -501,6 +501,7 @@ class CloneCommand extends Command
             // Ejecutar search-replace
             $sourcePath = $source ?: $remotePath;
             $this->runSearchReplace($projectDir, $targetUrl, $sourcePath, $output);
+            $this->fixContainerPermissions($projectDir, $output);
         } else {
             $output->writeln('<error>✗ Error importando datos al contenedor MySQL: ' . trim($importProc->getErrorOutput()) . '</error>');
         }
@@ -594,7 +595,7 @@ class CloneCommand extends Command
                 'mysqladmin', 'ping', "-u{$dbUser}", '--silent'
             ]), $projectDir);
             $proc->run();
-            if ($proc->isSuccessful() && str_contains($proc->getOutput(), 'alive')) {
+            if ($proc->isSuccessful()) {
                 $output->writeln('<info>✓ Listo</info>');
                 return true;
             }
