@@ -32,7 +32,7 @@ class ProjectDiagnosticService
     {
         $info = ['installed' => false, 'running' => false, 'containers' => []];
 
-        $process = Process::fromShellCommandline('docker --version');
+        $process = new Process(['docker', '--version']);
         $process->run();
         $info['installed'] = $process->isSuccessful();
 
@@ -40,7 +40,7 @@ class ProjectDiagnosticService
             return $info;
         }
 
-        $process = Process::fromShellCommandline('docker info');
+        $process = new Process(['docker', 'info']);
         $process->run();
         $info['running'] = $process->isSuccessful();
 

@@ -89,10 +89,10 @@ global \$wpdb;
 \$all = {$allStr};
 
 if (\$all) {
-    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");
+    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name LIMIT 5000");
 } elseif (\$prefix) {
     \$like = \$wpdb->esc_like(\$prefix) . '%';
-    \$keys = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name", \$like));
+    \$keys = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name LIMIT 5000", \$like));
 } else {
     \$keys = ['blogname', 'blogdescription', 'siteurl', 'home'];
 }

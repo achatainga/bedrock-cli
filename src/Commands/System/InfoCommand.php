@@ -286,8 +286,8 @@ class InfoCommand extends Command
     private function getActiveTheme(): ?string
     {
         try {
-            $process = \Symfony\Component\Process\Process::fromShellCommandline(
-                'docker-compose exec -T web wp theme list --status=active --field=name 2>/dev/null',
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
             $process->run();
@@ -305,15 +305,15 @@ class InfoCommand extends Command
     private function getActivePlugins(): array
     {
         try {
-            $process = \Symfony\Component\Process\Process::fromShellCommandline(
-                'docker-compose exec -T web wp plugin list --status=active --field=name 2>/dev/null',
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
             $process->run();
             
             if ($process->isSuccessful()) {
                 $output = trim($process->getOutput());
-                return $output ? explode("\n", $output) : [];
+                return $output ? array_filter(array_map('trim', explode("\n", $output))) : [];
             }
         } catch (\Exception $e) {
             // Silently fail

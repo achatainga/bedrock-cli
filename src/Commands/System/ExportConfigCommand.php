@@ -72,7 +72,7 @@ global \$wpdb;
 \$exclude = {$excludeJson};
 
 if ({$allStr}) {
-    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");
+    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name LIMIT 5000");
 } else {
     \$keys = ['blogname', 'blogdescription', 'siteurl', 'home', 'admin_email', 'timezone_string', 'date_format', 'time_format'];
 }

@@ -292,7 +292,7 @@ class StateDetectorService
     
     private function isDockerInstalled(): bool
     {
-        $process = Process::fromShellCommandline('docker --version');
+        $process = new Process(['docker', '--version']);
         $process->run();
         
         return $process->isSuccessful();

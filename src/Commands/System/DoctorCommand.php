@@ -426,7 +426,7 @@ class DoctorCommand extends Command
             
             // Verificar si Docker ya está listo
             if ($elapsed > 5 && $elapsed % 5 === 0) {
-                $process = Process::fromShellCommandline('docker info');
+                $process = new Process(['docker', 'info']);
                 $process->run();
                 if ($process->isSuccessful()) {
                     $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");

@@ -99,6 +99,10 @@ class RestController
 
     private function findPluginFile(string $slug): ?string
     {
+        if (str_contains($slug, '..') || str_contains($slug, '/') || str_contains($slug, '\\') || str_contains($slug, "\0")) {
+            return null;
+        }
+
         $pluginDir = WP_PLUGIN_DIR . '/' . $slug;
 
         if (!file_exists($pluginDir)) {

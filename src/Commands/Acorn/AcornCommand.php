@@ -229,7 +229,7 @@ class AcornCommand extends Command
         
         $output->writeln('<info>Instalando roots/acorn vía Composer...</info>');
         
-        $process = Process::fromShellCommandline('composer require roots/acorn');
+        $process = new Process(['composer', 'require', 'roots/acorn']);
         $process->setTimeout(300);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -264,7 +264,7 @@ class AcornCommand extends Command
         
         $output->writeln('<info>Eliminando roots/acorn...</info>');
         
-        $process = Process::fromShellCommandline('composer remove roots/acorn');
+        $process = new Process(['composer', 'remove', 'roots/acorn']);
         $process->setTimeout(300);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -379,14 +379,14 @@ class AcornCommand extends Command
         }
         
         // Eliminar storage
-        $process = Process::fromShellCommandline('docker-compose exec -T web sh -c "rm -rf storage"');
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'rm', '-rf', 'storage']);
         $process->run();
         if ($process->isSuccessful()) {
             $output->writeln('<comment>✓ Eliminado: storage/</comment>');
         }
         
         // Eliminar cache
-        $process = Process::fromShellCommandline('docker-compose exec -T web sh -c "rm -rf web/app/cache/acorn"');
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'rm', '-rf', 'web/app/cache/acorn']);
         $process->run();
         if ($process->isSuccessful()) {
             $output->writeln('<comment>✓ Eliminado: web/app/cache/acorn/</comment>');
@@ -397,7 +397,7 @@ class AcornCommand extends Command
 
     private function initStorage(OutputInterface $output): int
     {
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn acorn:init storage');
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'acorn', 'acorn:init', 'storage']);
         $process->setTimeout(60);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -422,7 +422,7 @@ class AcornCommand extends Command
             }
         }
         
-        $process = Process::fromShellCommandline('docker-compose exec -T web wp acorn vendor:publish --tag=acorn');
+        $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'acorn', 'vendor:publish', '--tag=acorn']);
         $process->setTimeout(60);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -442,14 +442,14 @@ class AcornCommand extends Command
         $output->writeln('<info>Limpiando cache...</info>');
         
         $commands = [
-            'rm -rf storage/framework/cache/*',
-            'rm -rf storage/framework/sessions/*',
-            'rm -rf storage/framework/views/*',
-            'rm -rf storage/logs/*'
+            'storage/framework/cache/*',
+            'storage/framework/sessions/*',
+            'storage/framework/views/*',
+            'storage/logs/*'
         ];
         
         foreach ($commands as $cmd) {
-            $process = Process::fromShellCommandline("docker-compose exec -T web sh -c '{$cmd}'");
+            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'sh', '-c', "rm -rf {$cmd}"]);
             $process->run();
         }
         

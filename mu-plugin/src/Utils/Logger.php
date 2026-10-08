@@ -83,11 +83,37 @@ class Logger
 
     public function getLogs(int $lines = 100): array
     {
-        if (!file_exists($this->logFile)) {
+        if (!file_exists($this->logFile) || !is_readable($this->logFile)) {
             return [];
         }
 
-        $content = file($this->logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        return array_slice($content, -$lines);
+        $lines = max(1, min($lines, 1000));
+        $fp = @fopen($this->logFile, 'rb');
+        if (!$fp) {
+            return [];
+        }
+
+        try {
+            $buffer = '';
+            fseek($fp, 0, SEEK_END);
+            $pos = ftell($fp);
+            $lineCount = 0;
+            $chunkSize = 4096;
+
+            while ($pos > 0 && $lineCount <= $lines) {
+                $seek = max(0, $pos - $chunkSize);
+                $readLength = $pos - $seek;
+                fseek($fp, $seek);
+                $chunk = fread($fp, $readLength);
+                $buffer = $chunk . $buffer;
+                $pos = $seek;
+                $lineCount = substr_count($buffer, "\n");
+            }
+
+            $allLines = array_filter(array_map('trim', explode("\n", $buffer)), fn($l) => $l !== '');
+            return array_slice($allLines, -$lines);
+        } finally {
+            fclose($fp);
+        }
     }
 }

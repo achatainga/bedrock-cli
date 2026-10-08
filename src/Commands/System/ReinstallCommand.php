@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Filesystem\Filesystem;
 use Roots\BedrockCli\Services\SecurityService;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
@@ -151,20 +152,12 @@ class ReinstallCommand extends Command
             return;
         }
 
-        if (DIRECTORY_SEPARATOR === '\\') {
-            // Windows
-            $process = Process::fromShellCommandline("rmdir /s /q \"{$fullPath}\"");
-        } else {
-            // Unix
-            $process = Process::fromShellCommandline("rm -rf \"{$fullPath}\"");
-        }
-        
-        $process->run();
-        
-        if ($process->isSuccessful()) {
+        try {
+            $filesystem = new Filesystem();
+            $filesystem->remove($fullPath);
             $output->writeln("<fg=green>✓ {$path} eliminado</>");
-        } else {
-            $output->writeln("<fg=red>✗ Error al eliminar {$path}</>");
+        } catch (\Throwable $e) {
+            $output->writeln("<fg=red>✗ Error al eliminar {$path}: {$e->getMessage()}</>");
         }
     }
 
