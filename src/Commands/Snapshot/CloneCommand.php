@@ -579,13 +579,16 @@ class CloneCommand extends Command
     public function fixContainerPermissions(string $projectDir, OutputInterface $output): void
     {
         $compose = $this->getComposeCommand();
-        $output->writeln('<comment>Asegurando permisos en contenedor web (dual-ownership host:www-data y 2775)...</comment>');
+        $output->writeln('<comment>Asegurando permisos en contenedor web (dual-ownership host:www-data, storage www-data y purga de caché Blade)...</comment>');
         $permsScript = 'HOST_UID=$(stat -c "%u" /var/www/html/web/app 2>/dev/null || echo 1000); '
             . 'chown -R ${HOST_UID}:www-data /var/www/html/web/app /var/www/html/storage 2>/dev/null || chown -R www-data:www-data /var/www/html/web/app 2>/dev/null || true; '
             . 'chmod -R 2775 /var/www/html/web/app /var/www/html/storage 2>/dev/null || chmod -R 777 /var/www/html/web/app 2>/dev/null || true; '
             . 'mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; '
             . 'chmod 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; '
-            . 'find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true';
+            . 'find /var/www/html/web/app /var/www/html -type d \( -name storage -o -name cache \) -exec chown -R www-data:www-data {} + 2>/dev/null || true; '
+            . 'find /var/www/html/web/app /var/www/html -type d \( -name storage -o -name cache \) -exec chmod -R 2775 {} + 2>/dev/null || true; '
+            . 'find /var/www/html -type d -path "*/framework/views" -exec rm -rf {}/* \; 2>/dev/null || true; '
+            . 'find /var/www/html -type d -path "*/framework/cache" -exec rm -rf {}/* \; 2>/dev/null || true';
 
         $chmodProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
@@ -593,6 +596,13 @@ class CloneCommand extends Command
         ]), $projectDir);
         $chmodProc->setTimeout(60);
         $chmodProc->run();
+
+        // Limpiar caché de vistas Blade de Acorn si está disponible en el entorno
+        $acornProc = new Process(array_merge($compose, [
+            'exec', '-T', 'web',
+            'wp', 'acorn', 'view:clear', '--allow-root'
+        ]), $projectDir);
+        $acornProc->run();
     }
 
     public function sanitizeDatabase(string $projectDir, OutputInterface $output): void
