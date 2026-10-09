@@ -4,11 +4,16 @@ Universal CLI tool for managing Roots Bedrock WordPress projects with **Profiles
 
 ## 🚀 Features
 
+### v2.4 - Autonomous Staging Clone & Auto-SSL Ingress
+- **📦 1-Click Staging & Production Cloner**: Clonado directo e integral desde un WordPress tradicional (remoto vía SSH o local) a un stack aislado Roots Bedrock (`bedrock clone`).
+- **🔒 Auto-SSL Ingress & TLS Termination**: Detección inteligente de certificados cPanel (`/var/cpanel/ssl/apache_tls`), Let's Encrypt o auto-firmados con fallback sudo, mapeo directo `${HTTP_PORT}:443` en Nginx y redirección transparente `error_page 497`.
+- **🖼️ Transparent Media Proxy (Zero-Disk)**: Streaming bajo demanda de `/uploads/` desde el servidor origen sin descargar gigabytes de imágenes (`--proxy-uploads`).
+- **🛡️ Sandbox WP-CLI & Sanitización SQL**: Ejecución de migraciones y search-replace aislados con `--skip-plugins --skip-themes --all-tables`, permisos duales `${HOST_UID}:www-data` (`2775`), soporte multi-origen ante `.env` y relajación en base de datos de bloqueos JWT (`simple_jwt_login_settings`) para APIs públicas.
+
 ### v2.2 - Enterprise Migration & Unified Management
 - **🔄 SSH Streaming DB Migration**: One-command remote `mysqldump` with end-of-file integrity verification and automated serialized `search-replace` (`bedrock db:pull`).
 - **🔗 Zero-Copy Plugin Linking**: Native NTFS Junctions on Windows (`mklink /J`) and POSIX symlinks (`bedrock plugins:link`) to work directly with shared repositories without duplicating files.
 - **🐳 Production-Ready Docker Stack**: Isolated multi-container setup (Nginx, PHP-FPM 8.2, MySQL 8.0, Redis 7) with custom port assignment and zero-conflict networking.
-- **🖼️ Transparent Media Proxy**: Stream missing production media assets (`/uploads/`) on demand via Nginx without downloading gigabytes of files.
 - **🛡️ Hardened Configuration**: Automated reverse-proxy HTTPS detection, memory limits (512M), silent debug display, and `disable-jwt-cli.php` mu-plugin injection to prevent CLI lockouts.
 - **🎛️ Interactive Management**: Manage plugins, themes, and dependencies with intuitive interactive menus.
 - **⚡ Granular Commands**: Direct, scriptable commands for CI/CD automation and fast local execution.
@@ -20,17 +25,87 @@ Universal CLI tool for managing Roots Bedrock WordPress projects with **Profiles
 
 ---
 
-## Installation
+## 📦 Instalación
 
-### Global Installation (Recommended)
+### Instalación Global (Recomendada)
+
+Dado que `achatainga/bedrock-cli` es un paquete alojado en GitHub en desarrollo activo, **antes de requerirlo globalmente es indispensable registrar el repositorio VCS y su estabilidad en Composer**:
+
+#### 1. Registrar el Repositorio VCS en Composer Global
 
 ```bash
+# Vía HTTPS (Recomendado para la mayoría de entornos):
+composer global config repositories.bedrock-cli vcs https://github.com/achatainga/bedrock-cli.git
+
+# O vía SSH (si tu clave SSH está autorizada en GitHub):
+composer global config repositories.bedrock-cli vcs git@github.com:achatainga/bedrock-cli.git
+```
+
+#### 2. Configurar la Estabilidad Mínima
+
+```bash
+composer global config minimum-stability dev
+composer global config prefer-stable true
+```
+
+> **Nota (GitHub Tokens / Rate Limits):**
+> Si trabajas con repositorios privados o para evitar límites de la API pública de GitHub, registra tu Personal Access Token:
+> ```bash
+> composer config --global --auth github-oauth.github.com <TU_GITHUB_TOKEN>
+> ```
+
+#### 3. Instalar `bedrock-cli` Globalmente
+
+```bash
+# Instalar la rama feature activa / recomendada:
+composer global require achatainga/bedrock-cli:dev-feature/unified-management-system
+
+# O la rama develop:
 composer global require achatainga/bedrock-cli:dev-develop
 ```
 
-Make sure `~/.composer/vendor/bin` (or `%APPDATA%\Composer\vendor\bin` on Windows) is included in your system `PATH`.
+#### 4. Configurar el Directorio de Binarios en el `PATH`
 
-### Local Installation (Per Project)
+Asegúrate de que el directorio global de Composer esté incluido en el `PATH` del sistema para ejecutar el comando `bedrock` desde cualquier directorio:
+
+- **Linux / macOS**:
+  Añade a tu archivo `~/.bashrc`, `~/.zshrc` o perfil de shell:
+  ```bash
+  export PATH="$HOME/.config/composer/vendor/bin:$HOME/.composer/vendor/bin:$PATH"
+  ```
+  Aplica los cambios en tu sesión:
+  ```bash
+  source ~/.bashrc
+  ```
+
+- **Windows (PowerShell)**:
+  El directorio por defecto es `%APPDATA%\Composer\vendor\bin` (ej. `C:\Users\<Usuario>\AppData\Roaming\Composer\vendor\bin`).
+  Para agregarlo a las variables de entorno de usuario:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:APPDATA\Composer\vendor\bin", "User")
+  ```
+
+#### 5. Verificar Instalación y Diagnóstico del Sistema
+
+```bash
+# Comprobar versión instalada
+bedrock --version
+
+# Ejecutar chequeo de salud del entorno
+bedrock doctor
+```
+
+#### 🔄 Actualizaciones Futuras
+
+Para actualizar la herramienta a la versión más reciente tras nuevos commits en el repositorio:
+
+```bash
+composer global update achatainga/bedrock-cli
+```
+
+---
+
+### Instalación Local (Por Proyecto)
 
 ```bash
 composer require --dev achatainga/bedrock-cli
@@ -70,6 +145,16 @@ bedrock init --env=staging
 
 # Initialize development environment
 bedrock init --env=development
+```
+
+### 4. Clone Existing WordPress Site (1-Click Staging / Snapshot)
+```bash
+# Clone remote WordPress into an isolated Bedrock stack with native SSL & media proxy:
+bedrock clone my-staging \
+  --remote=alias-ssh \
+  --domain=staging.misitio.com:9010 \
+  --proxy-uploads=https://misitio.com \
+  --ssl
 ```
 
 ---
@@ -367,6 +452,65 @@ Opciones:
   --skip-plugins       Omitir activación de plugins
   --old-url=URL        URL original para search-replace
   --new-url=URL        Nueva URL (auto-detectada desde .env)
+```
+
+### 📦 Snapshot & Staging Clone (v2.4)
+
+Clona una instancia completa de WordPress tradicional (local o remota vía SSH) hacia un entorno aislado contenerizado Roots Bedrock en un solo comando:
+
+```bash
+bedrock clone <name> [OPTIONS]
+# Alias equivalente:
+bedrock snapshot:clone <name> [OPTIONS]
+```
+
+#### Ejemplos de Uso:
+
+```bash
+# 1. Clonar desde servidor remoto SSH con SSL nativo y proxy de imágenes:
+bedrock clone mi-staging \
+  --remote=dt24-godaddy \
+  --remote-path=/home/usuario/public_html \
+  --domain=staging.midominio.com:9010 \
+  --proxy-uploads=https://midominio.com \
+  --ssl
+
+# 2. Clonar desde una instalación local en el mismo host:
+bedrock clone mi-clon-local \
+  --source=/var/www/wordpress \
+  --http-port=8080 \
+  --mysql-port=3307 \
+  --proxy-uploads=https://midominio.com
+
+# 3. Forzar sobreescritura y desmantelamiento de contenedores previos:
+bedrock clone mi-staging --remote=dt24-godaddy --force --ssl
+```
+
+#### Opciones de `bedrock clone`:
+```bash
+Argumentos:
+  name                 Nombre del nuevo proyecto Bedrock y prefijo de contenedores
+
+Opciones:
+  --source=PATH        Ruta local al WordPress original (ej. /home/user/public_html)
+  --remote=HOST        Alias SSH del servidor remoto (ej. dt24-godaddy) si el origen es remoto
+  --remote-path=PATH   Ruta en el host remoto (default: "/home/qqgi77wff00i/public_html")
+  --domain=DOMAIN      Dominio y puerto destino (ej. staging.detodo24.com:9010 o localhost)
+  --http-port=PORT     Puerto HTTP / SSL forzado para Nginx (auto-detecta puerto libre si se omite)
+  --mysql-port=PORT    Puerto MySQL forzado en el host (auto-detecta libre si se omite)
+  --redis-port=PORT    Puerto Redis forzado en el host (auto-detecta libre si se omite)
+  --db-name=NAME       Nombre de base de datos MySQL destino
+  --db-user=USER       Usuario MySQL contenedor (default: "root")
+  --db-pass=PASS       Contraseña MySQL contenedor (default: "mysql")
+  --proxy-uploads=URL  URL de producción para proxy transparente Nginx de medios (ej. https://detodo24.com)
+  --ssl                Habilitar terminación SSL/HTTPS nativa en el contenedor Nginx
+  --ssl-cert=PATH      Ruta personalizada al certificado SSL / bundle
+  --ssl-key=PATH       Ruta personalizada a la clave privada SSL
+  --auto-ingress       Configurar automáticamente proxy reverso en el Nginx del host (cPanel)
+  --skip-db            Omitir volcado e importación de base de datos
+  --skip-assets        Omitir copia de temas y plugins
+  --force              Desmantelar contenedores previos y sobrescribir directorio
+  --dry-run            Modo simulación sin escribir cambios
 ```
 
 ### Database Management
