@@ -232,7 +232,7 @@ class InfoCommand extends Command
         }
         
         // Obtener tema activo desde WordPress
-        $activeTheme = $this->getActiveTheme();
+        $activeTheme = $this->getActiveTheme($output);
         
         $output->writeln('<fg=cyan;options=bold>Temas:</>');
         
@@ -264,7 +264,7 @@ class InfoCommand extends Command
         }
         
         // Obtener plugins activos desde WordPress
-        $activePlugins = $this->getActivePlugins();
+        $activePlugins = $this->getActivePlugins($output);
         
         $output->writeln('<fg=cyan;options=bold>Plugins:</>');
         
@@ -283,7 +283,7 @@ class InfoCommand extends Command
         $output->writeln('');
     }
     
-    private function getActiveTheme(): ?string
+    private function getActiveTheme(?OutputInterface $output = null): ?string
     {
         try {
             $process = new \Symfony\Component\Process\Process(
@@ -295,14 +295,21 @@ class InfoCommand extends Command
             if ($process->isSuccessful()) {
                 return trim($process->getOutput()) ?: null;
             }
-        } catch (\Exception $e) {
-            // Silently fail
+
+            if ($output && $output->isVerbose()) {
+                $err = trim($process->getErrorOutput());
+                $output->writeln("<comment>[InfoCommand] Fallo al listar temas activos: {$err}</comment>");
+            }
+        } catch (\Throwable $e) {
+            if ($output && $output->isVerbose()) {
+                $output->writeln("<comment>[InfoCommand] Excepción al consultar tema activo: {$e->getMessage()}</comment>");
+            }
         }
         
         return null;
     }
     
-    private function getActivePlugins(): array
+    private function getActivePlugins(?OutputInterface $output = null): array
     {
         try {
             $process = new \Symfony\Component\Process\Process(
@@ -312,11 +319,18 @@ class InfoCommand extends Command
             $process->run();
             
             if ($process->isSuccessful()) {
-                $output = trim($process->getOutput());
-                return $output ? array_filter(array_map('trim', explode("\n", $output))) : [];
+                $out = trim($process->getOutput());
+                return $out ? array_filter(array_map('trim', explode("\n", $out))) : [];
             }
-        } catch (\Exception $e) {
-            // Silently fail
+
+            if ($output && $output->isVerbose()) {
+                $err = trim($process->getErrorOutput());
+                $output->writeln("<comment>[InfoCommand] Fallo al listar plugins activos: {$err}</comment>");
+            }
+        } catch (\Throwable $e) {
+            if ($output && $output->isVerbose()) {
+                $output->writeln("<comment>[InfoCommand] Excepción al consultar plugins activos: {$e->getMessage()}</comment>");
+            }
         }
         
         return [];

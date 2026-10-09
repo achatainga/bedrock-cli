@@ -10,17 +10,56 @@ class Logger
 
     public function __construct()
     {
-        $this->logDir = dirname(__DIR__, 2) . '/logs';
-        $this->logFile = $this->logDir . '/bedrock-cli.log';
-        
-        if (!is_dir($this->logDir)) {
-            @mkdir($this->logDir, 0777, true);
+        $targetDir = null;
+        if (function_exists('wp_upload_dir')) {
+            $upload = wp_upload_dir();
+            if (!empty($upload['basedir'])) {
+                $targetDir = $upload['basedir'] . '/logs/bedrock-cli';
+            }
         }
-        
-        // Fallback a /tmp si no se puede escribir en logs/
-        if (!is_writable($this->logDir)) {
-            $this->logDir = sys_get_temp_dir();
+        if (!$targetDir) {
+            $targetDir = dirname(__DIR__, 2) . '/logs';
+        }
+
+        $this->logDir = $targetDir;
+        $this->logFile = $this->logDir . '/bedrock-cli.log';
+
+        if (!is_dir($this->logDir)) {
+            @mkdir($this->logDir, 0750, true);
+        }
+
+        // Fallback a sys_get_temp_dir() si no se puede escribir
+        if (!is_dir($this->logDir) || !is_writable($this->logDir)) {
+            $this->logDir = sys_get_temp_dir() . '/bedrock-cli-logs';
+            if (!is_dir($this->logDir)) {
+                @mkdir($this->logDir, 0750, true);
+            }
             $this->logFile = $this->logDir . '/bedrock-cli.log';
+        }
+
+        $this->secureLogDirectory($this->logDir);
+    }
+
+    private function secureLogDirectory(string $dir): void
+    {
+        if (!is_dir($dir) || !is_writable($dir)) {
+            return;
+        }
+
+        $htaccess = $dir . '/.htaccess';
+        if (!file_exists($htaccess)) {
+            $content = "# Apache 2.4+\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n# Apache 2.2\n<IfModule !mod_authz_core.c>\n    Order deny,allow\n    Deny from all\n</IfModule>\n";
+            @file_put_contents($htaccess, $content);
+        }
+
+        $indexPhp = $dir . '/index.php';
+        if (!file_exists($indexPhp)) {
+            @file_put_contents($indexPhp, "<?php\nhttp_response_code(403);\nexit;\n");
+        }
+
+        $indexHtml = $dir . '/index.html';
+        if (!file_exists($indexHtml)) {
+            @file_put_contents($indexHtml, "<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>\n");
         }
     }
 

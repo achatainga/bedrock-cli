@@ -104,31 +104,99 @@ class ImportCoreCommand extends Command
             return Command::SUCCESS;
         }
 
-        $count = 0;
+        // Leer y consolidar todas las configuraciones
+        $items = [];
         foreach ($configs as $configFile) {
             $data = json_decode(file_get_contents($configFile), true);
-            
-            if (!$data || !isset($data['key'])) {
-                continue;
+            if ($data && isset($data['key'])) {
+                $items[] = [
+                    'key' => $data['key'],
+                    'value' => $data['value'] ?? null,
+                ];
             }
+        }
 
-            $keyB64 = base64_encode($data['key']);
-            $valueB64 = base64_encode(json_encode($data['value']));
+        if (empty($items)) {
+            $output->writeln('<comment>No se encontraron opciones válidas para importar</comment>');
+            return Command::SUCCESS;
+        }
 
-            $php = "update_option(base64_decode('{$keyB64}'), json_decode(base64_decode('{$valueB64}'), true)); echo 'OK';";
-            
-            $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
-            $process->setTimeout(30);
-            $process->run();
+        $totalItems = count($items);
+        $output->writeln("<comment>Importando {$totalItems} opciones en lote...</comment>");
 
-            if ($process->isSuccessful() && trim($process->getOutput()) === 'OK') {
-                $output->writeln("<info>✓ {$data['key']}</info>");
-                $count++;
+        // Estrategia 1: Manifiesto consolidado en config/options/.import_manifest.json (1 solo subproceso)
+        $manifestPath = "{$configDir}/.import_manifest.json";
+        $manifestWritten = @file_put_contents($manifestPath, json_encode($items, JSON_UNESCAPED_UNICODE));
+        $success = false;
+        $count = 0;
+
+        if ($manifestWritten !== false) {
+            $php = <<<'PHP'
+$possiblePaths = [
+    getcwd() . '/config/options/.import_manifest.json',
+    dirname(ABSPATH) . '/config/options/.import_manifest.json',
+    '/var/www/html/config/options/.import_manifest.json',
+];
+$manifest = null;
+foreach ($possiblePaths as $p) {
+    if (file_exists($p)) {
+        $manifest = $p;
+        break;
+    }
+}
+if (!$manifest) {
+    echo "ERROR:NOT_FOUND";
+    exit(1);
+}
+$data = json_decode(file_get_contents($manifest), true);
+if (!is_array($data)) {
+    echo "ERROR:INVALID_JSON";
+    exit(1);
+}
+$applied = 0;
+foreach ($data as $item) {
+    if (isset($item['key'])) {
+        update_option($item['key'], $item['value']);
+        $applied++;
+    }
+}
+echo "OK:" . $applied;
+PHP;
+            try {
+                $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
+                $process->setTimeout(300);
+                $process->run();
+
+                if ($process->isSuccessful() && str_starts_with(trim($process->getOutput()), 'OK:')) {
+                    $parts = explode(':', trim($process->getOutput()));
+                    $count = isset($parts[1]) ? intval($parts[1]) : count($items);
+                    $success = true;
+                }
+            } finally {
+                if (file_exists($manifestPath)) {
+                    @unlink($manifestPath);
+                }
+            }
+        }
+
+        // Estrategia 2 (Fallback si el contenedor no mapeó el manifiesto): Chunking en bloques de 100
+        if (!$success) {
+            $chunks = array_chunk($items, 100);
+            foreach ($chunks as $chunk) {
+                $payloadB64 = base64_encode(json_encode($chunk, JSON_UNESCAPED_UNICODE));
+                $chunkPhp = "foreach (json_decode(base64_decode('{$payloadB64}'), true) as \$item) { update_option(\$item['key'], \$item['value']); } echo 'OK';";
+                $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $chunkPhp]);
+                $process->setTimeout(60);
+                $process->run();
+
+                if ($process->isSuccessful() && trim($process->getOutput()) === 'OK') {
+                    $count += count($chunk);
+                }
             }
         }
 
         $output->writeln('');
-        $output->writeln("<info>✓ Aplicadas {$count} configuraciones</info>");
+        $output->writeln("<info>✓ Aplicadas {$count}/{$totalItems} configuraciones</info>");
 
         return Command::SUCCESS;
     }

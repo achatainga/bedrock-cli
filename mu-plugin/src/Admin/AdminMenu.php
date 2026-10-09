@@ -145,19 +145,14 @@ class AdminMenu
                     </thead>
                     <tbody>
                         <tr>
-                            <td><code>POST</code></td>
-                            <td><code>/activate-plugins</code></td>
-                            <td>Activar plugins en batch</td>
-                        </tr>
-                        <tr>
-                            <td><code>POST</code></td>
-                            <td><code>/activate-themes</code></td>
-                            <td>Activar tema</td>
-                        </tr>
-                        <tr>
                             <td><code>GET</code></td>
-                            <td><code>/status</code></td>
-                            <td>Estado del sistema</td>
+                            <td><code>/health</code></td>
+                            <td>Chequeo de salud y estado del sistema</td>
+                        </tr>
+                        <tr>
+                            <td><code>POST</code></td>
+                            <td><code>/plugins/activate</code></td>
+                            <td>Activar plugins en batch (requiere X-Bedrock-Token)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -166,7 +161,11 @@ class AdminMenu
             <div class="card">
                 <h2>Ejemplo de Uso</h2>
                 <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto;">
-curl -X POST <?php echo esc_html($baseUrl); ?>/activate-plugins \
+# 1. Chequeo de salud
+curl -X GET <?php echo esc_html($baseUrl); ?>/health
+
+# 2. Activación de plugins en batch
+curl -X POST <?php echo esc_html($baseUrl); ?>/plugins/activate \
   -H "Content-Type: application/json" \
   -H "X-Bedrock-Token: <?php echo $token ? esc_html($token) : 'YOUR_TOKEN'; ?>" \
   -d '{

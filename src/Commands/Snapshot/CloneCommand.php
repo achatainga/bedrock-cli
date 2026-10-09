@@ -365,10 +365,12 @@ class CloneCommand extends Command
                 $tarRemoteCmd
             ]);
             $streamProc->setTimeout(600);
+            $nullDevice = stripos(PHP_OS, 'WIN') === 0 ? 'NUL' : '/dev/null';
+            $tarErrLog = tempnam(sys_get_temp_dir(), 'bcli_tar_err_');
             $descriptors = [
                 0 => ['pipe', 'r'],
-                1 => ['pipe', 'w'],
-                2 => ['pipe', 'w'],
+                1 => ['file', $nullDevice, 'w'],
+                2 => $tarErrLog ? ['file', $tarErrLog, 'w'] : ['file', $nullDevice, 'w'],
             ];
             $tarProcess = proc_open(['tar', '-xzf', '-', '-C', $targetPlugins], $descriptors, $pipes);
             if (is_resource($tarProcess)) {
@@ -380,10 +382,19 @@ class CloneCommand extends Command
                         }
                     });
                 } finally {
-                    fclose($pipes[0]);
-                    fclose($pipes[1]);
-                    fclose($pipes[2]);
-                    proc_close($tarProcess);
+                    if (isset($pipes[0]) && is_resource($pipes[0])) {
+                        fclose($pipes[0]);
+                    }
+                    $tarExitCode = proc_close($tarProcess);
+                    if ($tarExitCode !== 0 && $tarErrLog && file_exists($tarErrLog)) {
+                        $errContent = trim(file_get_contents($tarErrLog));
+                        if ($errContent !== '') {
+                            $output->writeln("<comment>Tar stream advertencia/error: {$errContent}</comment>");
+                        }
+                    }
+                    if ($tarErrLog && file_exists($tarErrLog)) {
+                        @unlink($tarErrLog);
+                    }
                 }
             }
         }
