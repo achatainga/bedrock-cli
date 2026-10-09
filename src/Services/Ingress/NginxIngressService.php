@@ -140,9 +140,17 @@ CONF;
             "/etc/ssl/certs/{$clean}.crt",
         ];
 
+        $hasSudo = $this->canRunSudo();
         foreach ($candidates as $candidate) {
             if (file_exists($candidate) && is_readable($candidate)) {
                 return $candidate;
+            }
+            if ($hasSudo) {
+                $proc = new Process(['sudo', 'test', '-r', $candidate]);
+                $proc->run();
+                if ($proc->isSuccessful()) {
+                    return $candidate;
+                }
             }
         }
 
@@ -178,6 +186,7 @@ CONF;
             $keyContent = file_get_contents($keyFile) ?: '';
             $crtContent = file_get_contents($crtFile) ?: '';
             file_put_contents($targetCombinedPath, $crtContent . "\n" . $keyContent);
+            @chmod($targetCombinedPath, 0644);
             @unlink($keyFile);
             @unlink($crtFile);
             return true;
@@ -220,13 +229,25 @@ CONF;
             }
         } else {
             $hostCert = $this->findHostSslCertificate($clean);
-            if ($hostCert && is_readable($hostCert)) {
-                $content = file_get_contents($hostCert) ?: '';
-                file_put_contents($targetCombined, $content);
-            } else {
+            if ($hostCert) {
+                if (is_readable($hostCert)) {
+                    $content = file_get_contents($hostCert) ?: '';
+                    file_put_contents($targetCombined, $content);
+                } elseif ($this->canRunSudo()) {
+                    $catProc = new Process(['sudo', 'cat', $hostCert]);
+                    $catProc->run();
+                    if ($catProc->isSuccessful() && strlen($catProc->getOutput()) > 50) {
+                        file_put_contents($targetCombined, $catProc->getOutput());
+                    }
+                }
+            }
+
+            if (!file_exists($targetCombined) || filesize($targetCombined) < 10) {
                 $this->generateSelfSignedCert($clean, $targetCombined);
             }
         }
+
+        @chmod($targetCombined, 0644);
 
         if (!file_exists($targetCombined) || filesize($targetCombined) < 10) {
             return false;
