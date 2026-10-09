@@ -118,9 +118,18 @@ class CloneCommand extends Command
         $dbPass = $input->getOption('db-pass');
 
         // Formar URL objetivo
-        $targetUrl = $domain
-            ? (str_starts_with($domain, 'http') ? $domain : ($autoIngress ? "https://{$domain}" : "http://{$domain}:{$httpPort}"))
-            : "http://localhost:{$httpPort}";
+        if ($domain) {
+            if (str_starts_with($domain, 'http')) {
+                $targetUrl = $domain;
+            } elseif ($autoIngress) {
+                $targetUrl = "https://{$domain}";
+            } else {
+                $cleanHost = preg_replace('/:\d+$/', '', $domain);
+                $targetUrl = "http://{$cleanHost}:{$httpPort}";
+            }
+        } else {
+            $targetUrl = "http://localhost:{$httpPort}";
+        }
 
         if ($dryRun) {
             $output->writeln('<comment>[DRY-RUN] Simulación de clonado completada con éxito.</comment>');
