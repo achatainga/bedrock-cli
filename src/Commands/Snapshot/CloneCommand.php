@@ -239,7 +239,7 @@ class CloneCommand extends Command
         // FASE 6: Base de Datos y Search-Replace
         if (!$skipDb) {
             $output->writeln('<comment>[FASE 6/6] Migrando base de datos y search-replace...</comment>');
-            $this->migrateDatabase($name, $source, $remote, $remotePath, $targetUrl, $dbName, $dbUser, $dbPass, $output);
+            $this->migrateDatabase($name, $source, $remote, $remotePath, $targetUrl, $dbName, $dbUser, $dbPass, $output, $proxyUploads);
         } else {
             $output->writeln('<comment>[FASE 6/6] Omitiendo base de datos (--skip-db).</comment>');
         }
@@ -454,7 +454,8 @@ class CloneCommand extends Command
         string $dbName,
         string $dbUser,
         string $dbPass,
-        OutputInterface $output
+        OutputInterface $output,
+        ?string $proxyUploads = null
     ): void {
         $dumpFile = "{$projectDir}/database/snapshots/clone-source.sql";
         @mkdir(dirname($dumpFile), 0755, true);
@@ -567,7 +568,7 @@ class CloneCommand extends Command
             $output->writeln('<info>✓ Importación a MySQL exitosa</info>');
             // Ejecutar search-replace en sandbox
             $sourcePath = $source ?: $remotePath;
-            $this->runSearchReplace($projectDir, $targetUrl, $sourcePath, $output);
+            $this->runSearchReplace($projectDir, $targetUrl, $sourcePath, $output, $proxyUploads);
             $this->sanitizeDatabase($projectDir, $output);
             $this->fixContainerPermissions($projectDir, $output);
         } else {
@@ -599,21 +600,27 @@ class CloneCommand extends Command
         $compose = $this->getComposeCommand();
         $output->writeln('<comment>Saneando base de datos para entorno aislado y APIs públicas...</comment>');
 
-        // 1. Relajar protect_endpoints en simple_jwt_login_settings si está presente
-        $jwtSanitizeScript = <<<'PHP'
-$opts = get_option('simple_jwt_login_settings', []);
-if (is_array($opts) && isset($opts['protect_endpoints']) && is_array($opts['protect_endpoints'])) {
-    $opts['protect_endpoints']['enabled'] = 0;
-    update_option('simple_jwt_login_settings', $opts);
-    echo "simple_jwt_login protect_endpoints relax: OK\n";
-}
-PHP;
-        $jwtProc = new Process(array_merge($compose, [
-            'exec', '-T', 'web', 'wp', 'eval', $jwtSanitizeScript,
-            '--skip-plugins', '--skip-themes', '--allow-root'
+        // 1. Relajar protect_endpoints en simple_jwt_login_settings en cualquier tabla options existente
+        $dbProc = new Process(array_merge($compose, [
+            'exec', '-T', 'web', 'wp', 'db', 'tables', '*options*', '--format=csv', '--allow-root'
         ]), $projectDir);
-        $jwtProc->setTimeout(60);
-        $jwtProc->run();
+        $dbProc->run();
+        $tables = array_filter(array_map('trim', explode("\n", trim($dbProc->getOutput()))));
+        if (empty($tables)) {
+            $tables = ['wp_options', 'elgg_options'];
+        }
+
+        foreach ($tables as $tbl) {
+            if ($tbl === '' || str_contains($tbl, 'Tables_in')) {
+                continue;
+            }
+            $cleanTable = preg_replace('/[^a-zA-Z0-9_]/', '', $tbl);
+            $q = sprintf("UPDATE %s SET option_value = REPLACE(REPLACE(option_value, '\"enabled\": 1', '\"enabled\": 0'), '\"enabled\":1', '\"enabled\":0') WHERE option_name = 'simple_jwt_login_settings';", $cleanTable);
+            $updateProc = new Process(array_merge($compose, [
+                'exec', '-T', 'web', 'wp', 'db', 'query', $q, '--allow-root'
+            ]), $projectDir);
+            $updateProc->run();
+        }
 
         // 2. Limpieza de transitorios acumulados de producción
         $transientProc = new Process(array_merge($compose, [
@@ -626,8 +633,13 @@ PHP;
         $output->writeln('<info>✓ Base de datos saneada con éxito</info>');
     }
 
-    private function runSearchReplace(string $projectDir, string $targetUrl, ?string $sourcePath, OutputInterface $output): void
-    {
+    private function runSearchReplace(
+        string $projectDir,
+        string $targetUrl,
+        ?string $sourcePath,
+        OutputInterface $output,
+        ?string $productionUrl = null
+    ): void {
         $compose = $this->getComposeCommand();
         $output->writeln('<comment>Detectando URL original para search-replace...</comment>');
 
@@ -637,16 +649,30 @@ PHP;
         $sourceUrl = trim($getUrlProc->getOutput());
         $cleanSource = preg_replace('#/wp$#', '', $sourceUrl) ?: 'https://detodo24.com';
 
-        $output->writeln("<info>Reemplazando URL: {$cleanSource} -> {$targetUrl}...</info>");
-        $srProc = new Process(array_merge($compose, [
-            'exec', '-T', 'web',
-            'wp', 'search-replace', $cleanSource, $targetUrl,
-            '--all-tables', '--skip-columns=guid', '--skip-plugins', '--skip-themes', '--allow-root'
-        ]), $projectDir);
-        $srProc->setTimeout(600);
-        $srProc->run(function ($type, $buf) use ($output) {
-            $output->write($buf);
-        });
+        $origins = [];
+        if ($cleanSource !== '' && $cleanSource !== $targetUrl) {
+            $origins[] = $cleanSource;
+        }
+        if ($productionUrl && !empty($productionUrl) && $productionUrl !== $targetUrl) {
+            $origins[] = rtrim($productionUrl, '/');
+        }
+        $origins = array_unique($origins);
+        if (empty($origins)) {
+            $origins[] = 'https://detodo24.com';
+        }
+
+        foreach ($origins as $orig) {
+            $output->writeln("<info>Reemplazando URL: {$orig} -> {$targetUrl}...</info>");
+            $srProc = new Process(array_merge($compose, [
+                'exec', '-T', 'web',
+                'wp', 'search-replace', $orig, $targetUrl,
+                '--all-tables', '--skip-columns=guid', '--skip-plugins', '--skip-themes', '--allow-root'
+            ]), $projectDir);
+            $srProc->setTimeout(600);
+            $srProc->run(function ($type, $buf) use ($output) {
+                $output->write($buf);
+            });
+        }
 
         // Reemplazar rutas de disco absolutas si se conoce el path original
         if ($sourcePath && !empty($sourcePath)) {
