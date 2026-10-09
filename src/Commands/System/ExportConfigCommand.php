@@ -41,11 +41,17 @@ class ExportConfigCommand extends Command
             return Command::FAILURE;
         }
 
-        $results = json_decode($process->getOutput(), true);
+        $payload = json_decode($process->getOutput(), true);
+        $results = isset($payload['results']) ? $payload['results'] : $payload;
+        $truncated = $payload['truncated'] ?? false;
         
         if (empty($results)) {
             $output->writeln('<comment>No se encontraron opciones para exportar</comment>');
             return Command::SUCCESS;
+        }
+
+        if (!empty($truncated)) {
+            $output->writeln('<comment>⚠ ADVERTENCIA: Se alcanzó el límite de seguridad de 50.000 opciones.</comment>');
         }
 
         $count = 0;
@@ -71,8 +77,34 @@ class ExportConfigCommand extends Command
 global \$wpdb;
 \$exclude = {$excludeJson};
 
+\$keys = [];
+\$chunkSize = 1000;
+\$maxOptions = 50000;
+\$truncated = false;
+
 if ({$allStr}) {
-    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name LIMIT 5000");
+    \$lastOption = '';
+    while (count(\$keys) < \$maxOptions) {
+        if (\$lastOption === '') {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name ASC LIMIT %d", \$chunkSize));
+        } else {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name > %s ORDER BY option_name ASC LIMIT %d", \$lastOption, \$chunkSize));
+        }
+        if (empty(\$chunk)) {
+            break;
+        }
+        foreach (\$chunk as \$k) {
+            \$keys[] = \$k;
+            if (count(\$keys) >= \$maxOptions) {
+                \$truncated = true;
+                break;
+            }
+        }
+        \$lastOption = end(\$chunk);
+        if (count(\$chunk) < \$chunkSize) {
+            break;
+        }
+    }
 } else {
     \$keys = ['blogname', 'blogdescription', 'siteurl', 'home', 'admin_email', 'timezone_string', 'date_format', 'time_format'];
 }
@@ -94,7 +126,7 @@ foreach (\$keys as \$key) {
     }
 }
 
-echo json_encode(\$results);
+echo json_encode(['results' => \$results, 'truncated' => \$truncated, 'total_keys' => count(\$keys)]);
 PHP;
     }
 

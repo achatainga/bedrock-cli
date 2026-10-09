@@ -23,4 +23,22 @@ class PullCommandTest extends TestCase
         
         $this->assertTrue($application->has('options:pull'));
     }
+
+    public function testGeneratePullScriptUsesKeysetPagination(): void
+    {
+        $command = new class extends PullCommand {
+            public function exposeScript(?string $prefix, bool $all): string {
+                return $this->generatePullScript($prefix, $all, [], []);
+            }
+        };
+
+        $scriptAll = $command->exposeScript(null, true);
+        $this->assertStringContainsString('option_name > %s', $scriptAll);
+        $this->assertStringContainsString('chunkSize = 1000', $scriptAll);
+        $this->assertStringContainsString('ORDER BY option_name ASC LIMIT %d', $scriptAll);
+
+        $scriptPrefix = $command->exposeScript('my_prefix_', false);
+        $this->assertStringContainsString('option_name > %s', $scriptPrefix);
+        $this->assertStringContainsString('WHERE option_name LIKE %s AND option_name > %s', $scriptPrefix);
+    }
 }
