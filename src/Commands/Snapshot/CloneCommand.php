@@ -49,6 +49,9 @@ class CloneCommand extends Command
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña BD contenedor', 'mysql')
             ->addOption('proxy-uploads', null, InputOption::VALUE_REQUIRED, 'URL origen para proxy transparente de uploads (ej. https://detodo24.com)')
             ->addOption('auto-ingress', null, InputOption::VALUE_NONE, 'Configurar automáticamente proxy reverso en Nginx host (cPanel)')
+            ->addOption('ssl', null, InputOption::VALUE_NONE, 'Habilitar terminación SSL/HTTPS nativa en el contenedor Nginx')
+            ->addOption('ssl-cert', null, InputOption::VALUE_REQUIRED, 'Ruta al certificado SSL / bundle')
+            ->addOption('ssl-key', null, InputOption::VALUE_REQUIRED, 'Ruta a la clave privada SSL')
             ->addOption('skip-db', null, InputOption::VALUE_NONE, 'Omitir volcado e importación de base de datos')
             ->addOption('skip-assets', null, InputOption::VALUE_NONE, 'Omitir copia de temas y plugins')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si el directorio destino ya existe')
@@ -64,6 +67,9 @@ class CloneCommand extends Command
         $domain = $input->getOption('domain');
         $proxyUploads = $input->getOption('proxy-uploads');
         $autoIngress = $input->getOption('auto-ingress');
+        $ssl = (bool) $input->getOption('ssl');
+        $sslCert = $input->getOption('ssl-cert');
+        $sslKey = $input->getOption('ssl-key');
         $skipDb = $input->getOption('skip-db');
         $skipAssets = $input->getOption('skip-assets');
         $force = $input->getOption('force');
@@ -117,18 +123,24 @@ class CloneCommand extends Command
         $dbUser = $input->getOption('db-user');
         $dbPass = $input->getOption('db-pass');
 
+        // Determinar host y si SSL debe habilitarse automáticamente
+        $cleanHost = $domain ? preg_replace('/:\d+$/', '', preg_replace('#^https?://#', '', $domain)) : 'localhost';
+        $hasHostCert = $cleanHost !== 'localhost' && $cleanHost !== '127.0.0.1' && ($this->ingressService->findHostSslCertificate($cleanHost) !== null);
+        $isSsl = $ssl || ($domain && str_starts_with($domain, 'https://')) || !empty($sslCert) || $hasHostCert;
+
         // Formar URL objetivo
         if ($domain) {
             if (str_starts_with($domain, 'http')) {
                 $targetUrl = $domain;
             } elseif ($autoIngress) {
                 $targetUrl = "https://{$domain}";
+            } elseif ($isSsl) {
+                $targetUrl = "https://{$cleanHost}" . ($httpPort === 443 ? '' : ":{$httpPort}");
             } else {
-                $cleanHost = preg_replace('/:\d+$/', '', $domain);
                 $targetUrl = "http://{$cleanHost}:{$httpPort}";
             }
         } else {
-            $targetUrl = "http://localhost:{$httpPort}";
+            $targetUrl = $isSsl ? "https://localhost:{$httpPort}" : "http://localhost:{$httpPort}";
         }
 
         if ($dryRun) {
@@ -166,6 +178,13 @@ class CloneCommand extends Command
 
         // Actualizar variables de entorno de Bedrock (.env)
         $this->updateEnvFile($name, $targetUrl, $tablePrefix);
+
+        // Habilitar terminación SSL nativa en contenedor Nginx si corresponde
+        if ($isSsl) {
+            $output->writeln("<comment>Configurando terminación SSL/HTTPS nativa en contenedor para {$cleanHost}:{$httpPort}...</comment>");
+            $this->ingressService->enableContainerSsl($name, $cleanHost, $sslCert, $sslKey);
+            $output->writeln("<info>✓ Terminación SSL/HTTPS activa en contenedor (puerto {$httpPort} -> 443 SSL)</info>");
+        }
 
         // FASE 3: Zero-Disk Media Proxy
         if ($proxyUploads) {
@@ -546,25 +565,65 @@ class CloneCommand extends Command
 
         if ($importProc->isSuccessful()) {
             $output->writeln('<info>✓ Importación a MySQL exitosa</info>');
-            // Ejecutar search-replace
+            // Ejecutar search-replace en sandbox
             $sourcePath = $source ?: $remotePath;
             $this->runSearchReplace($projectDir, $targetUrl, $sourcePath, $output);
+            $this->sanitizeDatabase($projectDir, $output);
             $this->fixContainerPermissions($projectDir, $output);
         } else {
             $output->writeln('<error>✗ Error importando datos al contenedor MySQL: ' . trim($importProc->getErrorOutput()) . '</error>');
         }
     }
 
-    private function fixContainerPermissions(string $projectDir, OutputInterface $output): void
+    public function fixContainerPermissions(string $projectDir, OutputInterface $output): void
     {
         $compose = $this->getComposeCommand();
-        $output->writeln('<comment>Asegurando permisos en contenedor web (app, uploads, storage, cache, backups)...</comment>');
+        $output->writeln('<comment>Asegurando permisos en contenedor web (dual-ownership host:www-data y 2775)...</comment>');
+        $permsScript = 'HOST_UID=$(stat -c "%u" /var/www/html/web/app 2>/dev/null || echo 1000); '
+            . 'chown -R ${HOST_UID}:www-data /var/www/html/web/app /var/www/html/storage 2>/dev/null || chown -R www-data:www-data /var/www/html/web/app 2>/dev/null || true; '
+            . 'chmod -R 2775 /var/www/html/web/app /var/www/html/storage 2>/dev/null || chmod -R 777 /var/www/html/web/app 2>/dev/null || true; '
+            . 'mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; '
+            . 'chmod 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; '
+            . 'find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true';
+
         $chmodProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'sh', '-c', 'chmod 777 /var/www/html/web/app 2>/dev/null || true; mkdir -p /var/www/html/web/app/ai1wm-backups /var/www/html/web/app/uploads 2>/dev/null || true; chown -R www-data:www-data /var/www/html/web/app/uploads 2>/dev/null || true; chmod -R 777 /var/www/html/web/app/uploads /var/www/html/web/app/ai1wm-backups 2>/dev/null || true; find /var/www/html/web/app -type d \( -name storage -o -name cache \) -exec chmod -R 777 {} + 2>/dev/null || true'
+            'sh', '-c', $permsScript
         ]), $projectDir);
         $chmodProc->setTimeout(60);
         $chmodProc->run();
+    }
+
+    public function sanitizeDatabase(string $projectDir, OutputInterface $output): void
+    {
+        $compose = $this->getComposeCommand();
+        $output->writeln('<comment>Saneando base de datos para entorno aislado y APIs públicas...</comment>');
+
+        // 1. Relajar protect_endpoints en simple_jwt_login_settings si está presente
+        $jwtSanitizeScript = <<<'PHP'
+$opts = get_option('simple_jwt_login_settings', []);
+if (is_array($opts) && isset($opts['protect_endpoints']) && is_array($opts['protect_endpoints'])) {
+    $opts['protect_endpoints']['enabled'] = 0;
+    update_option('simple_jwt_login_settings', $opts);
+    echo "simple_jwt_login protect_endpoints relax: OK\n";
+}
+PHP;
+        $jwtProc = new Process(array_merge($compose, [
+            'exec', '-T', 'web', 'wp', 'eval', $jwtSanitizeScript,
+            '--skip-plugins', '--skip-themes', '--allow-root'
+        ]), $projectDir);
+        $jwtProc->setTimeout(60);
+        $jwtProc->run();
+
+        // 2. Limpieza de transitorios acumulados de producción
+        $transientProc = new Process(array_merge($compose, [
+            'exec', '-T', 'web', 'wp', 'transient', 'delete', '--all',
+            '--skip-plugins', '--skip-themes', '--allow-root'
+        ]), $projectDir);
+        $transientProc->setTimeout(60);
+        $transientProc->run();
+
+        $output->writeln('<info>✓ Base de datos saneada con éxito</info>');
     }
 
     private function runSearchReplace(string $projectDir, string $targetUrl, ?string $sourcePath, OutputInterface $output): void
@@ -573,7 +632,7 @@ class CloneCommand extends Command
         $output->writeln('<comment>Detectando URL original para search-replace...</comment>');
 
         // Obtener siteurl actual del contenedor
-        $getUrlProc = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'option', 'get', 'siteurl', '--allow-root']), $projectDir);
+        $getUrlProc = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'option', 'get', 'siteurl', '--skip-plugins', '--skip-themes', '--allow-root']), $projectDir);
         $getUrlProc->run();
         $sourceUrl = trim($getUrlProc->getOutput());
         $cleanSource = preg_replace('#/wp$#', '', $sourceUrl) ?: 'https://detodo24.com';
@@ -582,7 +641,7 @@ class CloneCommand extends Command
         $srProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
             'wp', 'search-replace', $cleanSource, $targetUrl,
-            '--all-tables', '--skip-columns=guid', '--allow-root'
+            '--all-tables', '--skip-columns=guid', '--skip-plugins', '--skip-themes', '--allow-root'
         ]), $projectDir);
         $srProc->setTimeout(600);
         $srProc->run(function ($type, $buf) use ($output) {
@@ -597,7 +656,7 @@ class CloneCommand extends Command
             $srPathProc = new Process(array_merge($compose, [
                 'exec', '-T', 'web',
                 'wp', 'search-replace', "{$cleanSourcePath}/wp-content", $targetAppPath,
-                '--all-tables', '--skip-columns=guid', '--allow-root'
+                '--all-tables', '--skip-columns=guid', '--skip-plugins', '--skip-themes', '--allow-root'
             ]), $projectDir);
             $srPathProc->setTimeout(600);
             $srPathProc->run();
@@ -606,29 +665,29 @@ class CloneCommand extends Command
         // Asegurar siteurl y home
         $siteurlProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'wp', 'option', 'update', 'siteurl', rtrim($targetUrl, '/') . '/wp', '--allow-root'
+            'wp', 'option', 'update', 'siteurl', rtrim($targetUrl, '/') . '/wp', '--skip-plugins', '--skip-themes', '--allow-root'
         ]), $projectDir);
         $siteurlProc->run();
 
         $homeProc = new Process(array_merge($compose, [
             'exec', '-T', 'web',
-            'wp', 'option', 'update', 'home', $targetUrl, '--allow-root'
+            'wp', 'option', 'update', 'home', $targetUrl, '--skip-plugins', '--skip-themes', '--allow-root'
         ]), $projectDir);
         $homeProc->run();
 
         // Limpieza de caché y reescritura de reglas
         $output->writeln('<comment>Vaciando caché y regenerando permalinks...</comment>');
-        $flushCache = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'cache', 'flush', '--allow-root']), $projectDir);
+        $flushCache = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'cache', 'flush', '--skip-plugins', '--skip-themes', '--allow-root']), $projectDir);
         $flushCache->run();
 
-        $flushRewrite = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'rewrite', 'flush', '--allow-root']), $projectDir);
+        $flushRewrite = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'rewrite', 'flush', '--skip-plugins', '--skip-themes', '--allow-root']), $projectDir);
         $flushRewrite->run();
 
         // Regenerar caché de Elementor si el plugin está presente
         $flushElementor = new Process(array_merge($compose, ['exec', '-T', 'web', 'wp', 'elementor', 'flush-css', '--allow-root']), $projectDir);
         $flushElementor->run();
 
-        $output->writeln('<info>✓ URLs y caché actualizadas en la base de datos</info>');
+        $output->writeln('<info>✓ URLs y caché actualizadas en la base de datos (modo aislado sandbox)</info>');
     }
 
     private function waitForMysql(string $projectDir, string $dbUser, string $dbPass, string $dbName, OutputInterface $output): bool

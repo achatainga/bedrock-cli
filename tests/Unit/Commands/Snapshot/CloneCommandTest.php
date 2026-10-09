@@ -29,6 +29,9 @@ class CloneCommandTest extends TestCase
         $this->assertTrue($this->command->getDefinition()->hasOption('source'));
         $this->assertTrue($this->command->getDefinition()->hasOption('remote'));
         $this->assertTrue($this->command->getDefinition()->hasOption('proxy-uploads'));
+        $this->assertTrue($this->command->getDefinition()->hasOption('ssl'));
+        $this->assertTrue($this->command->getDefinition()->hasOption('ssl-cert'));
+        $this->assertTrue($this->command->getDefinition()->hasOption('ssl-key'));
         $this->assertTrue($this->command->getDefinition()->hasOption('dry-run'));
     }
 
@@ -116,5 +119,21 @@ ENV;
 
         $dockerfileStub = file_get_contents(__DIR__ . '/../../../../stubs/Dockerfile.web.stub');
         $this->assertStringContainsString('/var/www/html/web/app/uploads', $dockerfileStub);
+    }
+
+    public function test_it_handles_ssl_dry_run_and_https_target_url(): void
+    {
+        $tester = new CommandTester($this->command);
+        $exitCode = $tester->execute([
+            'name' => 'test-project-ssl',
+            '--source' => sys_get_temp_dir(),
+            '--domain' => 'staging.detodo24.com:9010',
+            '--ssl' => true,
+            '--dry-run' => true,
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('[DRY-RUN]', $display);
     }
 }
