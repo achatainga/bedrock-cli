@@ -89,6 +89,12 @@ use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
+use Roots\BedrockCli\Commands\Sync\StatusCommand as SyncStatusCommand;
+use Roots\BedrockCli\Commands\Sync\DiffCommand as SyncDiffCommand;
+use Roots\BedrockCli\Commands\Sync\StageCommand as SyncStageCommand;
+use Roots\BedrockCli\Commands\Sync\CommitCommand as SyncCommitCommand;
+use Roots\BedrockCli\Commands\Sync\PushCommand as SyncPushCommand;
+use Roots\BedrockCli\Commands\Sync\RollbackCommand as SyncRollbackCommand;
 use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
@@ -184,6 +190,12 @@ class Application extends BaseApplication
             new UpdateMuPluginCommand(),
             new CacheImportCommand(),
             new CacheUpdateVersionCommand(),
+            new SyncStatusCommand(),
+            new SyncDiffCommand(),
+            new SyncStageCommand(),
+            new SyncCommitCommand(),
+            new SyncPushCommand(),
+            new SyncRollbackCommand(),
         ]);
     }
 

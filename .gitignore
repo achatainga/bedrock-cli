@@ -12,3 +12,7 @@ generate_tests.php
 fix_descriptions.php
 auto_fix_tests.php
 AUDIT-*.md
+config/sync/.staged.json
+config/sync/backups/
+config/sync/changesets/*.json
+!config/sync/changesets/.gitkeep
