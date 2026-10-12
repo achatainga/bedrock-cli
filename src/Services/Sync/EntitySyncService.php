@@ -26,9 +26,6 @@ class EntitySyncService
      */
     public function executeInEnvironment(string $envAlias, string $phpCode): array
     {
-        $escapedPhp = str_replace(['\\', "'"], ['\\\\', "\\'"], $phpCode);
-        $wpEvalCmd = "wp eval '{$escapedPhp}' --allow-root";
-
         $process = match ($envAlias) {
             '9010', 'clone9010', 'staging:9010' => new Process([
                 'ssh', 'dt24-godaddy',
@@ -38,9 +35,9 @@ class EntitySyncService
                 'ssh', 'dt24-godaddy',
                 "docker exec -i dt24-bedrock_web wp eval-file - --allow-root"
             ]),
-            default => new Process([
-                'docker-compose', 'exec', '-T', 'web', 'wp', 'eval-file', '-', '--allow-root'
-            ]),
+            default => new Process(
+                array_merge($this->getComposeCommand(), ['exec', '-T', 'web', 'wp', 'eval-file', '-', '--allow-root'])
+            ),
         };
 
         $process->setInput("<?php\n" . $phpCode);
@@ -277,18 +274,19 @@ foreach (\$payload as \$sku => \$data) {
             \$isNew = true;
         }
 
-        if (!empty(\$data['name'])) \$product->set_name(\$data['name']);
-        if (!empty(\$data['slug'])) \$product->set_slug(\$data['slug']);
-        if (!empty(\$data['sku'])) \$product->set_sku(\$data['sku']);
-        if (isset(\$data['regular_price'])) \$product->set_regular_price((string) \$data['regular_price']);
-        if (isset(\$data['sale_price'])) \$product->set_sale_price((string) \$data['sale_price']);
-        if (isset(\$data['price'])) \$product->set_price((string) \$data['price']);
-        if (isset(\$data['stock_status'])) \$product->set_stock_status(\$data['stock_status']);
-        if (isset(\$data['manage_stock'])) \$product->set_manage_stock(\$data['manage_stock']);
-        if (isset(\$data['stock_quantity'])) \$product->set_stock_quantity(\$data['stock_quantity']);
-        if (isset(\$data['weight'])) \$product->set_weight((string) \$data['weight']);
-        if (isset(\$data['short_description'])) \$product->set_short_description(\$data['short_description']);
-        if (isset(\$data['description'])) \$product->set_description(\$data['description']);
+        if (isset(\$data['name']) && \$data['name'] !== '') \$product->set_name((string) \$data['name']);
+        if (isset(\$data['slug']) && \$data['slug'] !== '') \$product->set_slug((string) \$data['slug']);
+        if (isset(\$data['sku']) && \$data['sku'] !== '') \$product->set_sku((string) \$data['sku']);
+        if (isset(\$data['status'])) \$product->set_status((string) \$data['status']);
+        if (array_key_exists('regular_price', \$data)) \$product->set_regular_price(\$data['regular_price'] !== null ? (string) \$data['regular_price'] : '');
+        if (array_key_exists('sale_price', \$data)) \$product->set_sale_price(\$data['sale_price'] !== null ? (string) \$data['sale_price'] : '');
+        if (array_key_exists('price', \$data)) \$product->set_price(\$data['price'] !== null ? (string) \$data['price'] : '');
+        if (isset(\$data['stock_status'])) \$product->set_stock_status((string) \$data['stock_status']);
+        if (array_key_exists('manage_stock', \$data)) \$product->set_manage_stock((bool) \$data['manage_stock']);
+        if (array_key_exists('stock_quantity', \$data)) \$product->set_stock_quantity(\$data['stock_quantity'] !== null ? (int) \$data['stock_quantity'] : null);
+        if (array_key_exists('weight', \$data)) \$product->set_weight(\$data['weight'] !== null ? (string) \$data['weight'] : '');
+        if (array_key_exists('short_description', \$data)) \$product->set_short_description((string) \$data['short_description']);
+        if (array_key_exists('description', \$data)) \$product->set_description((string) \$data['description']);
 
         // Guardar producto
         \$savedId = \$product->save();
@@ -297,10 +295,14 @@ foreach (\$payload as \$sku => \$data) {
         if (!empty(\$data['categories']) && is_array(\$data['categories'])) {
             \$catIds = [];
             foreach (\$data['categories'] as \$c) {
-                \$slug = \$c['slug'];
+                \$slug = is_array(\$c) ? (\$c['slug'] ?? '') : (string) \$c;
+                if (empty(\$slug)) {
+                    continue;
+                }
+                \$name = is_array(\$c) ? (\$c['name'] ?? \$slug) : \$slug;
                 \$term = get_term_by('slug', \$slug, 'product_cat');
                 if (!\$term) {
-                    \$newTerm = wp_insert_term(\$c['name'] ?? \$slug, 'product_cat', ['slug' => \$slug]);
+                    \$newTerm = wp_insert_term(\$name, 'product_cat', ['slug' => \$slug]);
                     if (!is_wp_error(\$newTerm) && isset(\$newTerm['term_id'])) {
                         \$catIds[] = (int) \$newTerm['term_id'];
                     }
@@ -326,8 +328,97 @@ foreach (\$payload as \$sku => \$data) {
         } else {
             \$applied['updated'][] = ['sku' => \$sku, 'id' => \$savedId, 'name' => \$data['name']];
         }
-    } catch (\Throwable \$e) {
+    } catch (\\Throwable \$e) {
         \$applied['errors'][] = ['sku' => \$sku, 'error' => \$e->getMessage()];
+    }
+}
+
+if (function_exists('wc_delete_product_transients')) {
+    wc_delete_product_transients();
+}
+if (function_exists('wp_cache_flush')) {
+    wp_cache_flush();
+}
+
+echo json_encode(['success' => true, 'applied' => \$applied], JSON_UNESCAPED_UNICODE);
+PHP;
+    }
+
+    /**
+     * Genera el script PHP para revertir un changeset: elimina entidades creadas y restaura modificadas.
+     */
+    public function generateRollbackScript(array $savedState, array $createdEntities): string
+    {
+        $payloadB64 = base64_encode(json_encode([
+            'saved'   => $savedState,
+            'created' => $createdEntities,
+        ], JSON_UNESCAPED_UNICODE));
+
+        return <<<PHP
+\$payload = json_decode(base64_decode('{$payloadB64}'), true);
+if (!is_array(\$payload)) {
+    echo json_encode(['success' => false, 'error' => 'Payload de rollback corrupto']);
+    exit(0);
+}
+
+\$applied = ['deleted' => [], 'restored' => [], 'errors' => []];
+
+// 1. Eliminar entidades que fueron creadas por el push
+if (!empty(\$payload['created']) && is_array(\$payload['created'])) {
+    foreach (\$payload['created'] as \$c) {
+        \$sku = is_array(\$c) ? (\$c['sku'] ?? null) : null;
+        \$id = is_array(\$c) ? (\$c['id'] ?? null) : null;
+        try {
+            if (!\$id && \$sku && function_exists('wc_get_product_id_by_sku')) {
+                \$id = wc_get_product_id_by_sku(\$sku);
+            }
+            if (\$id > 0) {
+                wp_delete_post((int) \$id, true);
+                \$applied['deleted'][] = ['sku' => \$sku, 'id' => \$id];
+            }
+        } catch (\\Throwable \$e) {
+            \$applied['errors'][] = ['action' => 'delete', 'sku' => \$sku, 'error' => \$e->getMessage()];
+        }
+    }
+}
+
+// 2. Restaurar estado de entidades que fueron modificadas
+if (!empty(\$payload['saved']) && is_array(\$payload['saved'])) {
+    foreach (\$payload['saved'] as \$sku => \$data) {
+        try {
+            \$existingId = function_exists('wc_get_product_id_by_sku') ? wc_get_product_id_by_sku(\$sku) : 0;
+            if (!\$existingId && !empty(\$data['slug'])) {
+                \$page = get_page_by_path(\$data['slug'], OBJECT, 'product');
+                if (\$page) {
+                    \$existingId = \$page->ID;
+                }
+            }
+
+            if (\$existingId > 0 && function_exists('wc_get_product')) {
+                \$product = wc_get_product(\$existingId);
+                if (!\$product) {
+                    \$product = new \\WC_Product_Simple(\$existingId);
+                }
+                if (isset(\$data['name']) && \$data['name'] !== '') \$product->set_name((string) \$data['name']);
+                if (isset(\$data['slug']) && \$data['slug'] !== '') \$product->set_slug((string) \$data['slug']);
+                if (isset(\$data['sku']) && \$data['sku'] !== '') \$product->set_sku((string) \$data['sku']);
+                if (isset(\$data['status'])) \$product->set_status((string) \$data['status']);
+                if (array_key_exists('regular_price', \$data)) \$product->set_regular_price(\$data['regular_price'] !== null ? (string) \$data['regular_price'] : '');
+                if (array_key_exists('sale_price', \$data)) \$product->set_sale_price(\$data['sale_price'] !== null ? (string) \$data['sale_price'] : '');
+                if (array_key_exists('price', \$data)) \$product->set_price(\$data['price'] !== null ? (string) \$data['price'] : '');
+                if (isset(\$data['stock_status'])) \$product->set_stock_status((string) \$data['stock_status']);
+                if (array_key_exists('manage_stock', \$data)) \$product->set_manage_stock((bool) \$data['manage_stock']);
+                if (array_key_exists('stock_quantity', \$data)) \$product->set_stock_quantity(\$data['stock_quantity'] !== null ? (int) \$data['stock_quantity'] : null);
+                if (array_key_exists('weight', \$data)) \$product->set_weight(\$data['weight'] !== null ? (string) \$data['weight'] : '');
+                if (array_key_exists('short_description', \$data)) \$product->set_short_description((string) \$data['short_description']);
+                if (array_key_exists('description', \$data)) \$product->set_description((string) \$data['description']);
+
+                \$savedId = \$product->save();
+                \$applied['restored'][] = ['sku' => \$sku, 'id' => \$savedId];
+            }
+        } catch (\\Throwable \$e) {
+            \$applied['errors'][] = ['action' => 'restore', 'sku' => \$sku, 'error' => \$e->getMessage()];
+        }
     }
 }
 
@@ -371,11 +462,12 @@ PHP;
         $backupId = "backup_{$manifest['id']}_" . date('Ymd_His');
         $backupFile = "{$backupsDir}/{$backupId}.json";
         file_put_contents($backupFile, json_encode([
-            'backup_id'     => $backupId,
-            'changeset_id'  => $manifest['id'],
-            'target_env'    => $targetEnv,
-            'timestamp'     => date('c'),
-            'saved_state'   => $backupState,
+            'backup_id'        => $backupId,
+            'changeset_id'     => $manifest['id'],
+            'target_env'       => $targetEnv,
+            'timestamp'        => date('c'),
+            'saved_state'      => $backupState,
+            'created_entities' => [],
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $output->writeln("<info>✓ Backup de seguridad guardado: {$backupId}.json</info>");
@@ -398,10 +490,23 @@ PHP;
             throw new \RuntimeException("Fallo durante la inyección en '{$targetEnv}': " . ($res['error'] ?? 'desconocido'));
         }
 
+        $applied = $res['data']['applied'];
+        $createdList = $applied['created'] ?? [];
+
+        // Actualizar el archivo de backup con la lista exacta de entidades creadas
+        file_put_contents($backupFile, json_encode([
+            'backup_id'        => $backupId,
+            'changeset_id'     => $manifest['id'],
+            'target_env'       => $targetEnv,
+            'timestamp'        => date('c'),
+            'saved_state'      => $backupState,
+            'created_entities' => $createdList,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
         return [
             'dry_run'   => false,
             'backup_id' => $backupId,
-            'result'    => $res['data']['applied'],
+            'result'    => $applied,
         ];
     }
 
@@ -418,23 +523,33 @@ PHP;
 
         $data = json_decode((string) file_get_contents($file), true);
         $savedState = $data['saved_state'] ?? [];
+        $createdEntities = $data['created_entities'] ?? [];
 
-        if (empty($savedState)) {
-            $output->writeln('<comment>El backup no contenía entidades previas que restaurar (eran nuevas inserciones).</comment>');
-            return ['restored' => 0];
+        if (empty($savedState) && empty($createdEntities)) {
+            $output->writeln('<comment>El backup no contenía entidades que restaurar ni revertir.</comment>');
+            return ['restored' => 0, 'deleted' => 0];
         }
 
-        $output->writeln("<comment>Restaurando " . count($savedState) . " entidades en '{$targetEnv}'...</comment>");
-        $script = $this->generateInjectionScript($savedState);
+        $output->writeln("<comment>Ejecutando reversión en '{$targetEnv}' (Restaurando: " . count($savedState) . ", Eliminando nuevas: " . count($createdEntities) . ")...</comment>");
+        $script = $this->generateRollbackScript($savedState, $createdEntities);
         $res = $this->executeInEnvironment($targetEnv, $script);
 
         if (!$res['success']) {
             throw new \RuntimeException("Error al revertir: " . ($res['error'] ?? 'desconocido'));
         }
 
+        $applied = $res['data']['applied'] ?? [];
         return [
-            'restored' => count($savedState),
-            'result'   => $res['data']['applied'] ?? null,
+            'restored' => count($applied['restored'] ?? []),
+            'deleted'  => count($applied['deleted'] ?? []),
+            'result'   => $applied,
         ];
+    }
+
+    private function getComposeCommand(): array
+    {
+        $proc = new Process(['docker', 'compose', 'version']);
+        $proc->run();
+        return $proc->isSuccessful() ? ['docker', 'compose'] : ['docker-compose'];
     }
 }

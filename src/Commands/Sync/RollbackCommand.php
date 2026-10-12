@@ -45,7 +45,9 @@ class RollbackCommand extends Command
 
         try {
             $res = $this->syncService->rollback($projectRoot, $backupId, $targetEnv, $output);
-            $output->writeln("<info>✓ Rollback completado exitosamente ({$res['restored']} entidades restauradas a su estado original).</info>");
+            $deletedCount = $res['deleted'] ?? 0;
+            $restoredCount = $res['restored'] ?? 0;
+            $output->writeln("<info>✓ Rollback completado exitosamente ({$restoredCount} entidades restauradas, {$deletedCount} nuevas entidades eliminadas).</info>");
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $output->writeln("<error>✗ Error al revertir: " . $e->getMessage() . "</error>");

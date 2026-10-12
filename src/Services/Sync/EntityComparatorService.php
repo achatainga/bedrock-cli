@@ -19,55 +19,82 @@ if (!function_exists('wc_get_products')) {
     exit(0);
 }
 
-$products = wc_get_products(['limit' => -1, 'status' => 'any']);
+$chunkSize = 100;
+$page = 1;
 $data = [];
 
-foreach ($products as $p) {
-    if (!$p instanceof \WC_Product) {
-        continue;
+while (true) {
+    $products = wc_get_products([
+        'limit'    => $chunkSize,
+        'page'     => $page,
+        'status'   => 'any',
+        'paginate' => false,
+    ]);
+
+    if (empty($products)) {
+        break;
     }
-    $id = $p->get_id();
-    $sku = $p->get_sku() ?: 'sku_auto_' . $p->get_slug();
-    $slug = $p->get_slug();
-    
-    // Categorías por slug
-    $cats = [];
-    $terms = get_the_terms($id, 'product_cat');
-    if (is_array($terms)) {
-        foreach ($terms as $t) {
-            $cats[] = ['slug' => $t->slug, 'name' => $t->name];
+
+    foreach ($products as $p) {
+        if (!$p instanceof \WC_Product) {
+            continue;
         }
+        $id = $p->get_id();
+        $sku = (string) ($p->get_sku() ?: 'sku_auto_' . $p->get_slug());
+        $slug = (string) $p->get_slug();
+        
+        // Categorías por slug
+        $cats = [];
+        $terms = get_the_terms($id, 'product_cat');
+        if (is_array($terms)) {
+            foreach ($terms as $t) {
+                $cats[] = ['slug' => $t->slug, 'name' => $t->name];
+            }
+        }
+
+        $salePrice = $p->get_sale_price();
+        $item = [
+            'id'                => $id,
+            'sku'               => $sku,
+            'slug'              => $slug,
+            'name'              => $p->get_name(),
+            'type'              => $p->get_type(),
+            'status'            => $p->get_status(),
+            'price'             => (float) $p->get_price(),
+            'regular_price'     => (float) $p->get_regular_price(),
+            'sale_price'        => ($salePrice !== '' && $salePrice !== null) ? (float) $salePrice : null,
+            'manage_stock'      => (bool) $p->get_manage_stock(),
+            'stock_quantity'    => $p->get_stock_quantity() !== null ? (int) $p->get_stock_quantity() : null,
+            'stock_status'      => $p->get_stock_status(),
+            'weight'            => (float) $p->get_weight(),
+            'short_description' => (string) $p->get_short_description(),
+            'description'       => (string) $p->get_description(),
+            'categories'        => $cats,
+            'meta'              => [
+                '_vendor_id' => (int) get_post_field('post_author', $id),
+            ],
+        ];
+
+        // Fingerprint determinista (excluye id de base de datos)
+        $fingerprintPayload = $item;
+        unset($fingerprintPayload['id']);
+        ksort($fingerprintPayload);
+        $item['fingerprint'] = md5(json_encode($fingerprintPayload, JSON_UNESCAPED_UNICODE));
+
+        $data[$sku] = $item;
     }
 
-    $item = [
-        'id'                => $id,
-        'sku'               => $sku,
-        'slug'              => $slug,
-        'name'              => $p->get_name(),
-        'type'              => $p->get_type(),
-        'status'            => $p->get_status(),
-        'price'             => (float) $p->get_price(),
-        'regular_price'     => (float) $p->get_regular_price(),
-        'sale_price'        => $p->get_sale_price() ? (float) $p->get_sale_price() : null,
-        'manage_stock'      => $p->get_manage_stock(),
-        'stock_quantity'    => $p->get_stock_quantity(),
-        'stock_status'      => $p->get_stock_status(),
-        'weight'            => (float) $p->get_weight(),
-        'short_description' => $p->get_short_description(),
-        'description'       => $p->get_description(),
-        'categories'        => $cats,
-        'meta'              => [
-            '_vendor_id' => get_post_field('post_author', $id),
-        ],
-    ];
+    if (count($products) < $chunkSize) {
+        break;
+    }
 
-    // Fingerprint determinista (excluye id de base de datos)
-    $fingerprintPayload = $item;
-    unset($fingerprintPayload['id']);
-    ksort($fingerprintPayload);
-    $item['fingerprint'] = md5(json_encode($fingerprintPayload, JSON_UNESCAPED_UNICODE));
+    $page++;
 
-    $data[$sku] = $item;
+    if (function_exists('wp_cache_flush_runtime')) {
+        wp_cache_flush_runtime();
+    } elseif (function_exists('wp_cache_flush')) {
+        wp_cache_flush();
+    }
 }
 
 echo json_encode($data, JSON_UNESCAPED_UNICODE);
