@@ -267,9 +267,12 @@ class DoctorCommand extends Command
     {
         $output->writeln('<fg=cyan>Instalando Chocolatey...</>');
         
-        $cmd = 'powershell -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString(\'https://community.chocolatey.org/install.ps1\'))"';
+        $cmd = [
+            'powershell', '-NoProfile', '-Command',
+            'Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString(\'https://community.chocolatey.org/install.ps1\'))'
+        ];
         
-        $process = Process::fromShellCommandline($cmd);
+        $process = new Process($cmd);
         $process->setTimeout(300);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -284,7 +287,7 @@ class DoctorCommand extends Command
 
     private function checkWSL(OutputInterface $output): bool
     {
-        $process = Process::fromShellCommandline('powershell -Command "wsl --status"');
+        $process = new Process(['wsl', '--status']);
         $process->run();
         
         if ($process->isSuccessful()) {
@@ -307,7 +310,7 @@ class DoctorCommand extends Command
         ];
         
         foreach ($commands as $cmd) {
-            $process = Process::fromShellCommandline('powershell -Command "Start-Process ' . $cmd . ' -Verb RunAs -Wait"');
+            $process = new Process(['powershell', '-NoProfile', '-Command', 'Start-Process ' . $cmd . ' -Verb RunAs -Wait']);
             $process->setTimeout(300);
             $process->run();
         }
@@ -338,7 +341,7 @@ class DoctorCommand extends Command
     {
         $output->writeln('<fg=cyan>Instalando Ubuntu en WSL...</>');
         
-        $process = Process::fromShellCommandline('powershell -Command "wsl --install -d Ubuntu"');
+        $process = new Process(['wsl', '--install', '-d', 'Ubuntu']);
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -368,7 +371,7 @@ class DoctorCommand extends Command
     {
         $output->writeln('<fg=cyan>Instalando Docker Desktop con Chocolatey...</>');
         
-        $process = Process::fromShellCommandline('choco install docker-desktop -y');
+        $process = new Process(['choco', 'install', 'docker-desktop', '-y']);
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);
@@ -396,7 +399,7 @@ class DoctorCommand extends Command
         
         $dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
         if (file_exists($dockerPath)) {
-            $process = Process::fromShellCommandline('start "" "' . $dockerPath . '"');
+            $process = new Process(['cmd', '/c', 'start', '', $dockerPath]);
             $process->run();
             
             $this->waitWithLoader($output, 'Esperando a que Docker se inicialice', 60);

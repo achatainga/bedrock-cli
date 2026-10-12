@@ -268,7 +268,7 @@ class DockerCommand extends Command
         
         if (DIRECTORY_SEPARATOR === '\\') {
             // Windows
-            $process = Process::fromShellCommandline('start "" "' . $dockerPath . '"');
+            $process = new Process(['cmd', '/c', 'start', '', $dockerPath]);
         } else {
             // Mac/Linux
             $process = new Process(['open', '-a', 'Docker']);
