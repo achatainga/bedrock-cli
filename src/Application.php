@@ -95,6 +95,10 @@ use Roots\BedrockCli\Commands\Sync\StageCommand as SyncStageCommand;
 use Roots\BedrockCli\Commands\Sync\CommitCommand as SyncCommitCommand;
 use Roots\BedrockCli\Commands\Sync\PushCommand as SyncPushCommand;
 use Roots\BedrockCli\Commands\Sync\RollbackCommand as SyncRollbackCommand;
+use Roots\BedrockCli\Commands\Generate\GenerateCommand;
+use Roots\BedrockCli\Commands\Generate\VerticalsListCommand;
+use Roots\BedrockCli\Commands\AI\AgentEvolveCommand;
+use Roots\BedrockCli\Commands\AI\AuditAdversarialCommand;
 use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
@@ -196,6 +200,10 @@ class Application extends BaseApplication
             new SyncCommitCommand(),
             new SyncPushCommand(),
             new SyncRollbackCommand(),
+            new GenerateCommand(),
+            new VerticalsListCommand(),
+            new AgentEvolveCommand(),
+            new AuditAdversarialCommand(),
         ]);
     }
 
