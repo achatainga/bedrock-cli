@@ -26,7 +26,8 @@ class NewCommand extends Command
         $this
             ->setName('new')
             ->setDescription('Crear nuevo proyecto Bedrock')
-            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del proyecto')
+            ->addArgument('name', InputArgument::OPTIONAL, 'Nombre del proyecto')
+            ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Nombre del proyecto')
             ->addOption('no-docker', null, InputOption::VALUE_NONE, 'NO generar archivos Docker (por defecto SÍ se genera)')
             ->addOption('no-acorn', null, InputOption::VALUE_NONE, 'NO instalar Roots Acorn (por defecto SÍ se instala)')
             ->addOption('no-redis', null, InputOption::VALUE_NONE, 'NO instalar Redis (por defecto SÍ se instala)')
@@ -34,6 +35,7 @@ class NewCommand extends Command
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Usuario de BD', 'root')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña de BD', 'mysql')
             ->addOption('http-port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP')
+            ->addOption('port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP (alias de --http-port)')
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
@@ -43,7 +45,11 @@ class NewCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $name = $input->getArgument('name');
+        $name = $input->getArgument('name') ?: $input->getOption('name');
+        if (!$name) {
+            $output->writeln('<error>El nombre del proyecto es obligatorio. Usa: bedrock new <nombre> o --name=<nombre></error>');
+            return Command::FAILURE;
+        }
         $force = $input->getOption('force');
         
         if (is_dir($name)) {
@@ -114,7 +120,7 @@ class NewCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
             $output->writeln('  docker-compose exec web wp core install \\');
-            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->findFreePort(80, $output)) . ' \\');
+            $output->writeln('    --url=http://localhost:' . (($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output)) . ' \\');
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
             $output->writeln('    --admin_password=admin \\');
@@ -206,7 +212,7 @@ class NewCommand extends Command
         $dbUser = $input->getOption('db-user');
         $dbPass = $input->getOption('db-pass');
 
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
         $mysqlPort = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
         $redisPort = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
 
@@ -270,7 +276,7 @@ class NewCommand extends Command
 
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
         
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
@@ -658,7 +664,7 @@ class NewCommand extends Command
         $output->writeln('<info>Generando wizard de configuración...</info>');
 
         $stateService = new StateService();
-        $httpPort = $input->getOption('http-port') ?: $this->findFreePort(80, $output);
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
 
         $themeName = 'twentytwentyfive';
         if ($profile && !empty($profile['themes'])) {
