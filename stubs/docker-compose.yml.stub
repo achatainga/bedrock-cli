@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile.web
     container_name: {{PROJECT_NAME}}_web
     working_dir: /var/www/html
+    mem_limit: 1024m
+    mem_reservation: 512m
+    pids_limit: 100
     environment:
       - MYSQL_PWD={{DB_PASSWORD}}
       - WP_CLI_ALLOW_ROOT=1
@@ -12,6 +15,7 @@ services:
     volumes:
       - ./:/var/www/html
       - ./docker/mysql/client.cnf:/etc/mysql/conf.d/client.cnf:ro
+      - ./docker/php-fpm/zz-tuning.conf:/usr/local/etc/php-fpm.d/zz-tuning.conf:ro
       - ./auth.json:/root/.composer/auth.json:ro
     depends_on:
       - mysql
@@ -19,6 +23,8 @@ services:
   nginx:
     image: nginx:alpine
     container_name: {{PROJECT_NAME}}_nginx
+    mem_limit: 64m
+    pids_limit: 50
     ports:
       - "{{HTTP_PORT}}:80"
     volumes:
@@ -31,6 +37,9 @@ services:
     image: mysql:8.0
     container_name: {{PROJECT_NAME}}_mysql
     restart: always
+    mem_limit: 768m
+    mem_reservation: 512m
+    pids_limit: 200
     command: --skip-ssl --require_secure_transport=OFF --lower_case_table_names=0 --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: {{DB_PASSWORD}}
@@ -48,11 +57,14 @@ services:
     container_name: {{PROJECT_NAME}}_worker
     working_dir: /var/www/html
     restart: unless-stopped
+    mem_limit: 384m
+    mem_reservation: 128m
+    pids_limit: 50
     command: >
       bash -c "while true; do
         wp cron event run --due-now --path=/var/www/html/web/wp --allow-root || true;
         wp action-scheduler run --batch-size=50 --path=/var/www/html/web/wp --allow-root || true;
-        sleep 60;
+        sleep 300;
       done"
     environment:
       - MYSQL_PWD={{DB_PASSWORD}}
@@ -70,6 +82,8 @@ services:
     image: redis:7-alpine
     container_name: {{PROJECT_NAME}}_redis
     restart: always
+    mem_limit: 320m
+    pids_limit: 50
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "{{REDIS_PORT}}:6379"

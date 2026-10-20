@@ -60,10 +60,7 @@ WORKDIR /var/www/html
 
 COPY . /var/www/html
 
-RUN echo "pm.max_children = 50" >> /usr/local/etc/php-fpm.d/www.conf && \
-    echo "pm.start_servers = 10" >> /usr/local/etc/php-fpm.d/www.conf && \
-    echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/www.conf && \
-    echo "pm.max_spare_servers = 20" >> /usr/local/etc/php-fpm.d/www.conf
+COPY docker/php-fpm/zz-tuning.conf /usr/local/etc/php-fpm.d/zz-tuning.conf
 
 RUN mkdir -p /var/www/html/storage/framework/{cache,views,sessions,testing} && \
     mkdir -p /var/www/html/web/app/fonts /var/www/html/web/app/uploads && \

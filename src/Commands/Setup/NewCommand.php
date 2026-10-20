@@ -235,6 +235,7 @@ class NewCommand extends Command
         $this->copyStub("{$stubsDir}/docker/nginx/default.conf.stub", "{$name}/docker/nginx/default.conf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/client.cnf.stub", "{$name}/docker/mysql/client.cnf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/my.cnf.stub", "{$name}/docker/mysql/my.cnf", $vars);
+        $this->copyStub("{$stubsDir}/docker/php-fpm/zz-tuning.conf.stub", "{$name}/docker/php-fpm/zz-tuning.conf", $vars);
 
         $output->writeln('<info>✓ Archivos Docker creados</info>');
     }
