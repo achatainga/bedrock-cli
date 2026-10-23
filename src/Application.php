@@ -99,6 +99,10 @@ use Roots\BedrockCli\Commands\Generate\GenerateCommand;
 use Roots\BedrockCli\Commands\Generate\VerticalsListCommand;
 use Roots\BedrockCli\Commands\AI\AgentEvolveCommand;
 use Roots\BedrockCli\Commands\AI\AuditAdversarialCommand;
+use Roots\BedrockCli\Commands\Mail\ListCommand as MailListCommand;
+use Roots\BedrockCli\Commands\Mail\ViewCommand as MailViewCommand;
+use Roots\BedrockCli\Commands\Mail\ClearCommand as MailClearCommand;
+use Roots\BedrockCli\Commands\Mail\ResendActivationCommand as MailResendActivationCommand;
 use Symfony\Component\Process\Process;
 
 class Application extends BaseApplication
@@ -204,6 +208,10 @@ class Application extends BaseApplication
             new VerticalsListCommand(),
             new AgentEvolveCommand(),
             new AuditAdversarialCommand(),
+            new MailListCommand(),
+            new MailViewCommand(),
+            new MailClearCommand(),
+            new MailResendActivationCommand(),
         ]);
     }
 
