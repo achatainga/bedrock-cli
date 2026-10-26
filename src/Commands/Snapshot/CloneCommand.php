@@ -46,7 +46,7 @@ class CloneCommand extends Command
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis forzado')
             ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Nombre de base de datos destino')
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Usuario BD contenedor', 'root')
-            ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña BD contenedor', 'mysql')
+            ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña BD contenedor')
             ->addOption('proxy-uploads', null, InputOption::VALUE_REQUIRED, 'URL origen para proxy transparente de uploads (ej. https://detodo24.com)')
             ->addOption('auto-ingress', null, InputOption::VALUE_NONE, 'Configurar automáticamente proxy reverso en Nginx host (cPanel)')
             ->addOption('ssl', null, InputOption::VALUE_NONE, 'Habilitar terminación SSL/HTTPS nativa en el contenedor Nginx')
@@ -159,9 +159,11 @@ class CloneCommand extends Command
             '--redis-port' => (string) $redisPort,
             '--db-name' => $dbName,
             '--db-user' => $dbUser,
-            '--db-pass' => $dbPass,
             '--no-acorn' => true,
         ];
+        if (!empty($dbPass)) {
+            $newArgs['--db-pass'] = $dbPass;
+        }
         if ($force) {
             $newArgs['--force'] = true;
         }

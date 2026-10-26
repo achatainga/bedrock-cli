@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Setup;
 
 use Symfony\Component\Console\Command\Command;
+use Roots\BedrockCli\Services\EnvironmentSecurityService;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -110,7 +111,8 @@ class NewWizardCommand extends Command
         $dbUserQuestion = new Question('<fg=yellow>Usuario BD [root]:</> ', 'root');
         $dbUser = $helper->ask($input, $output, $dbUserQuestion);
         
-        $dbPassQuestion = new Question('<fg=yellow>Contraseña BD [mysql]:</> ', 'mysql');
+        $suggestedPass = EnvironmentSecurityService::generateSecureSecret(16);
+        $dbPassQuestion = new Question("<fg=yellow>Contraseña BD [aleatoria segura]:</> ", $suggestedPass);
         $dbPass = $helper->ask($input, $output, $dbPassQuestion);
 
         // 5. Opciones adicionales

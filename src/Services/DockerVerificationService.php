@@ -16,9 +16,20 @@ class DockerVerificationService
     }
     public function verifyAndFixProject(string $projectPath, OutputInterface $output): bool
     {
-        $output->writeln('<info>Verificando configuración Docker y Filesystem...</info>');
+        $output->writeln('<info>Verificando configuración Docker, Seguridad y Filesystem...</info>');
         
         $this->ensureFilesystemConfig($projectPath, $output);
+
+        // Security Audit & Auto-Hardening
+        $securityIssues = EnvironmentSecurityService::auditProjectSecurity($projectPath);
+        if (!empty($securityIssues)) {
+            $output->writeln('<comment>Detectadas vulnerabilidades de seguridad en el stack:</comment>');
+            foreach ($securityIssues as $sec) {
+                $output->writeln("  <fg=yellow>[{$sec['severity']}]</> {$sec['message']}");
+            }
+            $output->writeln('<comment>Aplicando auto-hardening de seguridad en docker-compose y .env...</comment>');
+            EnvironmentSecurityService::hardenProjectSecurity($projectPath, $output);
+        }
         
         $issues = $this->detectIssues($projectPath);
         

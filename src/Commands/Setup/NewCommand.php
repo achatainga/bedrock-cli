@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Commands\Setup;
 
 use Symfony\Component\Console\Command\Command;
+use Roots\BedrockCli\Services\EnvironmentSecurityService;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -20,6 +21,11 @@ use Roots\BedrockCli\Traits\PremiumAssetsTrait;
 class NewCommand extends Command
 {
     use PremiumAssetsTrait;
+
+    private string $resolvedDbPass = '';
+    private string $resolvedDbUser = '';
+    private string $resolvedRedisPass = '';
+    private string $resolvedMysqlRootPass = '';
 
     protected function configure(): void
     {
@@ -74,6 +80,8 @@ class NewCommand extends Command
                 $sudoRm->run();
             }
         }
+
+        $this->initSecurityCredentials($input);
 
         $output->writeln("<info>Creando proyecto Bedrock: {$name}</info>");
         $output->writeln('');
@@ -188,6 +196,26 @@ class NewCommand extends Command
         $output->writeln('<info>✓ Acorn instalado</info>');
     }
 
+    private function initSecurityCredentials(InputInterface $input): void
+    {
+        $dbUser = $input->getOption('db-user') ?: 'root';
+        $dbPass = $input->getOption('db-pass');
+
+        if (empty($dbPass) || $dbPass === 'mysql') {
+            $dbPass = EnvironmentSecurityService::generateSecureSecret(24);
+        }
+
+        $this->resolvedDbUser = $dbUser;
+        $this->resolvedDbPass = $dbPass;
+        $this->resolvedRedisPass = EnvironmentSecurityService::generateSecureSecret(32);
+
+        if ($dbUser === 'root') {
+            $this->resolvedMysqlRootPass = $this->resolvedDbPass;
+        } else {
+            $this->resolvedMysqlRootPass = EnvironmentSecurityService::generateSecureSecret(24);
+        }
+    }
+
     private function installRedis(string $name, OutputInterface $output): void
     {
         $output->writeln('<info>Instalando Redis Object Cache...</info>');
@@ -209,21 +237,38 @@ class NewCommand extends Command
         $stubsDir = $this->getStubsDir();
         $projectName = $name;
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        $dbUser = $input->getOption('db-user');
-        $dbPass = $input->getOption('db-pass');
+        $dbUser = $this->resolvedDbUser;
+        $dbPass = $this->resolvedDbPass;
+        $redisPass = $this->resolvedRedisPass;
+        $mysqlRootPass = $this->resolvedMysqlRootPass;
 
         $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
         $mysqlPort = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
         $redisPort = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+
+        $nginxPortBinding = EnvironmentSecurityService::getSafePortBinding($httpPort, false);
+        $mysqlPortBinding = EnvironmentSecurityService::getSafePortBinding($mysqlPort, true);
+        $redisPortBinding = EnvironmentSecurityService::getSafePortBinding($redisPort, true);
+
+        $mysqlUserEnvBlock = '';
+        if ($dbUser !== 'root') {
+            $mysqlUserEnvBlock = "      MYSQL_USER: {$dbUser}\n      MYSQL_PASSWORD: {$dbPass}";
+        }
 
         $vars = [
             '{{PROJECT_NAME}}' => $projectName,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $dbUser,
             '{{DB_PASSWORD}}' => $dbPass,
+            '{{MYSQL_ROOT_PASSWORD}}' => $mysqlRootPass,
+            '{{MYSQL_USER_ENV_BLOCK}}' => $mysqlUserEnvBlock,
             '{{HTTP_PORT}}' => $httpPort,
             '{{MYSQL_PORT}}' => $mysqlPort,
             '{{REDIS_PORT}}' => $redisPort,
+            '{{NGINX_PORT_BINDING}}' => $nginxPortBinding,
+            '{{MYSQL_PORT_BINDING}}' => $mysqlPortBinding,
+            '{{REDIS_PORT_BINDING}}' => $redisPortBinding,
+            '{{REDIS_PASSWORD}}' => $redisPass,
         ];
 
         $this->copyStub("{$stubsDir}/docker-compose.yml.stub", "{$name}/docker-compose.yml", $vars);
@@ -290,8 +335,9 @@ class NewCommand extends Command
         $vars = [
             '{{PROJECT_NAME}}' => $name,
             '{{DB_NAME}}' => $dbName,
-            '{{DB_USER}}' => $input->getOption('db-user'),
-            '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
+            '{{DB_USER}}' => $this->resolvedDbUser,
+            '{{DB_PASSWORD}}' => $this->resolvedDbPass,
+            '{{REDIS_PASSWORD}}' => $this->resolvedRedisPass,
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,

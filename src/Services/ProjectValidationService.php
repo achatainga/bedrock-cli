@@ -211,13 +211,36 @@ class ProjectValidationService
         return $inconsistencies;
     }
 
+    private function parseHostPort(string $portMapping): ?int
+    {
+        $parts = explode(':', $portMapping);
+        if (count($parts) === 3) {
+            // e.g. "127.0.0.1:8080:80" -> 8080
+            return (int) $parts[1];
+        }
+        if (count($parts) === 2) {
+            // e.g. "8080:80" -> 8080
+            return (int) $parts[0];
+        }
+        return null;
+    }
+
     private function getDockerHttpPort(array $dockerCompose): ?int
     {
-        // Check web service first (most common)
+        // Check nginx service first (standard Bedrock)
+        if (isset($dockerCompose['services']['nginx']['ports'])) {
+            foreach ($dockerCompose['services']['nginx']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
+                    return $this->parseHostPort($portMapping);
+                }
+            }
+        }
+
+        // Check web service (most common fallback)
         if (isset($dockerCompose['services']['web']['ports'])) {
             foreach ($dockerCompose['services']['web']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -226,7 +249,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['wordpress']['ports'])) {
             foreach ($dockerCompose['services']['wordpress']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -239,7 +262,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['redis']['ports'])) {
             foreach ($dockerCompose['services']['redis']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':6379') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -253,7 +276,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['mysql']['ports'])) {
             foreach ($dockerCompose['services']['mysql']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -262,7 +285,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['db']['ports'])) {
             foreach ($dockerCompose['services']['db']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }

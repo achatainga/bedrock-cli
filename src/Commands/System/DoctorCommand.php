@@ -44,6 +44,17 @@ class DoctorCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
+        // Security audit check for current project
+        $securityIssues = \Roots\BedrockCli\Services\EnvironmentSecurityService::auditProjectSecurity(getcwd());
+        if (!empty($securityIssues)) {
+            $output->writeln('<fg=red;options=bold>⚠️  VULNERABILIDADES DE SEGURIDAD DETECTADAS EN EL PROYECTO ⚠️</>');
+            foreach ($securityIssues as $sec) {
+                $output->writeln("  <fg=red>[{$sec['severity']}]</> {$sec['message']}");
+            }
+            $output->writeln('<fg=yellow>Ejecuta: bedrock doctor --fix para aplicar hardening automático.</>');
+            $output->writeln('');
+        }
+
         // Si --fix está activado, ejecutar verificación de proyecto
         if ($input->getOption('fix')) {
             return $this->fixProjectIssues($output);
