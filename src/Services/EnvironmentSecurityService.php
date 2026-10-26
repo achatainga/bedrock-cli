@@ -186,11 +186,27 @@ class EnvironmentSecurityService
             }
 
             // Harden DB_PASSWORD if it's default
-            if (preg_match('/^DB_PASSWORD=["\']?(mysql|root)["\']?\s*$/m', $envContent)) {
+            if (preg_match('/^DB_PASSWORD=["\']?(mysql|root)["\']?\s*$/m', $envContent, $m)) {
+                $oldPass = $m[1];
+                $projectName = basename($projectPath);
+                $mysqlContainer = "{$projectName}_mysql";
                 $newDbPass = self::generateSecureSecret(24);
-                $envContent = preg_replace('/^DB_PASSWORD=["\']?(mysql|root)["\']?\s*$/m', "DB_PASSWORD='{$newDbPass}'", $envContent);
-                $output->writeln('<info>  ✓ Reemplazada contraseña por defecto de MySQL con secreto aleatorio de 24 caracteres</info>');
-                $modified = true;
+
+                // If MySQL container is running, rotate password atomically inside the database
+                $proc = new \Symfony\Component\Process\Process([
+                    'docker', 'exec', $mysqlContainer,
+                    'mysql', '-u', 'root', "-p{$oldPass}", '-e',
+                    "ALTER USER 'root'@'%' IDENTIFIED BY '{$newDbPass}'; FLUSH PRIVILEGES;"
+                ]);
+                $proc->run();
+
+                if ($proc->isSuccessful()) {
+                    $envContent = preg_replace('/^DB_PASSWORD=["\']?(mysql|root)["\']?\s*$/m', "DB_PASSWORD='{$newDbPass}'", $envContent);
+                    $output->writeln('<info>  ✓ Actualizada contraseña de MySQL atómicamente en la BD activa y sincronizada en .env</info>');
+                    $modified = true;
+                } else {
+                    $output->writeln('<comment>  ℹ Contraseña de MySQL en .env es por defecto. Para rotarla en caliente sin corte, ejecuta el cambio en la base de datos antes de modificar .env.</comment>');
+                }
             }
 
             if ($modified) {

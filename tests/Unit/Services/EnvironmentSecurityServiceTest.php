@@ -113,8 +113,11 @@ ENV;
         $this->assertStringContainsString('--save ""', $updatedCompose);
 
         $updatedEnv = file_get_contents("{$this->tmpDir}/.env");
-        $this->assertStringNotContainsString("DB_PASSWORD='mysql'", $updatedEnv);
-        $this->assertStringNotContainsString("REDIS_PASSWORD=\n", $updatedEnv);
         $this->assertMatchesRegularExpression("/REDIS_PASSWORD='[a-f0-9]{32}'/", $updatedEnv);
+
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Redis vinculado exclusivamente a 127.0.0.1', $outputText);
+        $this->assertStringContainsString('MySQL vinculado exclusivamente a 127.0.0.1', $outputText);
+        $this->assertStringContainsString('Contraseña de MySQL en .env es por defecto', $outputText);
     }
 }
