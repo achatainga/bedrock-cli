@@ -143,9 +143,22 @@ class PullCommand extends Command
             return Command::FAILURE;
         }
 
+        $localDbPass = 'mysql';
+        $localDbUser = 'root';
+        if (file_exists('.env')) {
+            $localEnv = file_get_contents('.env') ?: '';
+            if (preg_match('/^DB_PASSWORD=(.*)$/m', $localEnv, $m)) {
+                $localDbPass = trim($m[1], ""' \r\n");
+            }
+            if (preg_match('/^DB_USER=(.*)$/m', $localEnv, $m)) {
+                $localDbUser = trim($m[1], ""' \r\n");
+            }
+        }
+
         $importProcess = new Process([
-            'docker', 'compose', 'exec', '-T', 'mysql',
-            'mysql', '-uroot', '-pmysql', $dbName
+            'docker', 'compose', 'exec', '-T',
+            '-e', "MYSQL_PWD={$localDbPass}",
+            'mysql', 'mysql', "-u{$localDbUser}", $dbName
         ]);
         $importProcess->setInput($sqlStream);
         $importProcess->setTimeout(1200);
