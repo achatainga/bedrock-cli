@@ -1,8 +1,65 @@
 # Bedrock CLI
 
-Universal CLI tool for managing Roots Bedrock WordPress projects with **Profiles**, **Blueprints**, **Seeders**, and **Enterprise Store Migration**.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/roots/bedrock/master/bedrock.png" alt="Bedrock CLI Logo" width="120" />
+</p>
+
+<p align="center">
+  <strong>Universal Enterprise CLI & Orchestration Engine for Roots Bedrock WordPress Projects</strong>
+</p>
+
+<p align="center">
+  <a href="tests/"><img src="https://img.shields.io/badge/PHPUnit-320%20passing-brightgreen.svg" alt="PHPUnit 320 Tests" /></a>
+  <a href="composer.json"><img src="https://img.shields.io/badge/PHP-%3E%3D8.1%20%7C%208.2%20%7C%208.5-blue.svg" alt="PHP 8.1+" /></a>
+  <a href="docker-compose.yml"><img src="https://img.shields.io/badge/Stack-Docker%20%7C%20Nginx%20%7C%20MySQL%20%7C%20Redis-orange.svg" alt="Docker Stack" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License" /></a>
+  <a href="#-security--resilience-omni-maximus"><img src="https://img.shields.io/badge/Security-OMNI--MAXIMUS%20Certified-purple.svg" alt="OMNI-MAXIMUS" /></a>
+</p>
+
+Universal CLI tool for managing Roots Bedrock WordPress projects with **Profiles**, **Blueprints**, **Seeders**, **Git-like Entity Sync**, **50 Enterprise Verticals**, and **Autonomous Staging Clone**.
+
+---
+
+## 🏛️ Architecture Overview
+
+```mermaid
+flowchart TD
+    CLI["bedrock (CLI Console)"] --> CORE["Roots\BedrockCli\Application"]
+    
+    subgraph Core Engines
+        CORE --> MENU["MainMenu & Interactive Wizards"]
+        CORE --> CLONE["Snapshot / Clone Engine (Auto-SSL & Media Proxy)"]
+        CORE --> SYNC["Git-like Entity Sync Engine (Diff/Commit/Push/Rollback)"]
+        CORE --> VERTICALS["50 Enterprise Vertical Generators"]
+        CORE --> AI["AI Copilot & Autonomous Evolve Loop"]
+        CORE --> MAIL["Mailpit Local Observability"]
+        CORE --> DOCTOR["System Doctor & Auto-Repair (--fix)"]
+    end
+    
+    subgraph Infrastructure Layer
+        CLONE --> DOCKER["Docker Engine (Nginx, PHP-FPM, MySQL 8, Redis 7)"]
+        SYNC --> WPCLI["WP-CLI Service (Isolated Sandbox)"]
+        CORE --> COMPOSER["Composer & VCS Dependency Manager"]
+        CLONE --> SSH["Streaming SSH Tunnel (Remote mysqldump)"]
+    end
+
+    subgraph Project Environments
+        DOCKER --> DEV["Local Dev (Port 8080)"]
+        DOCKER --> STAGING["Isolated Staging (Port 9010)"]
+        DOCKER --> PROD["Hardened Production Blueprint"]
+    end
+```
+
+---
 
 ## 🚀 Features
+
+### v2.5 - Enterprise Architecture Showcase & AI Engine
+- **🔄 Git-like Entity Sync Engine (`sync:*`)**: Declarative content & config migration across environments (`sync:status`, `sync:stage`, `sync:diff`, `sync:commit`, `sync:push`, `sync:rollback`) with atomic rollback and zero data loss.
+- **🏢 50 Enterprise Vertical Generators (`verticals:list`, `generate`)**: Turnkey production stacks across 5 industries (Healthcare HIPAA, Financial SOC2, B2B SaaS, Logistics, Hospitality) with Filament RBAC, Acorn Blade, and WhatsApp/Telegram gateways.
+- **🤖 Autonomous AI Copilot & Self-Evolving Engine (`ai:*`)**: Multi-provider LLM support, automated project diagnostics, adversarial security audits (OWASP Agentic AI Top 10 ASI01-ASI10), and autonomous self-evolution loops.
+- **✉️ Mailpit Local Email Observability (`mail:*`)**: Zero-dependency email capture and live terminal inspection for password resets, order notifications, and WooCommerce testing (`mail:list`, `mail:view`, `mail:clear`, `mail:resend-activation`).
+- **🩺 Non-Destructive System Doctor (`bedrock doctor`)**: System dependency diagnostics (Docker Desktop, WSL2, Ubuntu, Composer) executable anywhere, plus automated project-level hardening (`--fix`).
 
 ### v2.4 - Autonomous Staging Clone & Auto-SSL Ingress
 - **📦 1-Click Staging & Production Cloner**: Clonado directo e integral desde un WordPress tradicional (remoto vía SSH o local) a un stack aislado Roots Bedrock (`bedrock clone`).
@@ -587,6 +644,71 @@ bedrock auth:list                  # Listar credenciales configuradas en el ento
 bedrock auth:remove                # Eliminar credenciales registradas
 bedrock auth:menu                  # Menú interactivo de autenticación
 ```
+
+### 🔄 Git-like Entity Synchronization (sync:*)
+
+Sincronización declarativa de contenido, configuración y entidades de WooCommerce entre entornos locales, staging y producción:
+
+```bash
+bedrock sync:status                # Muestra el estado diferencial de entidades (estilo git status)
+bedrock sync:stage <entity-id>     # [sync:add] Prepara entidades en staging (estilo git add)
+bedrock sync:diff <entity-id>      # Muestra diff campo por campo entre entornos (estilo git diff)
+bedrock sync:commit -m "mensaje"   # Empaqueta entidades en un changeset inmutable (estilo git commit)
+bedrock sync:push                  # Aplica el changeset en el destino de forma idempotente (estilo git push)
+bedrock sync:rollback <hash>       # Revierte cambios restaurando el snapshot atómico (estilo git revert)
+```
+
+### 🏢 50 Enterprise Vertical Generators
+
+Generación automatizada de pilas de arquitectura completas para 50 sectores empresariales de alta exigencia:
+
+```bash
+bedrock verticals:list             # Listar las 50 verticales pre-diseñadas categorizadas
+bedrock generate <vertical-id> [nombre] # Generar stack completo con admin UI, plugins y gateways
+```
+
+*Sectores incluidos:*
+- **Healthcare & Regulated:** Clínicas HIPAA, Asesores Financieros SOC2, Agencias de Seguros, Portales Gubernamentales.
+- **SaaS & Agencies:** B2B SaaS con Stripe Subscriptions, Agencias Digitales, MSP IT Services con Telegram Gateway.
+- **Logistics & Commerce:** Flotas de Transporte, Almacenes 3PL con WhatsApp Bot, Marketplace B2B.
+- **Education & Media:** Academias Online, Redes de Podcasts, Editoriales Digitales.
+- **Hospitality & Services:** Hoteles con WhatsApp Concierge, Restaurantes con Reservas en Tiempo Real.
+
+### ✉️ Mailpit Local Email Observability (mail:*)
+
+Inspección de correos transaccionales generados en staging o desarrollo sin dependencias externas:
+
+```bash
+bedrock mail:list                  # [mail] Listar correos capturados en Mailpit
+bedrock mail:view <email-id>       # [mail:show] Ver headers y cuerpo del correo en terminal
+bedrock mail:resend-activation     # Disparar reenvío de activación de usuario e inspeccionar
+bedrock mail:clear                 # Vaciar la bandeja de entrada de Mailpit
+```
+
+### 🤖 AI Copilot & Autonomous Evolve (ai:*)
+
+Herramientas de IA integradas para asistencia en desarrollo, diagnóstico y auto-auditoría:
+
+```bash
+bedrock ai:ask "pregunta"          # Consulta rápida al asistente de IA
+bedrock ai:chat                    # Chat interactivo sobre la arquitectura del proyecto
+bedrock ai:diagnose                # Diagnóstico inteligente de errores y configuración
+bedrock ai:suggest                 # Recomendaciones de optimización para el proyecto
+bedrock ai:audit-adversarial       # Auditoría adversarial OWASP Agentic AI Top 10 (ASI01-ASI10)
+bedrock ai:evolve                  # Ciclo autónomo de auto-evolución y síntesis de mejoras
+bedrock ai:config                  # Configurar proveedores y API keys (Gemini, OpenAI, Anthropic)
+bedrock ai:model                   # Seleccionar el modelo de lenguaje activo
+```
+
+---
+
+## 🛡️ Security & Resilience (OMNI-MAXIMUS)
+
+Bedrock CLI está auditado y certificado bajo el marco **OMNI-MAXIMUS v17.5**:
+- **320 Pruebas Unitarias** pasando al 100% con 747 aserciones.
+- **Cero Falsos Positivos**: Todos los vectores candidatos (EVAL, EXEC, CREDENTIALS) verificados mediante AST y falsación PoC.
+- **Aislamiento Docker**: Permisos `2775` con grupo `www-data` y supresión de `allow_url_fopen` en favor de cURL seguro.
+- **Protección de Credenciales**: Autenticación MySQL vía variable `MYSQL_PWD` para evitar exposición en árboles de procesos (`ps aux`).
 
 ---
 

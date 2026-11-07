@@ -40,6 +40,11 @@ class PullCommand extends Command
 
         $dumpFile = $localFile ?: 'godaddy_dump.sql';
 
+        if ($localFile && !file_exists($localFile)) {
+            $output->writeln("<error>✗ No se encontró el archivo de volcado local '{$localFile}'.</error>");
+            return Command::FAILURE;
+        }
+
         if (!$localFile) {
             $output->writeln("<info>Iniciando volcado remoto desde SSH: {$remote}...</info>");
 
@@ -148,10 +153,10 @@ class PullCommand extends Command
         if (file_exists('.env')) {
             $localEnv = file_get_contents('.env') ?: '';
             if (preg_match('/^DB_PASSWORD=(.*)$/m', $localEnv, $m)) {
-                $localDbPass = trim($m[1], ""' \r\n");
+                $localDbPass = trim($m[1], " \"'\r\n");
             }
             if (preg_match('/^DB_USER=(.*)$/m', $localEnv, $m)) {
-                $localDbUser = trim($m[1], ""' \r\n");
+                $localDbUser = trim($m[1], " \"'\r\n");
             }
         }
 

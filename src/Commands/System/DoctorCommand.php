@@ -34,8 +34,12 @@ class DoctorCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->ensureBedrockProject($input, $output)) {
-            return Command::FAILURE;
+        // Si --fix está activado, requerir un proyecto Bedrock válido
+        if ($input->getOption('fix')) {
+            if (!$this->ensureBedrockProject($input, $output)) {
+                return Command::FAILURE;
+            }
+            return $this->fixProjectIssues($output);
         }
 
         $output->writeln('');
@@ -44,20 +48,20 @@ class DoctorCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
 
-        // Security audit check for current project
-        $securityIssues = \Roots\BedrockCli\Services\EnvironmentSecurityService::auditProjectSecurity(getcwd());
-        if (!empty($securityIssues)) {
-            $output->writeln('<fg=red;options=bold>⚠️  VULNERABILIDADES DE SEGURIDAD DETECTADAS EN EL PROYECTO ⚠️</>');
-            foreach ($securityIssues as $sec) {
-                $output->writeln("  <fg=red>[{$sec['severity']}]</> {$sec['message']}");
+        // Si estamos dentro de un proyecto Bedrock, auditar seguridad específica del proyecto
+        if ($this->isBedrockProject(getcwd())) {
+            $securityIssues = \Roots\BedrockCli\Services\EnvironmentSecurityService::auditProjectSecurity(getcwd());
+            if (!empty($securityIssues)) {
+                $output->writeln('<fg=red;options=bold>⚠️  VULNERABILIDADES DE SEGURIDAD DETECTADAS EN EL PROYECTO ⚠️</>');
+                foreach ($securityIssues as $sec) {
+                    $output->writeln("  <fg=red>[{$sec['severity']}]</> {$sec['message']}");
+                }
+                $output->writeln('<fg=yellow>Ejecuta: bedrock doctor --fix para aplicar hardening automático.</>');
+                $output->writeln('');
             }
-            $output->writeln('<fg=yellow>Ejecuta: bedrock doctor --fix para aplicar hardening automático.</>');
+        } else {
+            $output->writeln('<fg=gray>ℹ️  No se detectó un proyecto Bedrock en el directorio actual. Verificando dependencias del sistema...</>');
             $output->writeln('');
-        }
-
-        // Si --fix está activado, ejecutar verificación de proyecto
-        if ($input->getOption('fix')) {
-            return $this->fixProjectIssues($output);
         }
 
         // Detectar OS
