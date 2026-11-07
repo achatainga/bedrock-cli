@@ -18,25 +18,6 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class SetupCommand extends Command
 {
     use ProjectSelectorTrait;
-    
-    private StateService $stateService;
-    private DockerService $dockerService;
-    private WpCliService $wpCliService;
-    private ProjectValidationService $validationService;
-    
-    public function __construct(
-        StateService $stateService,
-        DockerService $dockerService,
-        WpCliService $wpCliService,
-        ProjectValidationService $validationService
-    ) {
-        $this->stateService = $stateService;
-        $this->dockerService = $dockerService;
-        $this->wpCliService = $wpCliService;
-        $this->validationService = $validationService;
-        parent::__construct();
-    }
-    
     protected function configure(): void
     {
         $this
@@ -73,17 +54,12 @@ class SetupCommand extends Command
         $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
         $output->writeln('');
         
-        // [NUEVO] Asegurar permisos correctos
-        $this->ensureComposerPermissions($output);
-        $this->ensureUploadsPermissions($output);
-        
         // 1. Detectar estado
         $output->writeln('<info>Detectando estado del proyecto...</info>');
         $output->writeln('');
         
-        // Use injected services
-        $stateService = $this->stateService;
-        $validationService = $this->validationService;
+        $stateService = new StateService();
+        $validationService = new ProjectValidationService();
         
         // Use unified validation logic
         $projectPath = getcwd();
@@ -250,7 +226,8 @@ class SetupCommand extends Command
         
         $output->writeln('<info>Iniciando Docker Desktop...</info>');
         
-        $this->dockerService->up();
+        $docker = new DockerService();
+        $docker->up();
         
         sleep(5);
         
@@ -264,8 +241,8 @@ class SetupCommand extends Command
         $docker = $state['config']['docker_compose'] ?? [];
         
         // Defaults desde archivos existentes
-        // Leer puerto actual de docker-compose.yml directamente
-        $dockerPort = $this->readDockerComposePort();
+        // Usar puerto de docker-compose si existe, sino usar el de .env
+        $dockerPort = $docker['web_port'] ?? null;
         $defaultUrl = $dockerPort ? "http://localhost:{$dockerPort}" : ($env['WP_HOME'] ?? 'http://localhost:8080');
         $defaultDbName = $env['DB_NAME'] ?? $docker['db_name'] ?? 'bedrock';
         
@@ -294,8 +271,8 @@ class SetupCommand extends Command
         // Obtener título actual de WordPress si existe
         $defaultTitle = 'Mi Sitio';
         if ($state['wp_installed']) {
-            $docker = $this->dockerService;
-            $wpcli = $this->wpCliService;
+            $docker = new DockerService();
+            $wpcli = new WpCliService($docker);
             $getTitleProcess = $wpcli->custom('option get blogname 2>/dev/null');
             $getTitleProcess->run();
             if ($getTitleProcess->isSuccessful() && !empty(trim($getTitleProcess->getOutput()))) {
@@ -312,34 +289,12 @@ class SetupCommand extends Command
         $adminPassword = $helper->ask($input, $output, new Question('Contraseña admin [admin]: ', 'admin'));
         $adminEmail = $helper->ask($input, $output, new Question('Email admin [admin@example.com]: ', 'admin@example.com'));
         
-        // Selector de idioma
-        $output->writeln('');
-        $locales = [
-            'en_US' => 'English (United States)',
-            'es_ES' => 'Español (España)',
-            'es_VE' => 'Español (Venezuela)',
-            'es_MX' => 'Español (México)',
-            'es_AR' => 'Español (Argentina)',
-            'de_DE' => 'Deutsch (Deutschland)',
-            'fr_FR' => 'Français (France)',
-            'pt_BR' => 'Português (Brasil)'
-        ];
-        
-        $localeQuestion = new \Symfony\Component\Console\Question\ChoiceQuestion(
-            'Selecciona el idioma de WordPress:',
-            array_values($locales),
-            2  // Default: es_VE
-        );
-        $selectedLocaleName = $helper->ask($input, $output, $localeQuestion);
-        $locale = array_search($selectedLocaleName, $locales);
-        
         return [
             'url' => $url,
             'title' => $title,
             'adminUser' => $adminUser,
             'adminPassword' => $adminPassword,
-            'adminEmail' => $adminEmail,
-            'locale' => $locale
+            'adminEmail' => $adminEmail
         ];
     }
     
@@ -374,8 +329,8 @@ class SetupCommand extends Command
     
     private function runSetup(InputInterface $input, OutputInterface $output, array $config, array $state, bool $tutorialMode): int
     {
-        $docker = $this->dockerService;
-        $wpcli = $this->wpCliService;
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
         
         $output->writeln('');
         $output->writeln('<info>Ejecutando setup...</info>');
@@ -386,38 +341,16 @@ class SetupCommand extends Command
         
         // Paso 1: Instalar WordPress
         if (!$state['wp_installed'] && !$input->getOption('skip-wp-install')) {
-            $locale = $config['locale'] ?? 'es_VE';
-            
-            // Descargar idioma ANTES de instalar WordPress
-            if ($locale !== 'en_US') {
-                $output->writeln("<comment>Descargando idioma {$locale}...</comment>");
-                $downloadLang = $wpcli->custom("language core download {$locale}");
-                $downloadLang->run();
-            }
-            
             $output->writeln('<comment>Instalando WordPress...</comment>');            
             $process = $wpcli->coreInstall([
                 'url' => $config['url'],
                 'title' => $config['title'],
                 'admin_user' => $config['adminUser'],
                 'admin_password' => $config['adminPassword'],
-                'admin_email' => $config['adminEmail'],
-                'locale' => $locale
+                'admin_email' => $config['adminEmail']
             ]);
             
             $this->runWithLoader($process, $output, 'Instalando WordPress');
-            
-            // Fix: Forzar actualización de URLs en BD para sobrescribir valores cacheados por Docker
-            if ($process->isSuccessful()) {
-                $cleanUrl = rtrim($config['url'], '/');
-                $wpcli->custom("option update home '{$cleanUrl}'")->run();
-                $wpcli->custom("option update siteurl '{$cleanUrl}/wp'")->run();
-                
-                // Activar idioma descargado
-                if ($locale !== 'en_US') {
-                    $wpcli->custom("site switch-language {$locale}")->run();
-                }
-            }
             
             if (!$process->isSuccessful()) {
                 $output->writeln('<error>✗ Error al instalar WordPress</error>');
@@ -458,8 +391,7 @@ class SetupCommand extends Command
             $output->writeln('<comment>Configurando usuario admin...</comment>');
             
             // Get table prefix from env
-            $projectPath = getcwd();
-            $env = $this->validationService->readEnvFile($projectPath);
+            $env = $validationService->readEnvFile($projectPath);
             $prefix = $env['DB_PREFIX'] ?? 'wp_';
             
             // Verificar si usuario existe
@@ -492,13 +424,6 @@ class SetupCommand extends Command
             $process = $wpcli->custom('acorn vendor:publish --tag=acorn');
             $this->runWithLoader($process, $output, 'Publicando configs');
             
-            // Ajustar permisos de cache
-            $output->writeln('<comment>Ajustando permisos de cache...</comment>');
-            $process = Process::fromShellCommandline('docker-compose exec -T web chown -R www-data:www-data /var/www/html/web/app/cache');
-            $process->run();
-            $process = Process::fromShellCommandline('docker-compose exec -T web chmod -R 755 /var/www/html/web/app/cache');
-            $process->run();
-            
             $output->writeln('<info>✓ Acorn configurado</info>');
         }
         
@@ -526,7 +451,8 @@ class SetupCommand extends Command
         $output->writeln('');
         
         // Marcar paso 2 del wizard como completado
-        $this->stateService->markStepCompleted(2);
+        $stateService = new StateService();
+        $stateService->markStepCompleted(2);
         
         return Command::SUCCESS;
     }
@@ -572,11 +498,6 @@ class SetupCommand extends Command
         $env = $state['config']['env'] ?? [];
         $docker = $state['config']['docker_compose'] ?? [];
         
-        // BUG FIX 1: Corregir inconsistencias de puertos antes de continuar
-        if (!empty($state['inconsistencies'])) {
-            $this->fixPortInconsistencies($output, $state['inconsistencies']);
-        }
-        
         $currentUrl = $env['WP_HOME'] ?? '';
         $newUrl = $config['url'];
         
@@ -590,32 +511,23 @@ class SetupCommand extends Command
         $output->writeln("  Nueva: <fg=white>{$newUrl}</>");
         $output->writeln('');
         
-        // Leer puerto actual de docker-compose.yml
-        $currentPort = $this->readDockerComposePort();
-        
-        // Extraer puerto de URL (si tiene puerto explícito)
+        // Extraer puerto de URL
         $newPort = $this->extractPort($newUrl);
-        
-        // Si URL no tiene puerto explícito, mantener puerto actual
-        if (!$this->hasExplicitPort($newUrl)) {
-            $newPort = $currentPort;
-        }
+        $currentPort = $docker['web_port'] ?? 8080;
         
         // Actualizar .env
         $this->updateEnvFile($newUrl);
         $output->writeln('<info>✓ .env actualizado</info>');
         
-        // Si cambió la URL (host o puerto), necesitamos reiniciar para que Docker lea el nuevo .env
-        if ($currentUrl !== $newUrl || $newPort !== $currentPort) {
-            if ($newPort !== $currentPort) {
-                $output->writeln("<comment>Puerto cambió de {$currentPort} a {$newPort}</comment>");
-                $this->updateDockerComposePort($newPort);
-                $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
-            }
+        // Si cambió puerto, actualizar docker-compose.yml y reconstruir
+        if ($newPort !== $currentPort) {
+            $output->writeln("<comment>Puerto cambió de {$currentPort} a {$newPort}</comment>");
+            $this->updateDockerComposePort($newPort);
+            $output->writeln('<info>✓ docker-compose.yml actualizado</info>');
             
-            // Reconstruir contenedores para que Docker lea el nuevo .env
-            $output->writeln('<comment>Reiniciando contenedores para aplicar cambios de URL...</comment>');
-            $dockerService = $this->dockerService;
+            // Reconstruir contenedores
+            $output->writeln('<comment>Reconstruyendo contenedores...</comment>');
+            $dockerService = new DockerService();
             
             $process = $dockerService->down();
             $this->runWithLoader($process, $output, 'Deteniendo contenedores');
@@ -625,11 +537,8 @@ class SetupCommand extends Command
             $process = $dockerService->up();
             $this->runWithLoader($process, $output, 'Iniciando contenedores');
             
-            sleep(5); // Dar tiempo a MySQL para arrancar
-            $output->writeln('<info>✓ Contenedores reiniciados con nueva configuración</info>');
-        } else {
-            $output->writeln("<info>Puerto actual: {$currentPort} (sin cambios)</info>");
-            $output->writeln('<info>✓ docker-compose.yml sin cambios</info>');
+            sleep(3);
+            $output->writeln('<info>✓ Contenedores reconstruidos</info>');
         }
         
         $output->writeln('');
@@ -642,8 +551,7 @@ class SetupCommand extends Command
         
         // Si es solo número, asumir localhost
         if (preg_match('/^\d+$/', $input)) {
-            $port = (int)$input;
-            return $port === 80 ? 'http://localhost' : "http://localhost:{$input}";
+            return "http://localhost:{$input}";
         }
         
         // Si no tiene protocolo, agregar http://
@@ -666,46 +574,7 @@ class SetupCommand extends Command
             return (int)$matches[1];
         }
         
-        // Si es https, puerto 443, si es http, puerto 80
-        return str_starts_with($url, 'https://') ? 443 : 80;
-    }
-    
-    private function hasExplicitPort(string $url): bool
-    {
-        // Verificar si URL tiene puerto explícito :PUERTO
-        return preg_match('/:\d+/', $url) === 1;
-    }
-    
-    private function readDockerComposePort(): int
-    {
-        // PRIORIDAD 1: Leer de .env (fuente de verdad)
-        $envPath = getcwd() . '/.env';
-        if (file_exists($envPath)) {
-            $envContent = file_get_contents($envPath);
-            
-            // Buscar WP_PORT
-            if (preg_match('/^WP_PORT=(\d+)/m', $envContent, $matches)) {
-                return (int)$matches[1];
-            }
-            
-            // Buscar puerto en WP_HOME
-            if (preg_match('/WP_HOME=.*:(\d+)/m', $envContent, $matches)) {
-                return (int)$matches[1];
-            }
-        }
-        
-        // PRIORIDAD 2: Leer de docker-compose.yml (solo modo full)
-        $dockerPath = getcwd() . '/docker-compose.yml';
-        if (file_exists($dockerPath)) {
-            $content = file_get_contents($dockerPath);
-            // Buscar puerto en formato "PUERTO:80"
-            if (preg_match('/-\s*"(\d+):80"/', $content, $matches)) {
-                return (int)$matches[1];
-            }
-        }
-        
-        // FALLBACK
-        return 80;
+        return 80; // Default
     }
     
     private function updateEnvFile(string $newUrl): void
@@ -717,19 +586,9 @@ class SetupCommand extends Command
         
         $content = file_get_contents($envPath);
         // Reemplazar toda la línea WP_HOME, no solo el valor
-        // Asegurar que no guardamos :80 en el .env
-        $cleanUrl = preg_replace('/:(80|443)$/', '', $newUrl);
-
         $content = preg_replace(
             "/^WP_HOME=.*/m",
-            "WP_HOME=\"{$cleanUrl}\"",
-            $content
-        );
-        
-        // También actualizar APP_URL (Acorn)
-        $content = preg_replace(
-            "/^APP_URL=.*/m",
-            "APP_URL=\"{$cleanUrl}\"",
+            "WP_HOME='{$newUrl}'",
             $content
         );
         file_put_contents($envPath, $content);
@@ -809,17 +668,27 @@ class SetupCommand extends Command
         $output->writeln('');
         $output->writeln('<comment>Configurando plugins...</comment>');
         
+        // Si hay flag --plugins, usarlo
         if ($input->getOption('plugins')) {
             $pluginsToActivate = explode(',', $input->getOption('plugins'));
         } else {
-            $pluginService = new \Roots\BedrockCli\Services\PluginActivationService($wpcli);
-            $projectRoot = getcwd();
-            $plugins = $pluginService->getAvailablePlugins($projectRoot);
+            // Listar plugins disponibles
+            $pluginsDir = getcwd() . '/web/app/plugins';
+            if (!is_dir($pluginsDir)) {
+                $output->writeln('<comment>No hay plugins disponibles</comment>');
+                return;
+            }
+            
+            $plugins = array_filter(scandir($pluginsDir), function($item) use ($pluginsDir) {
+                return $item !== '.' && $item !== '..' && is_dir($pluginsDir . '/' . $item);
+            });
             
             if (empty($plugins)) {
                 $output->writeln('<comment>No hay plugins disponibles</comment>');
                 return;
             }
+            
+            $plugins = array_values($plugins);
             
             $output->writeln('<fg=cyan>Plugins disponibles:</>');
             foreach ($plugins as $idx => $p) {
@@ -827,14 +696,14 @@ class SetupCommand extends Command
             }
             $output->writeln('');
             
-            $question = new Question('¿Qué plugins deseas activar? (números separados por coma, o Enter para omitir): ', '');
+            $question = new Question('¿Qué plugins deseas activar? (nombres separados por coma, o Enter para omitir): ', '');
             $answer = $helper->ask($input, $output, $question);
             
             if (empty($answer)) {
                 return;
             }
             
-            $pluginsToActivate = $pluginService->parsePluginSelection($answer, $plugins);
+            $pluginsToActivate = array_map('trim', explode(',', $answer));
         }
         
         foreach ($pluginsToActivate as $plugin) {
@@ -844,26 +713,7 @@ class SetupCommand extends Command
             $this->runWithLoader($process, $output, "Activando plugin {$plugin}");
             
             if ($process->isSuccessful()) {
-                // Verificar si realmente se activó
-                $checkProcess = $wpcli->custom("plugin is-active {$plugin}");
-                $checkProcess->run();
-                
-                if ($checkProcess->isSuccessful()) {
-                    $output->writeln("<info>✓ Plugin '{$plugin}' activado</info>");
-                } else {
-                    $output->writeln("<error>✗ Plugin '{$plugin}' falló al activar</error>");
-                    // Mostrar error si existe
-                    $errorOutput = trim($process->getErrorOutput());
-                    if (!empty($errorOutput)) {
-                        $output->writeln("<comment>  Error: {$errorOutput}</comment>");
-                    }
-                }
-            } else {
-                $output->writeln("<error>✗ Plugin '{$plugin}' falló al activar</error>");
-                $errorOutput = trim($process->getErrorOutput());
-                if (!empty($errorOutput)) {
-                    $output->writeln("<comment>  Error: {$errorOutput}</comment>");
-                }
+                $output->writeln("<info>✓ Plugin '{$plugin}' activado</info>");
             }
         }
     }

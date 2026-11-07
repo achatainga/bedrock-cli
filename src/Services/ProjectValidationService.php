@@ -10,19 +10,12 @@ use Symfony\Component\Process\Process;
 
 class ProjectValidationService
 {
-    private ContextDetector $contextDetector;
-
-    public function __construct(ContextDetector $contextDetector)
-    {
-        $this->contextDetector = $contextDetector;
-    }
-
     public function validateDocker(string $projectPath): DockerValidation
     {
         $dockerComposePath = $projectPath . '/docker-compose.yml';
         
         if (!file_exists($dockerComposePath)) {
-            return new DockerValidation(true, 'No Docker (native mode)');
+            return new DockerValidation(false, 'docker-compose.yml not found');
         }
 
         // Check if Docker is running
@@ -45,56 +38,12 @@ class ProjectValidationService
             return new DatabaseValidation(false, 'Database configuration incomplete');
         }
 
-        $dockerComposePath = $projectPath . '/docker-compose.yml';
-        $mode = $this->contextDetector->detectExecutionMode();
-
-        // 1. Modo Híbrido: Conexión TCP al host (Docker expuesto)
-        if ($mode === ExecutionMode::HYBRID) {
-            $dbPort = $env['DB_PORT'] ?? 3306;
-            $connection = @fsockopen('127.0.0.1', $dbPort, $errno, $errstr, 2);
-            
-            if (is_resource($connection)) {
-                fclose($connection);
-                return new DatabaseValidation(true, "Conexión Híbrida OK (127.0.0.1:{$dbPort})");
-            }
-            return new DatabaseValidation(false, "Fallo conexión Híbrida a 127.0.0.1:{$dbPort}. Verifica que Docker esté corriendo.");
+        // Check if containers are running first
+        if (!$this->areContainersRunning($projectPath)) {
+            return new DatabaseValidation(false, 'Docker containers not running');
         }
 
-        // 2. Modo Docker Puro: Usar docker exec directo (más robusto)
-        if ($mode === ExecutionMode::DOCKER) {
-            // Check if containers are running first
-            if (!$this->areContainersRunning($projectPath)) {
-                return new DatabaseValidation(false, 'Docker containers not running');
-            }
-
-            // Test database connection via Docker usando docker exec directo
-            $dbName = trim($env['DB_NAME'], '"\'');
-            $dbUser = trim($env['DB_USER'], '"\'');
-            $dbPass = trim($env['DB_PASSWORD'], '"\'');
-            $projectName = basename($projectPath);
-            
-            // Usar docker exec directo con el nombre del contenedor (más robusto que docker-compose exec)
-            $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>&1";
-            $output = shell_exec($cmd);
-            
-            // Verificar si la salida contiene el nombre de la base de datos (ignorar warnings de MySQL)
-            if ($output && strpos($output, $dbName) !== false && strpos($output, 'ERROR') === false) {
-                return new DatabaseValidation(true, 'Database connection successful (Docker)');
-            }
-            
-            // Si falla, intentar solo verificar que MySQL responde (más permisivo)
-            $pingCmd = "docker exec {$projectName}_mysql mysqladmin -u{$dbUser} -p{$dbPass} ping 2>&1";
-            $pingOutput = shell_exec($pingCmd);
-            
-            if ($pingOutput && strpos($pingOutput, 'mysqld is alive') !== false && strpos($pingOutput, 'ERROR') === false) {
-                return new DatabaseValidation(true, 'MySQL is alive (Docker)');
-            }
-            
-            return new DatabaseValidation(false, 'Database connection failed inside Docker');
-        }
-
-        // 3. Modo Nativo: Conexión MySQL local
-        $dbHost = trim($env['DB_HOST'], '"\'');
+        // Test database connection via Docker
         $dbName = trim($env['DB_NAME'], '"\'');
         $dbUser = trim($env['DB_USER'], '"\'');
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
@@ -119,8 +68,8 @@ class ProjectValidationService
         if ($output && strpos($output, $dbName) !== false) {
             return new DatabaseValidation(true, 'Database connection successful');
         }
-
-        return new DatabaseValidation(false, 'Database not found');
+        
+        return new DatabaseValidation(false, 'Database connection failed or database does not exist');
     }
 
     public function validateWordPress(string $projectPath): WordPressValidation
@@ -174,58 +123,6 @@ class ProjectValidationService
             $isValid,
             $message
         );
-    }
-
-    public function validateTheme(string $projectPath, string $themeName): object
-    {
-        $mode = $this->contextDetector->detectExecutionMode();
-        
-        if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
-            $cmd = "cd {$projectPath} && wp theme status {$themeName} 2>/dev/null";
-        } else {
-            if (!$this->areContainersRunning($projectPath)) {
-                return (object)['isValid' => false, 'message' => 'Docker containers not running'];
-            }
-            $cmd = "cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null";
-        }
-        
-        exec($cmd, $output, $returnCode);
-        
-        $isActive = false;
-        foreach ($output as $line) {
-            if (stripos($line, 'Status') !== false && stripos($line, 'Active') !== false) {
-                $isActive = true;
-                break;
-            }
-        }
-        
-        return (object)[
-            'isValid' => $isActive,
-            'message' => $isActive ? "Theme '{$themeName}' is active" : "Theme '{$themeName}' is not active"
-        ];
-    }
-
-    public function validatePlugins(string $projectPath): object
-    {
-        $mode = $this->contextDetector->detectExecutionMode();
-        
-        if ($mode === ExecutionMode::HYBRID || $mode === ExecutionMode::NATIVE) {
-            $cmd = "cd {$projectPath} && wp plugin list --status=active --format=count 2>/dev/null";
-        } else {
-            if (!$this->areContainersRunning($projectPath)) {
-                return (object)['isValid' => false, 'message' => 'Docker containers not running'];
-            }
-            $cmd = "cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null";
-        }
-        
-        exec($cmd, $output, $returnCode);
-        
-        $count = isset($output[0]) ? (int)trim($output[0]) : 0;
-        
-        return (object)[
-            'isValid' => $count > 0,
-            'message' => $count > 0 ? "{$count} active plugins" : "No active plugins"
-        ];
     }
 
     public function detectInconsistencies(string $projectPath): array

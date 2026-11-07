@@ -15,20 +15,6 @@ use Roots\BedrockCli\Services\ZipService;
 
 class MenuCommand extends Command
 {
-    private DockerService $dockerService;
-    private WpCliService $wpCliService;
-    private UnzipService $unzipService;
-    private ZipService $zipService;
-
-    public function __construct(DockerService $dockerService, WpCliService $wpCliService, UnzipService $unzipService, ZipService $zipService)
-    {
-        parent::__construct();
-        $this->dockerService = $dockerService;
-        $this->wpCliService = $wpCliService;
-        $this->unzipService = $unzipService;
-        $this->zipService = $zipService;
-    }
-
     protected function configure(): void
     {
         $this
@@ -39,6 +25,8 @@ class MenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
         
         while (true) {
             $output->writeln('');
@@ -78,13 +66,13 @@ class MenuCommand extends Command
             
             switch ($index) {
                 case '1':
-                    $this->manageTheme($input, $output, $this->wpCliService);
+                    $this->manageTheme($input, $output, $wpcli);
                     break;
                 case '2':
-                    $this->listFromWordPress($this->wpCliService, $output);
+                    $this->listFromWordPress($wpcli, $output);
                     break;
                 case '3':
-                    $this->update($this->wpCliService, $output);
+                    $this->update($wpcli, $output);
                     break;
                 case '4':
                     $this->unzipThemes($input, $output);
@@ -164,7 +152,8 @@ class MenuCommand extends Command
 
     private function listThemes(WpCliService $wpcli, OutputInterface $output): int
     {
-        $projectRoot = $this->unzipService->detectProjectRoot();
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
         $themesDir = $projectRoot . '/web/app/themes';
 
         if (!is_dir($themesDir)) {
@@ -234,8 +223,9 @@ class MenuCommand extends Command
     private function unzipThemes(InputInterface $input, OutputInterface $output): void
     {
         $helper = $this->getHelper('question');
+        $unzipService = new UnzipService();
         
-        $projectRoot = $this->unzipService->detectProjectRoot();
+        $projectRoot = $unzipService->detectProjectRoot();
         $themesZipDir = $projectRoot . '/themes';
         $themesInstallDir = $projectRoot . '/web/app/themes';
 
@@ -253,7 +243,7 @@ class MenuCommand extends Command
             $themesZipDir = $customPath;
         }
 
-        $zipFiles = $this->unzipService->listZipFiles($themesZipDir);
+        $zipFiles = $unzipService->listZipFiles($themesZipDir);
 
         if (empty($zipFiles)) {
             $output->writeln("<comment>No se encontraron archivos .zip en: {$themesZipDir}</comment>");
@@ -270,7 +260,7 @@ class MenuCommand extends Command
         
         foreach ($zipFiles as $index => $zipFile) {
             $zipPath = $themesZipDir . '/' . $zipFile;
-            $size = $this->unzipService->getFileSize($zipPath);
+            $size = $unzipService->getFileSize($zipPath);
             $choices[(string)($index + 2)] = "<fg=green>{$zipFile}</> ({$size})";
         }
         
@@ -314,7 +304,7 @@ class MenuCommand extends Command
             $zipPath = $themesZipDir . '/' . $zipFile;
             $output->writeln("<info>Descomprimiendo {$zipFile}...</info>");
             
-            if ($this->unzipService->unzip($zipPath, $themesInstallDir, $output)) {
+            if ($unzipService->unzip($zipPath, $themesInstallDir, $output)) {
                 $output->writeln("<info>✓ {$zipFile} descomprimido correctamente</info>");
                 $successCount++;
             } else {
@@ -329,7 +319,8 @@ class MenuCommand extends Command
     private function manageTheme(InputInterface $input, OutputInterface $output, WpCliService $wpcli): void
     {
         $helper = $this->getHelper('question');
-        $projectRoot = $this->unzipService->detectProjectRoot();
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
         $themesDir = $projectRoot . '/web/app/themes';
 
         if (!is_dir($themesDir)) {
@@ -428,14 +419,16 @@ class MenuCommand extends Command
 
     private function compressTheme(OutputInterface $output, string $theme, string $themesDir): void
     {
-        $projectRoot = $this->unzipService->detectProjectRoot();
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
         
         $themePath = $themesDir . '/' . $theme;
         $zipPath = $projectRoot . '/themes/' . $theme . '.zip';
 
         $output->writeln("<info>Comprimiendo {$theme}...</info>");
 
-        if ($this->zipService->compress($themePath, $zipPath, $output)) {
+        $zipService = new ZipService();
+        if ($zipService->compress($themePath, $zipPath, $output)) {
             $output->writeln("<info>✓ Tema comprimido en: {$zipPath}</info>");
         } else {
             $output->writeln('<error>Error al comprimir tema</error>');

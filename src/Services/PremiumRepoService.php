@@ -10,9 +10,9 @@ class PremiumRepoService
     private string $repoUrl;
     private string $branch;
 
-    public function __construct(?AuthService $authService = null, string $repoUrl = '', string $branch = 'main')
+    public function __construct(string $repoUrl = '', string $branch = 'main')
     {
-        $this->authService = $authService ?? new AuthService();
+        $this->authService = new AuthService();
         $this->repoUrl = $repoUrl;
         $this->branch = $branch;
     }
@@ -37,7 +37,7 @@ class PremiumRepoService
         return $result;
     }
 
-    public function scanRepository(string $repoUrl, string $path = 'packages', string $branch = '', string $filterType = ''): array
+    public function scanRepository(string $repoUrl, string $path = 'packages', string $branch = ''): array
     {
         if (!empty($branch)) {
             $this->branch = $branch;
@@ -51,41 +51,9 @@ class PremiumRepoService
         }
 
         $domain = $this->extractDomain($repoUrl);
-        $items = [];
+        $plugins = [];
 
-        // Primero intentar leer packages.json
-        $packagesJson = $this->getPackagesJson($repoUrl, $domain);
-        
-        if ($packagesJson) {
-            // Filtrar por tipo si se especifica
-            foreach ($packagesJson['packages'] ?? [] as $packageName => $versions) {
-                $latestVersion = array_key_first($versions);
-                $packageData = $versions[$latestVersion];
-                
-                // Filtrar por tipo si se especifica
-                if (!empty($filterType)) {
-                    $packageType = $packageData['type'] ?? '';
-                    if ($packageType !== $filterType) {
-                        continue;
-                    }
-                }
-                
-                $slug = basename($packageName);
-                $allVersions = array_keys($versions);
-                
-                $items[] = [
-                    'slug' => $slug,
-                    'name' => ucwords(str_replace('-', ' ', $slug)),
-                    'versions' => $allVersions,
-                    'latest' => $latestVersion,
-                    'type' => $packageData['type'] ?? 'wordpress-plugin'
-                ];
-            }
-            
-            return $items;
-        }
-
-        // Fallback: escanear directorios (método antiguo)
+        // Obtener lista de directorios en packages/
         $contents = $this->getDirectoryContents($repoUrl, $path, $domain);
 
         if (!is_array($contents)) {
@@ -98,20 +66,20 @@ class PremiumRepoService
             }
             
             if ($item['type'] === 'tree') {
-                $itemSlug = $item['name'];
-                $versions = $this->getPluginVersions($repoUrl, "{$path}/{$itemSlug}", $domain);
+                $pluginSlug = $item['name'];
+                $versions = $this->getPluginVersions($repoUrl, "{$path}/{$pluginSlug}", $domain);
                 
-                $items[] = [
-                    'slug' => $itemSlug,
-                    'name' => ucwords(str_replace('-', ' ', $itemSlug)),
+                // Agregar plugin incluso sin versiones (fallback a 'latest')
+                $plugins[] = [
+                    'slug' => $pluginSlug,
+                    'name' => ucwords(str_replace('-', ' ', $pluginSlug)),
                     'versions' => !empty($versions) ? $versions : ['latest'],
-                    'latest' => $versions[0] ?? 'latest',
-                    'type' => 'wordpress-plugin' // Asumimos plugin por defecto
+                    'latest' => $versions[0] ?? 'latest'
                 ];
             }
         }
 
-        return $items;
+        return $plugins;
     }
 
     private function extractDomain(string $url): string
@@ -293,48 +261,5 @@ class PremiumRepoService
 
         usort($versions, 'version_compare');
         return array_reverse($versions);
-    }
-    
-    private function getPackagesJson(string $repoUrl, string $domain): ?array
-    {
-        $auth = $this->authService->loadAuthForDomain($domain);
-        
-        if (str_contains($domain, 'gitlab')) {
-            preg_match('#gitlab\.com[:/](.+?)(?:\.git)?$#', $repoUrl, $matches);
-            $projectPath = urlencode($matches[1] ?? '');
-            $encodedPath = urlencode('packages.json');
-            $apiUrl = "https://gitlab.com/api/v4/projects/{$projectPath}/repository/files/{$encodedPath}/raw?ref={$this->branch}";
-            $headers = ["Authorization: Bearer {$auth['token']}"];
-        } elseif (str_contains($domain, 'github')) {
-            preg_match('#github\.com[:/](.+?)/(.+?)(?:\.git)?$#', $repoUrl, $matches);
-            $owner = $matches[1] ?? '';
-            $repo = $matches[2] ?? '';
-            $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/contents/packages.json?ref={$this->branch}";
-            $headers = [
-                "Authorization: token {$auth['token']}",
-                "Accept: application/vnd.github.v3.raw"
-            ];
-        } else {
-            return null;
-        }
-
-        $ch = curl_init($apiUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200 || !$response) {
-            return null;
-        }
-
-        return json_decode($response, true);
     }
 }

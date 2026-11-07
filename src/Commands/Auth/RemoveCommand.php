@@ -12,14 +12,6 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 class RemoveCommand extends Command
 {
-    private AuthService $authService;
-
-    public function __construct(AuthService $authService)
-    {
-        $this->authService = $authService;
-        parent::__construct();
-    }
-
     protected function configure(): void
     {
         $this->setName('auth:remove')
@@ -30,7 +22,8 @@ class RemoveCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
-        $auths = $this->authService->listAuth();
+        $authService = new AuthService();
+        $auths = $authService->listAuth();
 
         if (empty($auths)) {
             $output->writeln('<comment>No hay credenciales configuradas</comment>');
@@ -79,7 +72,7 @@ class RemoveCommand extends Command
         }
 
         try {
-            $this->authService->removeAuth($type, $domain);
+            $authService->removeAuth($type, $domain);
             $output->writeln('');
             $output->writeln("<info>✓ Credencial eliminada para {$domain}</info>");
             $output->writeln('');

@@ -15,11 +15,6 @@ class DockerService
 
     public function areContainersUp(): bool
     {
-        // Check if docker-compose.yml exists first
-        if (!file_exists(getcwd() . '/docker-compose.yml')) {
-            return false;
-        }
-        
         $process = new Process(['docker-compose', 'ps', '-q']);
         $process->run();
         return !empty(trim($process->getOutput()));

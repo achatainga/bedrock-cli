@@ -2,8 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\System;
 
-use Roots\BedrockCli\Traits\SpinnerTrait;
-use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,21 +14,6 @@ use Roots\BedrockCli\Services\WpCliService;
 
 class ReinstallCommand extends Command
 {
-    use SpinnerTrait;
-    use ProjectSelectorTrait;
-    
-    private SecurityService $securityService;
-    private DockerService $dockerService;
-    private WpCliService $wpCliService;
-
-    public function __construct(SecurityService $securityService, DockerService $dockerService, WpCliService $wpCliService)
-    {
-        parent::__construct();
-        $this->securityService = $securityService;
-        $this->dockerService = $dockerService;
-        $this->wpCliService = $wpCliService;
-    }
-
     protected function configure(): void
     {
         $this
@@ -40,10 +23,6 @@ class ReinstallCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->ensureBedrockProject($input, $output)) {
-            return Command::FAILURE;
-        }
-        
         $helper = $this->getHelper('question');
         
         $output->writeln('');
@@ -60,7 +39,7 @@ class ReinstallCommand extends Command
         $output->writeln('  6. <fg=green>Instalar WordPress</>      - (con datos guardados)');
         $output->writeln('');
         
-        if (!$this->securityService->confirmDangerousAction(
+        if (!SecurityService::confirmDangerousAction(
             $input,
             $output,
             $helper,
@@ -80,7 +59,9 @@ class ReinstallCommand extends Command
         // 1. Resetear base de datos
         $output->writeln('');
         $output->writeln('<fg=cyan>Paso 1/6: Reseteando base de datos...</>');
-        $process = $this->wpCliService->dbReset();
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
+        $process = $wpcli->dbReset();
         $this->runWithLoader($process, $output, 'Reseteando base de datos');
         
         if (!$process->isSuccessful()) {
@@ -107,14 +88,14 @@ class ReinstallCommand extends Command
         // 5. Docker rebuild
         $output->writeln('');
         $output->writeln('<fg=cyan>Paso 5/6: Reconstruyendo contenedores Docker...</>');
-        $this->dockerService->rebuild();
+        $docker->rebuild();
         $output->writeln('<fg=green>✓ Contenedores reconstruidos</>');
 
         // 6. Instalar WordPress
         if ($wpData) {
             $output->writeln('');
             $output->writeln('<fg=cyan>Paso 6/6: Instalando WordPress...</>');
-            $this->reinstallWordPress($this->wpCliService, $wpData, $output);
+            $this->reinstallWordPress($wpcli, $wpData, $output);
         } else {
             $output->writeln('');
             $output->writeln('<fg=yellow>Paso 6/6: Omitido (no hay datos de instalación)</>');
@@ -220,5 +201,19 @@ class ReinstallCommand extends Command
         }
     }
 
-
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
 }

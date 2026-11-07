@@ -14,13 +14,6 @@ class ImportCommand extends Command
 {
     protected static $defaultName = 'cache:import';
     private const DEFAULT_VERSION = 'imported-zip';
-    private PremiumCacheService $cacheService;
-
-    public function __construct(PremiumCacheService $cacheService)
-    {
-        $this->cacheService = $cacheService;
-        parent::__construct();
-    }
 
     protected function configure(): void
     {
@@ -49,11 +42,11 @@ class ImportCommand extends Command
 
         $io->section("📦 Importando " . basename($zipPath));
 
-
+        $cacheService = new PremiumCacheService();
 
         try {
             $io->text('  ⏳ Extrayendo metadata...');
-            $metadata = $this->cacheService->extractMetadataFromZip($zipPath, $type);
+            $metadata = $cacheService->extractMetadataFromZip($zipPath, $type);
 
             $name = $metadata['name'];
             $version = $metadata['version'];
@@ -103,7 +96,7 @@ class ImportCommand extends Command
             $io->text('  ⏳ Extrayendo contenido...');
             $io->text('  ⏳ Generando composer.json...');
 
-            $this->cacheService->importToCache($zipPath, $name, $version, $type);
+            $cacheService->importToCache($zipPath, $name, $version, $type);
 
             $io->newLine();
             $io->success("✅ {$name} {$version} importado exitosamente");

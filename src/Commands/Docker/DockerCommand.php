@@ -2,7 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\Docker;
 
-use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -17,20 +16,6 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class DockerCommand extends Command
 {
     use ProjectSelectorTrait;
-    use SpinnerTrait;
-    
-    private DockerService $dockerService;
-    private StateService $stateService;
-    
-    public function __construct(
-        DockerService $dockerService,
-        StateService $stateService
-    ) {
-        $this->dockerService = $dockerService;
-        $this->stateService = $stateService;
-        parent::__construct();
-    }
-    
     protected function configure(): void
     {
         $this
@@ -50,24 +35,12 @@ class DockerCommand extends Command
             return Command::FAILURE;
         }
 
-        $docker = $this->dockerService;
+        $docker = new DockerService();
         
         // Verificar si Docker está corriendo
         if (!$docker->isRunning()) {
-            $isLinux = DIRECTORY_SEPARATOR === '/';
-            $dockerName = $isLinux ? 'Docker Engine' : 'Docker Desktop';
-            
             $output->writeln('');
-            $output->writeln("<fg=yellow>{$dockerName} no está en ejecución.</>");
-            
-            if ($isLinux) {
-                $output->writeln('<fg=yellow>Verifica que Docker esté instalado y el servicio activo:</>');
-                $output->writeln('<fg=cyan>  sudo systemctl status docker</>');
-                $output->writeln('<fg=cyan>  sudo systemctl start docker</>');
-                $output->writeln('');
-                return Command::FAILURE;
-            }
-            
+            $output->writeln('<fg=yellow>Docker Desktop no está en ejecución.</>');
             $output->writeln('<fg=cyan>Ejecutando bedrock doctor para verificar/iniciar Docker...</>');
             $output->writeln('');
             
@@ -131,14 +104,13 @@ class DockerCommand extends Command
             $output->writeln(' <fg=cyan>[5]</> 🛠️  Reconstruir (con caché)');
             $output->writeln(' <fg=cyan>[6]</> 📊 Ver estado');
             $output->writeln(' <fg=cyan>[7]</> 📜 Ver logs');
-            $output->writeln(' <fg=cyan>[8]</> ⚙️  Actualizar configuración');
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('<fg=yellow>Opción [0-8]: </>', '0');
+            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
             $index = $helper->ask($input, $output, $question);
             
-            if (!is_numeric($index) || $index < 0 || $index > 8) {
+            if (!is_numeric($index) || $index < 0 || $index > 7) {
                 $output->writeln('<error>Opción inválida</error>');
                 continue;
             }
@@ -170,9 +142,6 @@ class DockerCommand extends Command
                     break;
                 case '7':
                     $this->logs($docker, $output);
-                    break;
-                case '8':
-                    $this->updateConfig($output);
                     break;
             }
             
@@ -318,7 +287,7 @@ class DockerCommand extends Command
             sleep(5);
             $attempt++;
             
-            $docker = $this->dockerService;
+            $docker = new DockerService();
             if ($docker->isRunning()) {
                 $output->writeln('<fg=green>✓ Docker Desktop está funcionando correctamente</>');
                 $output->writeln('');
@@ -341,17 +310,25 @@ class DockerCommand extends Command
         return false;
     }
 
-
+    protected function runWithLoader(Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
 
     private function markStepCompleted(int $stepId): void
     {
-        $this->stateService->markCompleted(getcwd(), $stepId);
-    }
-    
-    private function updateConfig(OutputInterface $output): int
-    {
-        $command = $this->getApplication()->find('docker:update-config');
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
-        return $command->run($input, $output);
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 }

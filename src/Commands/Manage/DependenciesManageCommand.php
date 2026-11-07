@@ -19,15 +19,12 @@ class DependenciesManageCommand extends Command
     private ManagementService $management;
     private DependencyManager $dependencyManager;
 
-    public function __construct(
-        ContextDetector $contextDetector,
-        ManagementService $management,
-        DependencyManager $dependencyManager
-    ) {
-        $this->contextDetector = $contextDetector;
-        $this->management = $management;
-        $this->dependencyManager = $dependencyManager;
+    public function __construct()
+    {
         parent::__construct();
+        $this->contextDetector = new ContextDetector();
+        $this->management = new ManagementService($this->contextDetector);
+        $this->dependencyManager = new DependencyManager($this->management);
     }
 
     protected function configure(): void

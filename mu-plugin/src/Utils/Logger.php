@@ -155,12 +155,4 @@ class Logger
             fclose($fp);
         }
     }
-
-    public function clearLogs(): bool
-    {
-        if (file_exists($this->logFile)) {
-            return unlink($this->logFile);
-        }
-        return false;
-    }
 }

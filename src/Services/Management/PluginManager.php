@@ -62,32 +62,14 @@ class PluginManager
             return $plugins;
         }
 
-        // Obtener plugins instalados del filesystem
-        $installedPlugins = [];
-        if (is_dir('web/app/plugins')) {
-            $installedPlugins = array_diff(scandir('web/app/plugins'), ['.', '..']);
-        }
-
         foreach ($composer['require'] as $package => $version) {
-            // Detectar si es plugin por nombre o convención
-            $isPlugin = str_starts_with($package, 'wpackagist-plugin/') || 
-                       str_contains($package, '/dt24-') ||
-                       str_contains($package, '-plugin') ||
-                       in_array(basename($package), $installedPlugins);
-                       
-            if ($isPlugin) {
+            if (str_starts_with($package, 'wpackagist-plugin/')) {
                 $slug = str_replace('wpackagist-plugin/', '', $package);
-                // Si es custom vendor, usar el nombre del repo como slug
-                if (str_contains($slug, '/')) {
-                    $parts = explode('/', $slug);
-                    $slug = end($parts);
-                }
-                
                 $plugins[$slug] = [
                     'slug' => $slug,
                     'package' => $package,
                     'version' => $version,
-                    'type' => str_starts_with($package, 'wpackagist-plugin/') ? 'public' : 'private'
+                    'type' => 'public'
                 ];
             }
         }

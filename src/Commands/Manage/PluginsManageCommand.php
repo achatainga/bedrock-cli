@@ -28,19 +28,14 @@ class PluginsManageCommand extends Command
     private DependencyManager $dependencyManager;
     private WordPressApiService $wpApi;
 
-    public function __construct(
-        ContextDetector $contextDetector,
-        ManagementService $management,
-        PluginManager $pluginManager,
-        DependencyManager $dependencyManager,
-        WordPressApiService $wpApi
-    ) {
-        $this->contextDetector = $contextDetector;
-        $this->management = $management;
-        $this->pluginManager = $pluginManager;
-        $this->dependencyManager = $dependencyManager;
-        $this->wpApi = $wpApi;
+    public function __construct()
+    {
         parent::__construct();
+        $this->contextDetector = new ContextDetector();
+        $this->management = new ManagementService($this->contextDetector);
+        $this->pluginManager = new PluginManager($this->management);
+        $this->dependencyManager = new DependencyManager($this->management);
+        $this->wpApi = new WordPressApiService();
     }
 
     protected function configure(): void

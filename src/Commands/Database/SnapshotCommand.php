@@ -2,7 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\Database;
 
-use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -12,7 +11,6 @@ use Symfony\Component\Process\Process;
 
 class SnapshotCommand extends Command
 {
-    use SpinnerTrait;
     protected function configure(): void
     {
         $this

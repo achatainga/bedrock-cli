@@ -18,18 +18,6 @@ class SearchCommand extends Command
 {
     use InteractiveSearchTrait;
     use PremiumAssetsTrait;
-    
-    private WordPressApiService $wordPressApiService;
-    private ProfileService $profileService;
-    
-    public function __construct(
-        WordPressApiService $wordPressApiService,
-        ProfileService $profileService
-    ) {
-        $this->wordPressApiService = $wordPressApiService;
-        $this->profileService = $profileService;
-        parent::__construct();
-    }
 
     protected function configure(): void
     {
@@ -48,9 +36,10 @@ class SearchCommand extends Command
         $perPage = (int) $input->getOption('per-page');
         $profileName = $input->getOption('profile');
 
+        $apiService = new WordPressApiService();
         $output->writeln("<info>Searching for themes: {$query}...</info>");
 
-        $result = $this->wordPressApiService->searchThemes($query, $page, $perPage);
+        $result = $apiService->searchThemes($query, $page, $perPage);
 
         if (empty($result['themes'])) {
             $output->writeln('<error>No themes found.</error>');
@@ -117,7 +106,8 @@ class SearchCommand extends Command
         if ($action === '1') {
             // Agregar a profile
             if (!$profileName) {
-                $profiles = array_values($this->profileService->listProfiles());
+                $profileService = new ProfileService();
+                $profiles = array_values($profileService->listProfiles());
                 
                 if (empty($profiles)) {
                     $output->writeln('<comment>No hay profiles creados.</comment>');
@@ -178,18 +168,20 @@ class SearchCommand extends Command
                 }
                 
                 $profileName = $profiles[$profileIndex]['name'];
+            } else {
+                $profileService = new ProfileService();
             }
 
-            if (!$this->profileService->profileExists($profileName)) {
+            if (!$profileService->profileExists($profileName)) {
                 $output->writeln("<error>Profile '{$profileName}' no existe.</error>");
                 return Command::FAILURE;
             }
 
-            $profile = $this->profileService->loadProfile($profileName);
+            $profile = $profileService->loadProfile($profileName);
             $profile['theme']['name'] = $slug;
             $profile['theme']['version'] = $version;
             $profile['theme']['type'] = 'public';
-            $this->profileService->saveProfile($profileName, $profile);
+            $profileService->saveProfile($profileName, $profile);
             $output->writeln("\n<info>✓ Tema agregado al profile '{$profileName}'</info>");
             
         } elseif ($action === '3') {

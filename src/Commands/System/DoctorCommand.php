@@ -5,28 +5,31 @@ namespace Roots\BedrockCli\Commands\System;
 use Roots\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Traits\ProjectSelectorTrait;
+use Roots\BedrockCli\Services\DockerVerificationService;
 
 class DoctorCommand extends Command
 {
     use ProjectSelectorTrait;
-    
+    private string $os;
     private ProjectValidationService $validationService;
-
-    public function __construct(ProjectValidationService $validationService)
+    
+    public function __construct()
     {
         parent::__construct();
-        $this->validationService = $validationService;
+        $this->validationService = new ProjectValidationService();
     }
 
     protected function configure(): void
     {
         $this
             ->setName('doctor')
-            ->setDescription('Verifica la configuración del proyecto y las dependencias del sistema')
-            ->addOption('fix', null, InputOption::VALUE_NONE, 'Intenta reparar problemas detectados automáticamente');
+            ->setDescription('Verificar e instalar dependencias del sistema')
+            ->addOption('fix', null, InputOption::VALUE_NONE, 'Detectar y arreglar problemas automáticamente');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -38,7 +41,7 @@ class DoctorCommand extends Command
             }
             return $this->fixProjectIssues($output);
         }
-        
+
         $output->writeln('');
         $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  BEDROCK DOCTOR - System Check  </> <fg=cyan;options=bold>        ║</>');
@@ -85,46 +88,116 @@ class DoctorCommand extends Command
         
         $verificationService = new DockerVerificationService();
         $projectPath = getcwd();
-        $isFixMode = $input->getOption('fix');
-
-        // 1. Validar Docker
-        $dockerValidation = $this->validationService->validateDocker($projectPath);
-        $output->writeln($this->formatValidation('Docker', $dockerValidation));
-
-        // 2. Validar Base de Datos
-        $dbValidation = $this->validationService->validateDatabase($projectPath);
-        $output->writeln($this->formatValidation('Database', $dbValidation));
-
-        // 3. Validar WordPress
-        $wpValidation = $this->validationService->validateWordPress($projectPath);
-        $output->writeln($this->formatValidation('WordPress', $wpValidation));
         
-        // 4. Validar Acorn
-        $acornValidation = $this->validationService->validateAcorn($projectPath);
-        $output->writeln($this->formatValidation('Acorn', $acornValidation));
+        $success = $verificationService->verifyAndFixProject($projectPath, $output);
         
-        // 5. Detectar Inconsistencias
-        $inconsistencies = $this->validationService->detectInconsistencies($projectPath);
-        if (!empty($inconsistencies)) {
-            $output->writeln('');
-            $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias detectadas:</>');
-            foreach ($inconsistencies as $issue) {
-                $output->writeln("  <comment>⚠</comment> {$issue['message']}");
-            }
+        $output->writeln('');
+        if ($success) {
+            $output->writeln('<fg=green;options=bold>✓ Proyecto verificado y corregido</>');
+            return Command::SUCCESS;
+        } else {
+            $output->writeln('<fg=yellow;options=bold>⚠ Algunos problemas requieren atención manual</>');
+            return Command::FAILURE;
         }
+    }
 
-        if ($isFixMode) {
-            $output->writeln('');
-            $output->writeln('<fg=cyan>🔧 Intentando reparar problemas...</>');
-            // Aquí iría la lógica de reparación, que por ahora es un placeholder.
-            $output->writeln('<info>✓ Lógica de reparación ejecutada.</info>');
+    private function detectOS(OutputInterface $output): void
+    {
+        $uname = php_uname('s');
+        
+        // Detectar WSL en Linux
+        if (stripos($uname, 'Linux') !== false) {
+            if ($this->isWSL()) {
+                $this->os = 'WSL';
+                $output->writeln("<fg=green>Sistema detectado: WSL (Windows Subsystem for Linux)</>");
+            } else {
+                $this->os = 'Linux';
+                $output->writeln("<fg=green>Sistema detectado: Linux</>");
+            }
+        } elseif (stripos($uname, 'Windows') !== false || DIRECTORY_SEPARATOR === '\\') {
+            $this->os = 'Windows';
+            $output->writeln("<fg=green>Sistema detectado: Windows</>");
+        } elseif (stripos($uname, 'Darwin') !== false) {
+            $this->os = 'Mac';
+            $output->writeln("<fg=green>Sistema detectado: Mac</>");
+        } else {
+            $this->os = 'Unknown';
+            $output->writeln("<fg=red>Sistema detectado: Desconocido</>");
         }
         
         $output->writeln('');
+    }
+    
+    private function isWSL(): bool
+    {
+        // Verificar si estamos en WSL
+        return file_exists('/proc/version') && 
+               strpos(file_get_contents('/proc/version'), 'Microsoft') !== false;
+    }
+
+    private function windowsSetup(InputInterface $input, OutputInterface $output): int
+    {
+        $helper = $this->getHelper('question');
+
+        // 1. Verificar/Instalar Chocolatey
+        $output->writeln('<fg=cyan>═══ Paso 1: Chocolatey ═══</>');
+        if (!$this->checkChocolatey($output)) {
+            $question = new ConfirmationQuestion('<fg=yellow>¿Instalar Chocolatey? [s/n] </>', false, '/^(s|si|y|yes)/i');
+            if ($helper->ask($input, $output, $question)) {
+                $this->installChocolatey($output);
+            } else {
+                $output->writeln('<fg=red>Chocolatey es necesario para continuar</>');
+                return Command::FAILURE;
+            }
+        }
+        $output->writeln('');
+
+        // 2. Verificar/Instalar WSL2
+        $output->writeln('<fg=cyan>═══ Paso 2: WSL2 ═══</>');
+        if (!$this->checkWSL($output)) {
+            $question = new ConfirmationQuestion('<fg=yellow>¿Instalar WSL2? (requiere reinicio) [s/n] </>', false, '/^(s|si|y|yes)/i');
+            if ($helper->ask($input, $output, $question)) {
+                $this->installWSL($output);
+                
+                $output->writeln('');
+                $output->writeln('<fg=red;options=bold>⚠️  REINICIO REQUERIDO ⚠️</>');
+                $output->writeln('<fg=yellow>Debes reiniciar tu sistema para completar la instalación de WSL2.</>');
+                $output->writeln('<fg=yellow>Después de reiniciar, ejecuta: bedrock doctor</>');
+                return Command::SUCCESS;
+            }
+        }
+        $output->writeln('');
+
+        // 3. Verificar/Instalar Ubuntu en WSL
+        $output->writeln('<fg=cyan>═══ Paso 3: Ubuntu en WSL ═══</>');
+        if (!$this->checkUbuntu($output)) {
+            $question = new ConfirmationQuestion('<fg=yellow>¿Instalar Ubuntu en WSL? [s/n] </>', false, '/^(s|si|y|yes)/i');
+            if ($helper->ask($input, $output, $question)) {
+                $this->installUbuntu($output);
+            }
+        }
+        $output->writeln('');
+
+        // 4. Verificar/Instalar Docker Desktop
+        $output->writeln('<fg=cyan>═══ Paso 4: Docker Desktop ═══</>');
+        if (!$this->checkDockerDesktop($output)) {
+            $question = new ConfirmationQuestion('<fg=yellow>¿Instalar Docker Desktop? [s/n] </>', false, '/^(s|si|y|yes)/i');
+            if ($helper->ask($input, $output, $question)) {
+                $this->installDockerDesktop($output);
+            }
+        }
+        $output->writeln('');
+
+        // 5. Verificar Docker corriendo
+        $output->writeln('<fg=cyan>═══ Paso 5: Docker en ejecución ═══</>');
+        $this->checkDockerRunning($output);
+        $output->writeln('');
+
+        $output->writeln('<fg=green;options=bold>✓ Verificación completada</>');
         return Command::SUCCESS;
     }
 
-    private function formatValidation($name, $validationObject): string
+    private function wslSetup(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln('<fg=cyan>═══ Verificando Docker en WSL ═══</>');
         

@@ -12,14 +12,6 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
 
 class AddCommand extends Command
 {
-    private AuthService $authService;
-
-    public function __construct(AuthService $authService)
-    {
-        $this->authService = $authService;
-        parent::__construct();
-    }
-
     protected function configure(): void
     {
         $this->setName('auth:add')
@@ -30,6 +22,7 @@ class AddCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        $authService = new AuthService();
 
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -114,12 +107,12 @@ class AddCommand extends Command
         }
 
         try {
-            $this->authService->addAuth($type, $domain, $credentials);
+            $authService->addAuth($type, $domain, $credentials);
             
             $output->writeln('');
             $output->writeln("<info>✓ Credencial agregada para {$domain}</info>");
             $output->writeln('');
-            $output->writeln('<comment>Ubicación:</comment> ' . $this->authService->getAuthFile());
+            $output->writeln('<comment>Ubicación:</comment> ' . $authService->getAuthFile());
             $output->writeln('');
             
             return Command::SUCCESS;

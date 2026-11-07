@@ -2,7 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\Install;
 
-use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -10,7 +9,6 @@ use Symfony\Component\Process\Process;
 
 class UpdateMuPluginCommand extends Command
 {
-    use ProjectSelectorTrait;
     protected function configure(): void
     {
         $this->setName('install:update-mu-plugin')
@@ -23,7 +21,7 @@ class UpdateMuPluginCommand extends Command
         $output->writeln("<fg=magenta>  BEDROCK CLI - UPDATE MU-PLUGIN</>");
         $output->writeln("<fg=magenta>═══════════════════════════════════════════════════════════════</>\n");
 
-        if (!$this->isBedrockProject(getcwd())) {
+        if (!file_exists('web/app/mu-plugins')) {
             $output->writeln("<fg=red>✗ Error: Not a Bedrock project</>");
             return Command::FAILURE;
         }
@@ -46,23 +44,17 @@ class UpdateMuPluginCommand extends Command
             $output->writeln("<fg=green>✓ Old plugin removed</>\n");
         }
 
-        // Copy new plugin - use proper path resolution
-        $sourcePath = $this->findMuPluginSource();
+        // Copy new plugin
+        $sourcePath = __DIR__ . '/../../../mu-plugin';
         
-        if (!$sourcePath || !file_exists($sourcePath)) {
+        if (!file_exists($sourcePath)) {
             $output->writeln("<fg=red>✗ Error: New plugin source not found</>");
             return Command::FAILURE;
         }
 
         // Remove existing if present
         if (file_exists($newPluginDir)) {
-            $output->writeln("<fg=yellow>⚠ Removing old version...</>");
-            $removeResult = $this->recursiveRemove($newPluginDir);
-            if (!$removeResult) {
-                $currentUser = posix_getpwuid(posix_geteuid())['name'];
-                $output->writeln("<fg=red>✗ Permission denied. Run: sudo chown -R {$currentUser}:{$currentUser} web/app/mu-plugins</>");
-                return Command::FAILURE;
-            }
+            $this->recursiveRemove($newPluginDir);
         }
 
         // Copy directory
@@ -89,19 +81,6 @@ class UpdateMuPluginCommand extends Command
         $output->writeln("<fg=gray>  Location: {$newPluginDir}</>\n");
 
         return Command::SUCCESS;
-    }
-
-    private function findMuPluginSource(): ?string
-    {
-        // The mu-plugin source is always relative to the bedrock-cli installation
-        // Since this command is part of bedrock-cli, we can reliably find it
-        $sourcePath = __DIR__ . '/../../../mu-plugin';
-        
-        if (file_exists($sourcePath) && file_exists($sourcePath . '/bedrock-cli-plugin.php')) {
-            return $sourcePath;
-        }
-        
-        return null;
     }
 
     private function getExistingToken(): ?string
@@ -132,20 +111,16 @@ class UpdateMuPluginCommand extends Command
         closedir($dir);
     }
 
-    private function recursiveRemove(string $dir): bool
+    private function recursiveRemove(string $dir): void
     {
-        if (!is_dir($dir)) return true;
+        if (!is_dir($dir)) return;
         
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                if (!$this->recursiveRemove($path)) return false;
-            } else {
-                if (!@unlink($path)) return false;
-            }
+            is_dir($path) ? $this->recursiveRemove($path) : unlink($path);
         }
         
-        return @rmdir($dir);
+        rmdir($dir);
     }
 }

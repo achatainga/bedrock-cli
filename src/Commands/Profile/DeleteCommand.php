@@ -14,10 +14,10 @@ class DeleteCommand extends Command
     protected static $defaultName = 'profile:delete';
     private ProfileService $profileService;
 
-    public function __construct(ProfileService $profileService)
+    public function __construct()
     {
         parent::__construct();
-        $this->profileService = $profileService;
+        $this->profileService = new ProfileService();
     }
 
     protected function configure(): void

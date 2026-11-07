@@ -10,16 +10,6 @@ use Symfony\Component\Process\Process;
 
 class InfoCommand extends Command
 {
-    use ProjectSelectorTrait;
-    
-    private ProjectValidationService $validationService;
-
-    public function __construct(ProjectValidationService $validationService)
-    {
-        parent::__construct();
-        $this->validationService = $validationService;
-    }
-
     protected function configure(): void
     {
         $this
@@ -29,10 +19,6 @@ class InfoCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->ensureBedrockProject($input, $output)) {
-            return Command::FAILURE;
-        }
-        
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
         $output->writeln('<fg=cyan>║</>   ℹ️  INFO - Estado del Proyecto     <fg=cyan>║</>');
@@ -42,13 +28,14 @@ class InfoCommand extends Command
         $output->writeln('');
         
         // Detectar estado usando unified validation service
+        $validationService = new ProjectValidationService();
         $projectPath = getcwd();
         
-        $dockerValidation = $this->validationService->validateDocker($projectPath);
-        $dbValidation = $this->validationService->validateDatabase($projectPath);
-        $wpValidation = $this->validationService->validateWordPress($projectPath);
-        $acornValidation = $this->validationService->validateAcorn($projectPath);
-        $inconsistencies = $this->validationService->detectInconsistencies($projectPath);
+        $dockerValidation = $validationService->validateDocker($projectPath);
+        $dbValidation = $validationService->validateDatabase($projectPath);
+        $wpValidation = $validationService->validateWordPress($projectPath);
+        $acornValidation = $validationService->validateAcorn($projectPath);
+        $inconsistencies = $validationService->detectInconsistencies($projectPath);
         
         // Build state array for compatibility
         $state = [
@@ -94,7 +81,7 @@ class InfoCommand extends Command
         $output->writeln('');
         
         // Estado de Acorn (granular)
-        if ($acornValidation->isPackageInstalled) {
+        if ($state['acorn_installed']) {
             $output->writeln('<fg=cyan;options=bold>Estado de Acorn:</>');
             $output->writeln($this->formatStatus($acornValidation->isPackageInstalled, 'Paquete Composer'));
             $output->writeln($this->formatStatus($acornValidation->isStorageInitialized, 'Storage inicializado'));
@@ -303,7 +290,6 @@ class InfoCommand extends Command
                 ['docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
-            $process->setTimeout(10);
             $process->run();
             
             if ($process->isSuccessful()) {
@@ -330,7 +316,6 @@ class InfoCommand extends Command
                 ['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
-            $process->setTimeout(10);
             $process->run();
             
             if ($process->isSuccessful()) {

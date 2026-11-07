@@ -16,10 +16,10 @@ class ManageCommand extends Command
 
     private ContextDetector $contextDetector;
 
-    public function __construct(ContextDetector $contextDetector)
+    public function __construct()
     {
         parent::__construct();
-        $this->contextDetector = $contextDetector;
+        $this->contextDetector = new ContextDetector();
     }
 
     protected function configure(): void

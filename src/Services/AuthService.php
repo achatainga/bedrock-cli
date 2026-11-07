@@ -129,15 +129,7 @@ class AuthService
             return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         }
         
-        // Try to get from composer itself
-        $output = [];
-        $result = 0;
-        exec('composer config --global home 2>/dev/null', $output, $result);
-        if ($result === 0 && !empty($output[0])) {
-            return trim($output[0]);
-        }
-        
-        // Fallback to standard locations
+        // Fallback a detección manual
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('APPDATA') . DIRECTORY_SEPARATOR . 'Composer';
         }

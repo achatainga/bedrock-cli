@@ -11,16 +11,6 @@ use Roots\BedrockCli\Services\ZipService;
 
 class CompressCommand extends Command
 {
-    private UnzipService $unzipService;
-    private ZipService $zipService;
-
-    public function __construct(UnzipService $unzipService, ZipService $zipService)
-    {
-        parent::__construct();
-        $this->unzipService = $unzipService;
-        $this->zipService = $zipService;
-    }
-
     protected function configure(): void
     {
         $this->setName('plugins:compress')
@@ -31,7 +21,8 @@ class CompressCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $plugin = $input->getArgument('plugin');
-        $projectRoot = $this->unzipService->detectProjectRoot();
+        $unzipService = new UnzipService();
+        $projectRoot = $unzipService->detectProjectRoot();
         $pluginPath = $projectRoot . '/web/app/plugins/' . $plugin;
         $zipPath = $projectRoot . '/plugins/' . $plugin . '.zip';
 
@@ -41,8 +32,9 @@ class CompressCommand extends Command
         }
 
         $output->writeln("<info>Comprimiendo {$plugin}...</info>");
+        $zipService = new ZipService();
         
-        if ($this->zipService->compress($pluginPath, $zipPath, $output)) {
+        if ($zipService->compress($pluginPath, $zipPath, $output)) {
             $output->writeln("<info>✓ Plugin comprimido en: {$zipPath}</info>");
             return Command::SUCCESS;
         }

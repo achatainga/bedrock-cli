@@ -2,7 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\Themes;
 
-use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,20 +12,6 @@ use Roots\BedrockCli\Services\StateService;
 
 class ActivateCommand extends Command
 {
-    use SpinnerTrait;
-    
-    private DockerService $dockerService;
-    private WpCliService $wpCliService;
-    private StateService $stateService;
-
-    public function __construct(DockerService $dockerService, WpCliService $wpCliService, StateService $stateService)
-    {
-        parent::__construct();
-        $this->dockerService = $dockerService;
-        $this->wpCliService = $wpCliService;
-        $this->stateService = $stateService;
-    }
-
     protected function configure(): void
     {
         $this->setName('themes:activate')
@@ -37,7 +22,10 @@ class ActivateCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $theme = $input->getArgument('theme');
-        $process = $this->wpCliService->themeActivate($theme);
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
+
+        $process = $wpcli->themeActivate($theme);
         $this->runWithLoader($process, $output, "Activando tema: {$theme}");
 
         if ($process->isSuccessful()) {
@@ -51,8 +39,23 @@ class ActivateCommand extends Command
 
     private function markStepCompleted(int $stepId): void
     {
-        $this->stateService->markCompleted(getcwd(), $stepId);
+        $stateService = new StateService();
+        $stateService->markCompleted(getcwd(), $stepId);
     }
 
-
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
 }

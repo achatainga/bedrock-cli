@@ -2,14 +2,13 @@
 
 namespace Roots\BedrockCli\Traits;
 
-use Roots\BedrockCli\DTOs\Profile;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 
 trait ThemeManagementTrait
 {
-    protected function manageThemesInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function manageThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         while (true) {
             $this->displayThemesList($profile, $output);
@@ -32,7 +31,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function displayThemesList(Profile|array $profile, OutputInterface $output): void
+    private function displayThemesList(array $profile, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -85,7 +84,7 @@ trait ThemeManagementTrait
         $output->writeln('');
     }
     
-    private function editThemeByNumber(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function editThemeByNumber(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $theme = $this->getThemeByNumber($profile, $num);
         
@@ -118,7 +117,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function getThemeByNumber(Profile|array $profile, int $num): ?array
+    private function getThemeByNumber(array $profile, int $num): ?array
     {
         $index = 1;
         
@@ -163,7 +162,7 @@ trait ThemeManagementTrait
         return null;
     }
     
-    private function changeThemeVersion(Profile|array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
+    private function changeThemeVersion(array &$profile, int $num, InputInterface $input, OutputInterface $output, $helper): void
     {
         $theme = $this->getThemeByNumber($profile, $num);
         $question = new Question("Nueva versión [{$theme['version']}]: ", $theme['version']);
@@ -171,34 +170,22 @@ trait ThemeManagementTrait
         
         $index = 1;
         
-        // Extract-modify-reassign pattern for ArrayAccess
-        $themes = $profile['themes'];
-        
-        foreach ($themes['public'] as $key => $t) {
+        foreach ($profile['themes']['public'] as &$t) {
             if ($index === $num) {
                 if (is_array($t)) {
                     $t['version'] = $newVersion;
                 } else {
                     $t = ['slug' => $t, 'version' => $newVersion];
                 }
-                $themes['public'][$key] = $t;
-                $profile['themes'] = $themes;
                 $output->writeln('<info>✓ Versión actualizada</info>');
                 return;
             }
             $index++;
         }
         
-        foreach ($themes['premium'] as $key => $t) {
+        foreach ($profile['themes']['premium'] as &$t) {
             if ($index === $num) {
                 $t['version'] = $newVersion;
-                // Actualizar path si es cache
-                if ($t['source'] === 'cache' && isset($t['path'])) {
-                    $themeSlug = basename(dirname($t['path']));
-                    $t['path'] = "packages/{$themeSlug}/{$newVersion}/";
-                }
-                $themes['premium'][$key] = $t;
-                $profile['themes'] = $themes;
                 $output->writeln('<info>✓ Versión actualizada</info>');
                 return;
             }
@@ -206,7 +193,7 @@ trait ThemeManagementTrait
         }
     }
     
-    private function deleteThemeByNumber(Profile|array &$profile, int $num, OutputInterface $output): void
+    private function deleteThemeByNumber(array &$profile, int $num, OutputInterface $output): void
     {
         $index = 1;
         
@@ -223,10 +210,8 @@ trait ThemeManagementTrait
         
         foreach ($profile['themes']['premium'] ?? [] as $key => $theme) {
             if ($index === $num) {
-                $themes = $profile['themes'];
-                unset($themes['premium'][$key]);
-                $themes['premium'] = array_values($themes['premium']);
-                $profile['themes'] = $themes;
+                unset($profile['themes']['premium'][$key]);
+                $profile['themes']['premium'] = array_values($profile['themes']['premium']);
                 $output->writeln("<info>✓ Theme '{$theme['name']}' eliminado</info>");
                 return;
             }
@@ -244,7 +229,7 @@ trait ThemeManagementTrait
         }
     }
     
-    protected function selectCustomThemesInteractive(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): int
+    protected function selectCustomThemesInteractive(array &$profile, InputInterface $input, OutputInterface $output, $helper): int
     {
         $pathQuestion = new Question('<fg=yellow>Path a carpeta de themes custom:</> ');
         $path = $helper->ask($input, $output, $pathQuestion);
@@ -316,6 +301,6 @@ trait ThemeManagementTrait
         return $added;
     }
     
-    abstract protected function addNewTheme(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
+    abstract protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void;
     abstract protected function getProfileService();
 }

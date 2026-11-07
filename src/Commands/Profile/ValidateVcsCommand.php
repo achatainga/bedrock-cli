@@ -11,18 +11,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ValidateVcsCommand extends Command
 {
-    private ProfileService $profileService;
-    private VcsValidator $vcsValidator;
-    
-    public function __construct(
-        ProfileService $profileService,
-        VcsValidator $vcsValidator
-    ) {
-        $this->profileService = $profileService;
-        $this->vcsValidator = $vcsValidator;
-        parent::__construct();
-    }
-    
     protected function configure(): void
     {
         $this->setName('profile:validate-vcs')
@@ -33,12 +21,15 @@ class ValidateVcsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $name = $input->getArgument('name');
-        if (!$this->profileService->profileExists($name)) {
+        $profileService = new ProfileService();
+        $validator = new VcsValidator();
+
+        if (!$profileService->profileExists($name)) {
             $output->writeln("<error>Profile '{$name}' no existe</error>");
             return Command::FAILURE;
         }
 
-        $profile = $this->profileService->loadProfile($name);
+        $profile = $profileService->loadProfile($name);
         
         $output->writeln('');
         $output->writeln('<info>🔍 Validando VCS plugins...</info>');
@@ -52,7 +43,7 @@ class ValidateVcsCommand extends Command
                 if ($plugin['source'] === 'vcs') {
                     $output->write("  Validando {$plugin['url']}... ");
                     
-                    $info = $this->vcsValidator->getPackageInfo($plugin['url']);
+                    $info = $validator->getPackageInfo($plugin['url']);
                     
                     if ($info) {
                         $profile['require'][$info['name']] = "dev-{$info['branch']}";
@@ -69,7 +60,7 @@ class ValidateVcsCommand extends Command
         $output->writeln('');
 
         if ($updated > 0) {
-            $this->profileService->saveProfile($name, $profile);
+            $profileService->saveProfile($name, $profile);
             $output->writeln("<info>✅ Profile actualizado: {$updated} packages agregados</info>");
         }
 

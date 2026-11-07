@@ -4,7 +4,6 @@ namespace Roots\BedrockCli\Commands\System;
 
 use Roots\BedrockCli\Services\PremiumRepoService;
 use Roots\BedrockCli\Services\StateService;
-use Roots\BedrockCli\Services\ProjectValidationService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -12,25 +11,9 @@ use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Cursor;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\ArrayInput;
-use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 
 class MainMenuCommand extends Command
 {
-    use ProjectSelectorTrait;
-    private StateService $stateService;
-    private PremiumRepoService $premiumRepoService;
-    private ProjectValidationService $validationService;
-    private bool $isWindows;
-
-    public function __construct(StateService $stateService, PremiumRepoService $premiumRepoService, ProjectValidationService $validationService)
-    {
-        parent::__construct();
-        $this->stateService = $stateService;
-        $this->premiumRepoService = $premiumRepoService;
-        $this->validationService = $validationService;
-        $this->isWindows = PHP_OS_FAMILY === 'Windows';
-    }
-
     protected function configure(): void
     {
         $this->setName('menu')
@@ -41,47 +24,31 @@ class MainMenuCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // NUEVO: Activar ProjectSelectorTrait para modo guía
-        if ($input->getOption('guia')) {
-            if (!$this->ensureBedrockProject($input, $output)) {
-                return Command::FAILURE;
-            }
-        }
-        
         $helper = $this->getHelper('question');
         
         // Cargar wizard state si existe
-        $state = $this->stateService->loadState(getcwd());
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
         
         // FASE 2.5: Validaciones con animación y cache
         $skipValidation = $input->getOption('skip-validation');
         
-        if ($state && !$skipValidation) {
+        if ($state && $state['wizard_mode'] && !$skipValidation) {
             $this->showValidationProgress($output);
-            $this->stateService->updateStepValidations(getcwd());
+            $stateService->updateStepValidations(getcwd());
             // Recargar estado después de validaciones
-            $state = $this->stateService->loadState(getcwd());
+            $state = $stateService->loadState(getcwd());
         }
         
-        $currentStep = $state && $state['wizard_mode'] ? $this->stateService->getCurrentStep($state) : null;
+        $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
         
         // FASE 2: Verificar si está en modo guía
         $isGuidedMode = $input->getOption('guia');
         
-        // DEBUG: Mostrar información de modo guía
-        if ($isGuidedMode) {
-            $output->writeln('<comment>DEBUG: Modo guía activado</comment>');
-            $output->writeln('<comment>DEBUG: currentStep = ' . ($currentStep ? 'EXISTS' : 'NULL') . '</comment>');
-            $output->writeln('<comment>DEBUG: state = ' . ($state ? 'EXISTS' : 'NULL') . '</comment>');
-            if ($state) {
-                $output->writeln('<comment>DEBUG: wizard_mode = ' . ($state['wizard_mode'] ?? 'NOT_SET') . '</comment>');
-            }
-        }
-        
         // FASE 2.6: Verificar acceso a repo premium (con skip-validation)
         $needsAuth = false;
         if (!$skipValidation) {
-            $externalServices = $this->stateService->validateExternalServices();
+            $externalServices = $stateService->validateExternalServices();
             $needsAuth = !$externalServices['premium_repo'];
         }
         
@@ -89,8 +56,6 @@ class MainMenuCommand extends Command
             if ($isGuidedMode && $currentStep) {
                 // Pasar flag de skip validation al modo guía
                 return $this->showGuidedMenu($input, $output, $helper, $currentStep, $needsAuth, $skipValidation);
-            } elseif ($isGuidedMode) {
-                $output->writeln('<info>Modo guía solicitado pero no hay wizard activo. Mostrando menú normal.</info>');
             }
             $output->writeln('');
             $version = $this->getApplication() ? $this->getApplication()->getVersion() : 'v2.4';
@@ -102,12 +67,9 @@ class MainMenuCommand extends Command
             
             // Mostrar wizard si está activo
             if ($currentStep) {
-                // BUG FIX 2: No mostrar paso si ya está completado
-                if (!($currentStep['completed'] ?? false)) {
-                    $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
-                    $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
-                    $output->writeln('');
-                }
+                $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
+                $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+                $output->writeln('');
             }
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO & CREACIÓN</>');
@@ -189,10 +151,8 @@ class MainMenuCommand extends Command
                 '9' => 'init:menu',
                 'I' => 'ai',
                 'O' => 'options',
-                'L' => 'language',
                 'A' => 'acorn',
                 'T' => 'auth:menu',
-                'U' => 'install:update-mu-plugin',
                 'B' => 'backup',
                 'R' => 'reinstall',
             ];
@@ -213,7 +173,8 @@ class MainMenuCommand extends Command
     private function checkPremiumRepoAccess(string $repoUrl): bool
     {
         try {
-            $result = $this->premiumRepoService->checkAccess($repoUrl);
+            $service = new PremiumRepoService();
+            $result = $service->checkAccess($repoUrl);
             return $result['needs_auth'] ?? false;
         } catch (\Exception $e) {
             return false;
@@ -236,13 +197,13 @@ class MainMenuCommand extends Command
     {
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
+        $stateService = new StateService();
         $projectPath = getcwd();
-        $isDockerProject = file_exists($projectPath . '/docker-compose.yml');
         
         $validations = [
             'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
             'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
-            ($isDockerProject ? 'Docker containers' : 'Project mode') => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
+            'Docker containers' => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
             'Database connection' => ['delay' => 0.4, 'method' => 'validateDatabaseAccess'],
             'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
             'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
@@ -258,44 +219,38 @@ class MainMenuCommand extends Command
             $result = false;
             switch ($config['method']) {
                 case 'validateProfileExists':
-                    $result = $this->stateService->validateProfileExists($projectPath);
+                    $result = $stateService->validateProfileExists($projectPath);
                     break;
                 case 'validateVcsAccess':
-                    $result = $this->stateService->validateVcsAccess($projectPath);
+                    $result = $stateService->validateVcsAccess($projectPath);
                     break;
                 case 'validateDockerRunning':
-                    $result = $this->stateService->validateDockerRunning($projectPath);
+                    $result = $stateService->validateDockerRunning($projectPath);
                     break;
                 case 'validateDatabaseAccess':
-                    $result = $this->stateService->validateDatabaseAccess($projectPath);
+                    $result = $stateService->validateDatabaseAccess($projectPath);
                     break;
                 case 'validateWordPressInstalled':
-                    $result = $this->stateService->validateWordPressInstalled($projectPath);
+                    $result = $stateService->validateWordPressInstalled($projectPath);
                     break;
                 case 'validateThemeActive':
-                    // Get actual theme from profile
-                    $profileFile = $projectPath . '/.bedrock/profile.json';
-                    $themeName = 'twentytwentyfive'; // default
-                    if (file_exists($profileFile)) {
-                        $profile = json_decode(file_get_contents($profileFile), true);
-                        if (isset($profile['themes'][0]['name'])) {
-                            $themeName = $profile['themes'][0]['name'];
-                        }
-                    }
-                    $result = $this->stateService->validateThemeActive($projectPath, $themeName);
+                    $result = $stateService->validateThemeActive($projectPath, 'twentytwentyfive');
                     break;
                 case 'validatePluginsActive':
-                    $result = $this->stateService->validatePluginsActive($projectPath);
+                    $result = $stateService->validatePluginsActive($projectPath);
                     break;
                 case 'validateAcornConfigured':
-                    $acornValidation = $this->validationService->validateAcorn($projectPath);
+                    // Use unified validation service for granular Acorn status
+                    $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                    $acornValidation = $validationService->validateAcorn($projectPath);
                     $result = $acornValidation->isValid;
                     break;
             }
             
             // Special handling for Acorn to show granular status
             if ($config['method'] === 'validateAcornConfigured') {
-                $acornValidation = $this->validationService->validateAcorn($projectPath);
+                $validationService = new \Roots\BedrockCli\Services\ProjectValidationService();
+                $acornValidation = $validationService->validateAcorn($projectPath);
                 
                 if ($acornValidation->isValid) {
                     $output->writeln(' <fg=green>✓ Fully configured</>');
@@ -320,17 +275,9 @@ class MainMenuCommand extends Command
     {
         while (true) {
             $output->writeln('');
-            // Usar caracteres ASCII en Windows para evitar artefactos visuales
-            $boxTopLeft = $this->isWindows ? '+' : '╔';
-            $boxTopRight = $this->isWindows ? '+' : '╗';
-            $boxBottomLeft = $this->isWindows ? '+' : '╚';
-            $boxBottomRight = $this->isWindows ? '+' : '╝';
-            $boxHorizontal = $this->isWindows ? '-' : '═';
-            $boxVertical = $this->isWindows ? '|' : '║';
-            
-            $output->writeln('<fg=cyan;options=bold>' . $boxTopLeft . str_repeat($boxHorizontal, 39) . $boxTopRight . '</>');
-            $output->writeln('<fg=cyan;options=bold>' . $boxVertical . '</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>' . $boxVertical . '</>');
-            $output->writeln('<fg=cyan;options=bold>' . $boxBottomLeft . str_repeat($boxHorizontal, 39) . $boxBottomRight . '</>');
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>    BEDROCK CLI - MODO GUÍA    </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             
             // Mostrar progreso
@@ -407,20 +354,7 @@ class MainMenuCommand extends Command
                 '4' => 'docker',
                 '8' => 'info',
                 'D' => 'docker',
-                'P' => 'plugins:activate',
-                'T' => 'themes:menu',
-                'A' => 'acorn',
-                'S' => 'seed'
-            ];
-
-            // Ejecutar comando seleccionado
-            $commandMap = [
-                '1' => 'doctor',
-                '2' => 'setup', 
-                '4' => 'docker',
-                '8' => 'info',
-                'D' => 'docker',
-                'P' => 'plugins:activate-multiple',
+                'P' => 'plugins:menu',
                 'T' => 'themes:menu',
                 'A' => 'acorn',
                 'S' => 'seed'
@@ -430,24 +364,23 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
+                // FASE 3: Fix propagación de flags - crear input limpio
                 $cleanInput = new ArrayInput([]);
                 $command->run($cleanInput, $output);
                 
-                // Recargar estado después de ejecutar comando
+                // Recargar estado después de ejecutar comando (con validación rápida)
+                $stateService = new StateService();
                 if (!$skipValidation) {
                     $output->writeln('<fg=cyan>🔄 Actualizando estado...</>');
-                    $this->stateService->updateStepValidations(getcwd());
+                    $stateService->updateStepValidations(getcwd());
                 }
-                $state = $this->stateService->loadState(getcwd());
-                $currentStep = $state && $state['wizard_mode'] ? $this->stateService->getCurrentStep($state) : null;
+                $state = $stateService->loadState(getcwd());
+                $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
                 
                 if (!$currentStep) {
                     $output->writeln('<info>🎉 ¡Todos los pasos completados! El proyecto está listo.</info>');
                     return Command::SUCCESS;
                 }
-                
-                // Continue loop to show menu again
-                continue;
             } else {
                 $output->writeln('<error>Opción inválida.</error>');
                 sleep(1);
@@ -458,7 +391,8 @@ class MainMenuCommand extends Command
     private function showProgressIndicator(OutputInterface $output, array $currentStep): void
     {
         // Obtener estado completo para calcular progreso
-        $state = $this->stateService->loadState(getcwd());
+        $stateService = new StateService();
+        $state = $stateService->loadState(getcwd());
         
         if (!$state || !isset($state['steps'])) {
             return;
@@ -483,43 +417,27 @@ class MainMenuCommand extends Command
     
     private function getMainOptionForStep(array $step): ?array
     {
-        // Use step title instead of hardcoded ID mapping
+        // Dynamic step options based on actual validation state
+        $stateService = new StateService();
         $projectPath = getcwd();
-        $title = strtolower($step['title']);
         
-        if (strpos($title, 'profile') !== false) {
-            return ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'];
-        }
+        // Check actual WordPress installation status
+        $wordpressInstalled = $stateService->validateWordPressInstalled($projectPath);
         
-        if (strpos($title, 'credenciales') !== false || strpos($title, 'auth') !== false) {
-            return ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'];
-        }
+        $stepOptions = [
+            1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
+            2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
+            3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
+            4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
+            5 => $wordpressInstalled ? 
+                ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'] :
+                ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress (CRÍTICO)'],
+            6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
+            7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
+            8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
+        ];
         
-        if (strpos($title, 'docker') !== false) {
-            return ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'];
-        }
-        
-        if (strpos($title, 'wordpress') !== false || strpos($title, 'instalar') !== false) {
-            return ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'];
-        }
-        
-        if (strpos($title, 'tema') !== false || strpos($title, 'theme') !== false) {
-            return ['key' => 'T', 'label' => '🎨 Themes   - Activar tema'];
-        }
-        
-        if (strpos($title, 'plugin') !== false) {
-            return ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'];
-        }
-        
-        if (strpos($title, 'acorn') !== false) {
-            return ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'];
-        }
-        
-        if (strpos($title, 'seed') !== false) {
-            return ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders'];
-        }
-        
-        return null;
+        return $stepOptions[$step['id']] ?? null;
     }
     
     private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int
@@ -538,7 +456,8 @@ class MainMenuCommand extends Command
     
     private function showInconsistencies(OutputInterface $output): void
     {
-        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
         
         if (!empty($inconsistencies)) {
             $output->writeln('<fg=yellow;options=bold>⚠️  Inconsistencias Detectadas (' . count($inconsistencies) . '):</>');
@@ -553,7 +472,8 @@ class MainMenuCommand extends Command
     
     private function hasInconsistencies(): bool
     {
-        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
         return !empty($inconsistencies);
     }
     
@@ -562,7 +482,8 @@ class MainMenuCommand extends Command
         $output->writeln('');
         $output->writeln('<fg=cyan>🔧 Reparando inconsistencias...</>');
         
-        $inconsistencies = $this->stateService->detectInconsistencies(getcwd());
+        $stateService = new StateService();
+        $inconsistencies = $stateService->detectInconsistencies(getcwd());
         
         if (empty($inconsistencies)) {
             $output->writeln('<info>✓ No hay inconsistencias que reparar</info>');

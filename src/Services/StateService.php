@@ -9,9 +9,9 @@ class StateService
 {
     private ProjectValidationService $validationService;
     
-    public function __construct(ProjectValidationService $validationService = null)
+    public function __construct()
     {
-        $this->validationService = $validationService ?? new ProjectValidationService();
+        $this->validationService = new ProjectValidationService();
     }
     public function generateInitialState(string $projectPath, array $config): void
     {
@@ -56,17 +56,15 @@ class StateService
             }
         }
 
-        $stateFile = $this->getStateFilePath($projectPath);
-        $stateDir = dirname($stateFile);
-        if (!is_dir($stateDir)) {
-            @mkdir($stateDir, 0755, true);
-        }
-        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        file_put_contents(
+            "{$projectPath}/bedrock_state.json",
+            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        );
     }
 
     public function loadState(string $projectPath): ?array
     {
-        $file = $this->getStateFilePath($projectPath);
+        $file = "{$projectPath}/bedrock_state.json";
         
         // Si no existe y es un proyecto Bedrock, generarlo
         if (!file_exists($file) && $this->isBedrockProject($projectPath)) {
@@ -77,11 +75,6 @@ class StateService
                 'has_plugins' => true,
                 'has_theme' => true
             ]);
-        }
-        
-        // CRITICAL FIX: Si estamos en bedrock-cli directory, retornar estado vacío para evitar crash del modo guía
-        if (!file_exists($file) && basename($projectPath) === 'bedrock-cli') {
-            return null; // Modo guía se desactiva correctamente
         }
         
         return file_exists($file) ? json_decode(file_get_contents($file), true) : null;
@@ -112,16 +105,10 @@ class StateService
             $state['wizard_mode'] = false;
         }
 
-        $stateFile = $this->getStateFilePath($projectPath);
-        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-    }
-
-    private function getStateFilePath(string $projectPath): string
-    {
-        $home = getenv('HOME') ?: getenv('USERPROFILE');
-        $stateDir = $home . '/.bedrock/states';
-        $projectHash = md5($projectPath);
-        return "{$stateDir}/{$projectHash}.json";
+        file_put_contents(
+            "{$projectPath}/bedrock_state.json",
+            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
     }
 
     public function markStepCompleted(int $stepId): void
@@ -155,7 +142,7 @@ class StateService
             [
                 'id' => 2,
                 'title' => 'Instalar WordPress',
-                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --locale=es_ES",
+                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com",
                 'menu_item' => 'I',
                 'completed' => false,
                 'skippable' => false
@@ -337,13 +324,17 @@ class StateService
 
     /**
      * Verifica acceso a repositorios premium (GitLab, GitHub, etc.)
-     * TODO: Inject PremiumRepoService via DI when needed
      */
     public function validatePremiumRepoAccess(): bool
     {
-        // Skip validation to avoid DI violation and path errors
-        // This validation is not critical for basic menu functionality
-        return true;
+        try {
+            $repoUrl = getenv('PREMIUM_REPO_URL') ?: 'https://gitlab.com/detodo24/detodo24-premium-assets.git';
+            $service = new \Roots\BedrockCli\Services\PremiumRepoService();
+            $result = $service->checkAccess($repoUrl);
+            return !($result['needs_auth'] ?? false);
+        } catch (\Exception $e) {
+            return true; // Asumir acceso OK si hay error
+        }
     }
 
     /**
@@ -540,23 +531,24 @@ class StateService
                     break;
                     
                 case 'theme':
-                    // Get theme from profile
-                    $profileFile = $projectPath . '/.bedrock/profile.json';
-                    if (file_exists($profileFile)) {
-                        $profile = json_decode(file_get_contents($profileFile), true);
-                        $themeName = $profile['themes'][0]['name'] ?? null;
-                        if ($themeName) {
-                            $step['completed'] = $this->validateThemeActive($projectPath, $themeName);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        // Extraer nombre del tema del comando
+                        if (preg_match('/wp theme activate (\w+)/', $step['command'] ?? '', $matches)) {
+                            $step['completed'] = $this->validateThemeActive($projectPath, $matches[1]);
                         }
                     }
                     break;
                     
                 case 'plugins':
-                    $step['completed'] = $this->validatePluginsActive($projectPath);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validatePluginsActive($projectPath);
+                    }
                     break;
                     
                 case 'acorn':
-                    $step['completed'] = $this->validateAcornConfigured($projectPath);
+                    if (isset($step['condition']) && $step['condition'] === 'true') {
+                        $step['completed'] = $this->validateAcornConfigured($projectPath);
+                    }
                     break;
                     
                 case 'seeders':
@@ -584,8 +576,10 @@ class StateService
             }
 
             // Guardar estado actualizado
-            $stateFile = $this->getStateFilePath($projectPath);
-            file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            file_put_contents(
+                "{$projectPath}/bedrock_state.json",
+                json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            );
         }
     }
 }

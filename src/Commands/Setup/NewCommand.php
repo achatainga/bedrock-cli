@@ -15,41 +15,12 @@ use Roots\BedrockCli\Services\ComposerService;
 use Roots\BedrockCli\Services\BlueprintService;
 use Roots\BedrockCli\Services\AuthService;
 use Roots\BedrockCli\Services\StateService;
-use Roots\BedrockCli\Services\ProjectValidationService;
+use Roots\BedrockCli\Services\DockerVerificationService;
 use Roots\BedrockCli\Traits\PremiumAssetsTrait;
-use Roots\BedrockCli\Traits\SpinnerTrait;
-use Roots\BedrockCli\Traits\ProjectCreationTrait;
-use Roots\BedrockCli\Services\WebServerService;
 
 class NewCommand extends Command
 {
-    use PremiumAssetsTrait, SpinnerTrait, ProjectCreationTrait;
-
-    private ProfileService $profileService;
-    private ComposerService $composerService;
-    private BlueprintService $blueprintService;
-    private AuthService $authService;
-    private StateService $stateService;
-    private ProjectValidationService $validationService;
-
-    public function __construct(
-        ProfileService $profileService,
-        ComposerService $composerService,
-        BlueprintService $blueprintService,
-        AuthService $authService,
-        StateService $stateService,
-        ProjectValidationService $validationService,
-        WebServerService $webServerService
-    ) {
-        parent::__construct();
-        $this->profileService = $profileService;
-        $this->composerService = $composerService;
-        $this->blueprintService = $blueprintService;
-        $this->authService = $authService;
-        $this->stateService = $stateService;
-        $this->validationService = $validationService;
-        $this->webServerService = $webServerService;
-    }
+    use PremiumAssetsTrait;
 
     private string $resolvedDbPass = '';
     private string $resolvedDbUser = '';
@@ -73,8 +44,6 @@ class NewCommand extends Command
             ->addOption('port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP (alias de --http-port)')
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
-            ->addOption('mode', null, InputOption::VALUE_REQUIRED, 'Modo de ejecución (full, hybrid, native)', 'full')
-            ->addOption('hybrid-services', null, InputOption::VALUE_REQUIRED, 'Servicios híbridos (separados por coma)', 'mysql,redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
             ->addOption('verify', null, InputOption::VALUE_NONE, 'Verificar y auto-reparar proyecto después de crearlo')
             ->addOption('profile', null, InputOption::VALUE_REQUIRED, 'Profile a usar', 'default');
@@ -146,36 +115,15 @@ class NewCommand extends Command
         // Verificación y auto-fix post-creación (solo si --verify está presente)
         if ($input->getOption('verify') && !$input->getOption('no-docker')) {
             $this->verifyAndFixProject($name, $output);
-            
-            // [NUEVO] Configurar permisos para MU plugin
-            $this->configureComposerPermissions($name, $output);
-            
-            // [NUEVO] Configurar permisos para uploads
-            $this->configureUploadsPermissions($name, $output);
-            
-            // Manejar ubicación del proyecto si usó reverse proxy
-            $httpPortInfo = $this->determineHttpPort($input->getOption('http-port'), $output);
-            if ($httpPortInfo['strategy'] === 'reverse-proxy') {
-                $movedPath = $this->handleProjectLocation($name, 'reverse-proxy', $input, $output);
-                
-                // Si se movió, actualizar nombre para mensajes
-                if ($movedPath) {
-                    $name = basename($movedPath);
-                }
-            }
         }
 
         $output->writeln('');
         $output->writeln("<info>✓ Proyecto '{$name}' creado exitosamente</info>");
         $output->writeln('');
         
-        $mode = $input->getOption('mode') ?: ($input->getOption('no-docker') ? 'native' : 'full');
-        
         $output->writeln('<comment>Próximos pasos:</comment>');
         $output->writeln("  cd {$name}");
-        
-        if ($mode === 'full') {
-            // Modo Full Docker
+        if (!$input->getOption('no-docker')) {
             $output->writeln('  docker-compose up -d');
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
@@ -184,10 +132,10 @@ class NewCommand extends Command
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
             $output->writeln('    --admin_password=admin \\');
-            $output->writeln('    --admin_email=admin@example.com \\');
-            $output->writeln('    --locale=es_ES');
+            $output->writeln('    --admin_email=admin@example.com');
             $output->writeln('');
             
+            // Mostrar instrucciones de Acorn si fue instalado
             if (!$input->getOption('no-acorn')) {
                 $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
                 $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
@@ -202,44 +150,11 @@ class NewCommand extends Command
                 $output->writeln('<comment>    • storage/ (logs, cache, framework)</comment>');
                 $output->writeln('');
             }
-        } elseif ($mode === 'hybrid') {
-            // Modo Híbrido
-            $output->writeln('  docker-compose up -d  # Solo MySQL + Redis');
-            $output->writeln('');
-            $output->writeln('<comment>Instalar WordPress (wp-cli nativo):</comment>');
-            $output->writeln('  wp core install \\');
-            $output->writeln("    --path=/var/www/{$name}/web \\");
-            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: 82) . ' \\');
-            $output->writeln('    --title="Mi Sitio" \\');
-            $output->writeln('    --admin_user=admin \\');
-            $output->writeln('    --admin_password=admin \\');
-            $output->writeln('    --admin_email=admin@example.com \\');
-            $output->writeln('    --locale=es_ES');
-            $output->writeln('');
             
-            if (!$input->getOption('no-acorn')) {
-                $output->writeln('<comment>⚠️  ACORN INSTALADO - Configuración requerida:</comment>');
-                $output->writeln('<comment>  Después de instalar WordPress, ejecuta:</comment>');
-                $output->writeln("<comment>    wp plugin activate acorn --path=/var/www/{$name}/web</comment>");
-                $output->writeln("<comment>    wp acorn acorn:init storage --path=/var/www/{$name}/web</comment>");
-                $output->writeln("<comment>    wp acorn vendor:publish --tag=acorn --path=/var/www/{$name}/web</comment>");
-                $output->writeln('');
-            }
-            
-            $output->writeln('<comment>Nginx ya configurado en puerto ' . ($input->getOption('http-port') ?: 82) . '</comment>');
-        } else {
-            // Modo Native
-            $output->writeln('  composer install');
-            $output->writeln('');
-            $output->writeln('<comment>Configura tu servidor web (Apache/Nginx) apuntando a:</comment>');
-            $output->writeln("  Document Root: {$name}/web");
-        }
-        
-        if ($mode !== 'native') {
-            $output->writeln('');
             $output->writeln('<comment>Lee README.md para workflow completo</comment>');
+        } else {
+            $output->writeln('  composer install');
         }
-        
         $output->writeln('');
         $output->writeln('<comment>Tip: Usa -v, -vv o -vvv para ver output detallado de Composer</comment>');
         $output->writeln('<comment>Ejemplo: bedrock new proyecto -vvv --no-docker</comment>');
@@ -317,14 +232,7 @@ class NewCommand extends Command
 
     private function setupDocker(string $name, InputInterface $input, OutputInterface $output): void
     {
-        $mode = $input->getOption('mode');
-        
-        // Native mode: No generar archivos Docker
-        if ($mode === 'native') {
-            return;
-        }
-
-        $output->writeln('<info>Configurando Docker (' . ucfirst($mode) . ')...</info>');
+        $output->writeln('<info>Configurando Docker...</info>');
 
         $stubsDir = $this->getStubsDir();
         $projectName = $name;
@@ -363,45 +271,16 @@ class NewCommand extends Command
             '{{REDIS_PASSWORD}}' => $redisPass,
         ];
 
-        // 1. Generar docker-compose.yml base desde stub
         $this->copyStub("{$stubsDir}/docker-compose.yml.stub", "{$name}/docker-compose.yml", $vars);
-
-        // 2. Adaptar si es modo Híbrido
-        if ($mode === 'hybrid') {
-            $hybridServices = explode(',', $input->getOption('hybrid-services'));
-            $yamlContent = file_get_contents("{$name}/docker-compose.yml");
-            
-            // Usar Symfony Yaml (ya incluido en dependencias) para manipular estructura
-            $config = \Symfony\Component\Yaml\Yaml::parse($yamlContent);
-            
-            // Eliminar servicios de aplicación (web, nginx)
-            unset($config['services']['web']);
-            unset($config['services']['nginx']);
-            
-            // Filtrar servicios de datos según selección
-            if (!in_array('mysql', $hybridServices)) {
-                unset($config['services']['mysql']);
-            }
-            if (!in_array('redis', $hybridServices)) {
-                unset($config['services']['redis']);
-            }
-            
-            // Guardar YAML modificado
-            file_put_contents("{$name}/docker-compose.yml", \Symfony\Component\Yaml\Yaml::dump($config, 4, 2));
-        }
-
-        // 3. Generar archivos de configuración auxiliares
+        $this->copyStub("{$stubsDir}/Dockerfile.web.stub", "{$name}/Dockerfile.web", $vars);
+        
+        @mkdir("{$name}/docker/nginx", 0755, true);
         @mkdir("{$name}/docker/mysql", 0755, true);
+        
+        $this->copyStub("{$stubsDir}/docker/nginx/default.conf.stub", "{$name}/docker/nginx/default.conf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/client.cnf.stub", "{$name}/docker/mysql/client.cnf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/my.cnf.stub", "{$name}/docker/mysql/my.cnf", $vars);
         $this->copyStub("{$stubsDir}/docker/php-fpm/zz-tuning.conf.stub", "{$name}/docker/php-fpm/zz-tuning.conf", $vars);
-
-        // Archivos específicos de Full Mode
-        if ($mode === 'full') {
-            $this->copyStub("{$stubsDir}/Dockerfile.web.stub", "{$name}/Dockerfile.web", $vars);
-            @mkdir("{$name}/docker/nginx", 0755, true);
-            $this->copyStub("{$stubsDir}/docker/nginx/default.conf.stub", "{$name}/docker/nginx/default.conf", $vars);
-        }
 
         $output->writeln('<info>✓ Archivos Docker creados</info>');
     }
@@ -445,36 +324,10 @@ class NewCommand extends Command
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
         $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
         
-        // Determinar puertos
-        $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
-        $redisPort = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
-        
-        // Determinar hosts según el modo
-        // Full: usa nombres de servicio Docker
-        // Hybrid/Native: usa 127.0.0.1 (Docker mapeado o servicio local)
-        $dbHost = ($mode === 'full') ? 'mysql' : '127.0.0.1';
-        $redisHost = ($mode === 'full') ? 'redis' : '127.0.0.1';
-        
-        // DB_PORT: Full usa 3306 interno, Hybrid/Native usa puerto mapeado
-        $dbPortLine = '';
-        if ($mode === 'full') {
-            $dbPortLine = "\nDB_PORT=3306";
-        } else {
-            $dbPortLine = "\nDB_PORT={$mysqlPort}";
-        }
-        
-        // Agregar REDIS_PORT solo si no es modo full
-        $redisPortLine = '';
-        if ($mode !== 'full') {
-            $redisPortLine = "\nREDIS_PORT={$redisPort}";
-        } else {
-            $redisPortLine = "\nREDIS_PORT=6379";
-        }
-
         // Solo agregar WP_PORT si el puerto no es 80 (evita fallos)
         $wpPortLine = '';
         $wpHomeUrl = 'http://localhost';
-        if ((int)$httpPort !== 80) {
+        if ($httpPort != 80) {
             $wpPortLine = "\nWP_PORT={$httpPort}";
             $wpHomeUrl = "http://localhost:\${WP_PORT}";
         }
@@ -488,9 +341,6 @@ class NewCommand extends Command
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,
-            '{{WP_CACHE}}' => $useRedis ? 'true' : 'false',
-            '{{REDIS_HOST}}' => $redisHost,
-            '{{REDIS_PORT_LINE}}' => $redisPortLine,
             '{{AUTH_KEY}}' => $this->generateKey(),
             '{{SECURE_AUTH_KEY}}' => $this->generateKey(),
             '{{LOGGED_IN_KEY}}' => $this->generateKey(),
@@ -507,8 +357,8 @@ class NewCommand extends Command
 
         if (!$input->getOption('no-docker')) {
             $vars['{{HTTP_PORT}}'] = $httpPort;
-            $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
-            $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
+            $vars['{{MYSQL_PORT}}'] = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
+            $vars['{{REDIS_PORT}}'] = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
             $this->copyStub("{$stubsDir}/README.project.stub", "{$name}/README.md", $vars);
         }
 
@@ -565,6 +415,36 @@ class NewCommand extends Command
     private function generateKey(): string
     {
         return bin2hex(random_bytes(32));
+    }
+
+    private function findFreePort(int $preferred, OutputInterface $output): int
+    {
+        $port = $preferred;
+        $maxAttempts = 100;
+        
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($this->isPortFree($port)) {
+                if ($port !== $preferred) {
+                    $output->writeln("<comment>Puerto {$preferred} ocupado, usando {$port}</comment>");
+                }
+                return $port;
+            }
+            $port++;
+        }
+        
+        return $preferred;
+    }
+
+    private function isPortFree(int $port): bool
+    {
+        $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
+        
+        if (is_resource($connection)) {
+            fclose($connection);
+            return false;
+        }
+        
+        return true;
     }
 
     private function copyApplicationConfig(string $name, OutputInterface $output): void
@@ -631,33 +511,36 @@ class NewCommand extends Command
         }
     }
 
-    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): \Roots\BedrockCli\DTOs\Profile|array|null
+    private function applyProfile(string $name, InputInterface $input, OutputInterface $output): ?array
     {
         $profileName = $input->getOption('profile');
         $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
+
+        $profileService = new ProfileService();
+        $composerService = new ComposerService();
 
         try {
             $profile = $profileService->loadProfile($profileName);
             $profile = is_object($profile) ? $profile->toArray() : $profile;
             
-            // SIEMPRE detectar Docker mode en tiempo real
-            $dockerMode = !$input->getOption('no-docker');
-            if ($dockerMode) {
-                $output->writeln('<fg=yellow>⚠️  Docker detectado. Forzando modo copia para assets premium.</>');                $profile['docker_mode'] = true;
+            // Detectar Docker y actualizar profile si no está definido
+            if (!isset($profile['docker_mode'])) {
+                $dockerMode = !$input->getOption('no-docker');
+                if ($dockerMode) {
+                    $output->writeln('<fg=yellow>⚠️  Docker detectado. Assets premium serán copiados.</>');                    $profile['docker_mode'] = true;
+                    $profileService->saveProfile($profileName, $profile);
+                }
             }
             
-            // Descargar assets premium a caché si no existen
-            $this->downloadPremiumAssetsToCache($profile, $output);
-            
-            $this->composerService->generateFromProfile($profile, $name);
-            $this->composerService->copyProfileToProject($profile, $name);
+            $composerService->generateFromProfile($profile, $name);
+            $composerService->copyProfileToProject($profile, $name);
             
             $output->writeln('<info>Instalando dependencias del profile...</info>');
             $process = new Process(['composer', 'update', '--no-interaction'], $name);
             $process->setTimeout(600);
             $this->runWithLoader($process, $output, 'Instalando dependencias');
             
-            $this->composerService->copyCustomZipFiles($profile, $name);
+            $composerService->copyCustomZipFiles($profile, $name);
             $output->writeln('<info>✓ Archivos .zip copiados</info>');
             
             $output->writeln("<info>✓ Profile '{$profileName}' aplicado exitosamente</info>");
@@ -673,6 +556,8 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Generando blueprints...</info>');
 
+        $profileService = new ProfileService();
+        $blueprintService = new BlueprintService();
         $profileName = $input->getOption('profile');
 
         try {
@@ -738,7 +623,7 @@ class NewCommand extends Command
         return dirname($classFile, 4) . DIRECTORY_SEPARATOR . 'stubs';
     }
 
-    private function installPremiumAssets(string $name, \Roots\BedrockCli\DTOs\Profile|array|null $profile, InputInterface $input, OutputInterface $output): void
+    private function installPremiumAssets(string $name, ?array $profile, InputInterface $input, OutputInterface $output): void
     {
         if (!$profile || empty($profile['plugins']['premium'])) {
             return;
@@ -764,7 +649,8 @@ class NewCommand extends Command
 
     private function copyAuthJson(string $name, OutputInterface $output): void
     {
-        $globalAuth = $this->authService->getAuthFile();
+        $authService = new AuthService();
+        $globalAuth = $authService->getAuthFile();
 
         if (!file_exists($globalAuth)) {
             $output->writeln('<comment>⚠️  auth.json no encontrado, omitiendo...</comment>');
@@ -776,7 +662,7 @@ class NewCommand extends Command
         $output->writeln('<info>✓ auth.json copiado al proyecto</info>');
     }
 
-    private function configureComposerRepositories(string $name, \Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
+    private function configureComposerRepositories(string $name, array $profile, OutputInterface $output): void
     {
         $composerFile = "{$name}/composer.json";
         $composer = json_decode(file_get_contents($composerFile), true);
@@ -797,7 +683,7 @@ class NewCommand extends Command
         }
     }
 
-    private function requirePremiumPlugins(string $name, \Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
+    private function requirePremiumPlugins(string $name, array $profile, OutputInterface $output): void
     {
         foreach ($profile['plugins']['premium'] as $plugin) {
             $package = $plugin['source'] === 'vcs' 
@@ -820,7 +706,7 @@ class NewCommand extends Command
         }
     }
 
-    private function generateWizardState(string $name, InputInterface $input, \Roots\BedrockCli\DTOs\Profile|array|null $profile, OutputInterface $output): void
+    private function generateWizardState(string $name, InputInterface $input, ?array $profile, OutputInterface $output): void
     {
         $output->writeln('<info>Generando wizard de configuración...</info>');
 
@@ -848,7 +734,7 @@ class NewCommand extends Command
             'theme_name' => $themeName
         ];
 
-        $this->stateService->generateInitialState($name, $config);
+        $stateService->generateInitialState($name, $config);
         $output->writeln('<info>✓ bedrock_state.json creado</info>');
     }
     
@@ -857,149 +743,16 @@ class NewCommand extends Command
         $output->writeln('');
         $output->writeln('<info>Verificando proyecto...</info>');
         
+        // Esperar a que los contenedores se inicialicen
+        sleep(3);
+        
+        $verificationService = new DockerVerificationService();
         $projectPath = realpath($name);
         
-        if (!$projectPath) {
-            $output->writeln('<comment>⚠ No se pudo verificar el proyecto</comment>');
-            return;
-        }
-        
-        $inconsistencies = $this->validationService->detectInconsistencies($projectPath);
-        
-        if (empty($inconsistencies)) {
+        if ($projectPath && $verificationService->verifyAndFixProject($projectPath, $output)) {
             $output->writeln('<info>✓ Proyecto verificado y listo</info>');
         } else {
             $output->writeln('<comment>⚠ Usa "bedrock doctor --fix" para resolver problemas</comment>');
         }
-    }
-    
-    private function downloadPremiumAssetsToCache(\Roots\BedrockCli\DTOs\Profile|array $profile, OutputInterface $output): void
-    {
-        $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
-        
-        // Descargar plugins premium
-        if (!empty($profile['plugins']['premium'])) {
-            foreach ($profile['plugins']['premium'] as $plugin) {
-                if ($plugin['source'] === 'cache' && !empty($plugin['path'])) {
-                    try {
-                        if (!$cacheService->pluginExists($plugin['name'], $plugin['version'])) {
-                            $output->writeln("<comment>📥 Descargando {$plugin['name']} v{$plugin['version']}...</comment>");
-                            $cacheService->downloadPlugin(
-                                $plugin['original_url'] ?? $plugin['url'],
-                                $plugin['name'],
-                                $plugin['version'],
-                                $plugin['path']
-                            );
-                            $output->writeln("<info>✓ {$plugin['name']} descargado</info>");
-                        }
-                    } catch (\Exception $e) {
-                        $output->writeln("<comment>⚠ Omitiendo {$plugin['name']}: {$e->getMessage()}</comment>");
-                        // Continuar sin fallar - el plugin se omitirá del profile
-                        continue;
-                    }
-                }
-            }
-        }
-        
-        // Descargar themes premium
-        if (!empty($profile['themes']['premium'])) {
-            foreach ($profile['themes']['premium'] as $theme) {
-                if ($theme['source'] === 'cache' && !empty($theme['path'])) {
-                    try {
-                        if (!$cacheService->themeExists($theme['name'], $theme['version'])) {
-                            $output->writeln("<comment>📥 Descargando {$theme['name']} v{$theme['version']}...</comment>");
-                            $cacheService->downloadTheme(
-                                $theme['original_url'] ?? $theme['url'],
-                                $theme['name'],
-                                $theme['version'],
-                                $theme['path']
-                            );
-                            $output->writeln("<info>✓ {$theme['name']} descargado</info>");
-                        }
-                    } catch (\Exception $e) {
-                        $output->writeln("<comment>⚠ Omitiendo {$theme['name']}: {$e->getMessage()}</comment>");
-                        // Continuar sin fallar - el theme se omitirá del profile
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * Configura permisos 666/777 para que el MU-Plugin pueda ejecutar Composer
-     * desde dentro del contenedor (www-data) modificando archivos del host.
-     */
-    private function configureComposerPermissions(string $name, OutputInterface $output): void
-    {
-        $output->writeln('<info>Ajustando permisos para gestión web de plugins...</info>');
-
-        // 1. Archivos que necesitan escritura (666: rw-rw-rw-)
-        $writeFiles = [
-            "{$name}/composer.json",
-            "{$name}/composer.lock"
-        ];
-
-        foreach ($writeFiles as $file) {
-            if (file_exists($file)) {
-                @chmod($file, 0666);
-                $output->writeln("  ✓ Permisos 666 aplicados a: " . basename($file));
-            }
-        }
-
-        // 2. Directorios que necesitan escritura/ejecución (777: rwxrwxrwx)
-        $writeDirs = [
-            "{$name}/web/app/plugins",
-            "{$name}/web/app/themes"
-        ];
-
-        foreach ($writeDirs as $dir) {
-            if (is_dir($dir)) {
-                @chmod($dir, 0777);
-                $output->writeln("  ✓ Permisos 777 aplicados a: " . str_replace("{$name}/", '', $dir));
-            }
-        }
-
-        // 3. Permisos recursivos para vendor/composer
-        $vendorComposerDir = "{$name}/vendor/composer";
-        if (is_dir($vendorComposerDir)) {
-            $process = Process::fromShellCommandline("chmod -R 777 \"{$vendorComposerDir}\"");
-            $process->run();
-            
-            if ($process->isSuccessful()) {
-                $output->writeln("  ✓ Permisos recursivos 777 aplicados a: vendor/composer");
-            }
-        }
-        
-        $output->writeln('<info>✓ Permisos configurados para gestión web</info>');
-    }
-    
-    /**
-     * Configura permisos para directorio uploads en entorno Docker
-     */
-    private function configureUploadsPermissions(string $name, OutputInterface $output): void
-    {
-        $output->writeln('<info>Configurando permisos para uploads...</info>');
-        
-        $uploadsDir = "{$name}/web/app/uploads";
-        
-        // Crear directorio uploads si no existe
-        if (!is_dir($uploadsDir)) {
-            @mkdir($uploadsDir, 0755, true);
-        }
-        
-        // Configurar permisos para www-data (Docker)
-        $process = Process::fromShellCommandline("chown -R 33:33 \"{$uploadsDir}\" && chmod -R 755 \"{$uploadsDir}\"");
-        $process->run();
-        
-        if ($process->isSuccessful()) {
-            $output->writeln('  ✓ Permisos 755 y owner www-data aplicados a: web/app/uploads');
-        } else {
-            // Fallback: solo permisos sin cambiar owner
-            @chmod($uploadsDir, 0777);
-            $output->writeln('  ✓ Permisos 777 aplicados a: web/app/uploads (fallback)');
-        }
-        
-        $output->writeln('<info>✓ Directorio uploads configurado</info>');
     }
 }

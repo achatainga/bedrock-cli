@@ -10,7 +10,7 @@ class ComposerService
     {
         $this->cacheService = new PremiumCacheService();
     }
-    public function generateFromProfile(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
+    public function generateFromProfile(array $profile, string $projectPath): void
     {
         $composerJsonPath = $projectPath . '/composer.json';
         
@@ -61,21 +61,6 @@ class ComposerService
             }
         }
 
-        // Agregar plugins públicos desde wpackagist
-        if (!empty($profile['plugins']['public'])) {
-            foreach ($profile['plugins']['public'] as $plugin) {
-                if (is_string($plugin)) {
-                    // Formato simple: "woocommerce"
-                    $package = "wpackagist-plugin/{$plugin}";
-                    $composerData['require'][$package] = '*';
-                } else {
-                    // Formato completo: {"slug": "woocommerce", "version": "^8.5"}
-                    $package = "wpackagist-plugin/{$plugin['slug']}";
-                    $composerData['require'][$package] = $plugin['version'];
-                }
-            }
-        }
-
         // Agregar repositorios para plugins premium
         if (!empty($profile['plugins']['premium'])) {
             foreach ($profile['plugins']['premium'] as $plugin) {
@@ -100,12 +85,8 @@ class ComposerService
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
                     }
-                    
-                    // Extraer vendor/name del composer.json del repo
-                    $packageName = $this->getPackageNameFromVcsRepo($plugin['url'], $plugin['name']);
-                    if ($packageName) {
-                        $composerData['require'][$packageName] = $plugin['version'];
-                    }
+                    // NO construir package name desde URL - composer lo resuelve desde composer.json del repo
+                    // El profile debe tener el package name correcto en require
                 } elseif ($plugin['source'] === 'path') {
                     $normalizedPath = str_replace('\\', '/', $plugin['path']);
                     $repo = ['type' => 'path', 'url' => $normalizedPath, 'options' => ['symlink' => $useSymlink]];
@@ -122,16 +103,6 @@ class ComposerService
         if (!empty($profile['themes']['premium'])) {
             foreach ($profile['themes']['premium'] as $theme) {
                 if ($theme['source'] === 'cache') {
-                    // Download theme if not in cache
-                    if (!$this->cacheService->themeExists($theme['name'], $theme['version'])) {
-                        $this->cacheService->downloadTheme(
-                            $theme['original_url'],
-                            $theme['name'],
-                            $theme['version'],
-                            $theme['path']
-                        );
-                    }
-                    
                     $this->cacheService->extractTheme($theme['name'], $theme['version']);
                     $vendor = 'cached';
                     $this->cacheService->clearThemeComposerJson($theme['name'], $theme['version']);
@@ -211,7 +182,7 @@ class ComposerService
         }
     }
 
-    public function copyProfileToProject(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
+    public function copyProfileToProject(array $profile, string $projectPath): void
     {
         $bedrockDir = $projectPath . '/.bedrock';
         
@@ -230,7 +201,7 @@ class ComposerService
         $this->copyCustomZipFiles($profile, $projectPath);
     }
     
-    public function copyCustomZipFiles(\Roots\BedrockCli\DTOs\Profile|array $profile, string $projectPath): void
+    public function copyCustomZipFiles(array $profile, string $projectPath): void
     {
         // Copiar plugins .zip
         if (!empty($profile['plugins']['custom'])) {
@@ -328,31 +299,6 @@ class ComposerService
     {
         // Normalizar a forward slashes para comparación consistente
         return str_replace('\\', '/', $path);
-    }
-    
-    private function getPackageNameFromVcsRepo(string $repoUrl, string $pluginName): ?string
-    {
-        // Intentar clonar temporalmente el repo para leer composer.json
-        $tempDir = sys_get_temp_dir() . '/bedrock-cli-vcs-' . md5($repoUrl);
-        
-        // Si ya existe el temp dir, usarlo
-        if (is_dir($tempDir . '/.git')) {
-            $composerPath = $tempDir . '/composer.json';
-            if (file_exists($composerPath)) {
-                $composer = json_decode(file_get_contents($composerPath), true);
-                if (isset($composer['name'])) {
-                    return $composer['name'];
-                }
-            }
-        }
-        
-        // Fallback: construir desde URL (detodo24dev/plugin-name)
-        if (preg_match('#/([^/]+)/([^/]+?)(?:\.git)?$#', $repoUrl, $matches)) {
-            $vendor = $matches[1];
-            return "{$vendor}/{$pluginName}";
-        }
-        
-        return null;
     }
     
     private function extractVendorFromPluginComposer(string $pluginPath): string

@@ -13,10 +13,10 @@ class ShowCommand extends Command
     protected static $defaultName = 'profile:show';
     private ProfileService $profileService;
 
-    public function __construct(ProfileService $profileService)
+    public function __construct()
     {
         parent::__construct();
-        $this->profileService = $profileService;
+        $this->profileService = new ProfileService();
     }
 
     protected function configure(): void
@@ -48,9 +48,7 @@ class ShowCommand extends Command
         if (!empty($profile['plugins']['public'])) {
             $output->writeln('<info>🔌 Plugins Públicos:</info>');
             foreach ($profile['plugins']['public'] as $plugin) {
-                $name = is_array($plugin) ? ($plugin['slug'] ?? $plugin['name'] ?? 'unknown') : $plugin;
-                $version = is_array($plugin) ? ($plugin['version'] ?? '*') : '*';
-                $output->writeln("  • {$name} ({$version})");
+                $output->writeln("  • {$plugin}");
             }
             $output->writeln('');
         }
@@ -65,31 +63,20 @@ class ShowCommand extends Command
         }
 
         // Tema
-        if (!empty($profile['theme']['name']) || !empty($profile['themes']['premium'][0])) {
-            $output->writeln('<info>🎨 Tema:</info>');
-            if (!empty($profile['theme']['name'])) {
-                $output->writeln("  • Nombre: {$profile['theme']['name']}");
-                $output->writeln("  • Tipo: {$profile['theme']['type']}");
-                if (!empty($profile['theme']['license_env'])) {
-                    $output->writeln("  • Licencia: \${$profile['theme']['license_env']}");
-                }
-            } elseif (!empty($profile['themes']['premium'][0])) {
-                $theme = $profile['themes']['premium'][0];
-                $output->writeln("  • Nombre: {$theme['name']}");
-                $output->writeln("  • Versión: {$theme['version']}");
-                $output->writeln("  • Fuente: {$theme['source']}");
-            }
-            $output->writeln('');
+        $output->writeln('<info>🎨 Tema:</info>');
+        $output->writeln("  • Nombre: {$profile['theme']['name']}");
+        $output->writeln("  • Tipo: {$profile['theme']['type']}");
+        if ($profile['theme']['license_env']) {
+            $output->writeln("  • Licencia: \${$profile['theme']['license_env']}");
         }
+        $output->writeln('');
 
         // Blueprints
-        if (!empty($profile['blueprints'])) {
-            $output->writeln('<info>🏗️  Blueprints:</info>');
-            foreach ($profile['blueprints'] as $env => $config) {
-                $output->writeln("  • <comment>{$env}</comment>: " . count($config['seeders']) . ' seeders');
-            }
-            $output->writeln('');
+        $output->writeln('<info>🏗️  Blueprints:</info>');
+        foreach ($profile['blueprints'] as $env => $config) {
+            $output->writeln("  • <comment>{$env}</comment>: " . count($config['seeders']) . ' seeders');
         }
+        $output->writeln('');
 
         $output->writeln('<comment>JSON completo:</comment>');
         $output->writeln(json_encode($profile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

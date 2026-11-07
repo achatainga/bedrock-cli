@@ -14,18 +14,6 @@ use Symfony\Component\Console\Question\Question;
 
 class InfoCommand extends Command
 {
-    private WordPressApiService $wordPressApiService;
-    private ProfileService $profileService;
-    
-    public function __construct(
-        WordPressApiService $wordPressApiService,
-        ProfileService $profileService
-    ) {
-        $this->wordPressApiService = $wordPressApiService;
-        $this->profileService = $profileService;
-        parent::__construct();
-    }
-    
     protected function configure(): void
     {
         $this->setName('plugin:info')
@@ -39,7 +27,8 @@ class InfoCommand extends Command
         $slug = $input->getArgument('slug');
         $profileName = $input->getOption('profile');
 
-        $plugin = $this->wordPressApiService->getPluginInfo($slug);
+        $apiService = new WordPressApiService();
+        $plugin = $apiService->getPluginInfo($slug);
 
         if (!$plugin) {
             $output->writeln("<error>Plugin '{$slug}' not found.</error>");
@@ -81,14 +70,16 @@ class InfoCommand extends Command
         $versionQuestion = new Question("<question>Version constraint (default: *): </question>", '*');
         $version = $helper->ask($input, $output, $versionQuestion);
 
-        if (!$this->profileService->profileExists($profileName)) {
+        $profileService = new ProfileService();
+
+        if (!$profileService->profileExists($profileName)) {
             $output->writeln("<error>Profile '{$profileName}' does not exist.</error>");
             return Command::FAILURE;
         }
 
-        $profile = $this->profileService->loadProfile($profileName);
+        $profile = $profileService->loadProfile($profileName);
         $profile['plugins']['public'][$slug] = $version;
-        $this->profileService->saveProfile($profileName, $profile);
+        $profileService->saveProfile($profileName, $profile);
 
         $output->writeln("<info>✓ Plugin added to profile '{$profileName}'</info>");
 

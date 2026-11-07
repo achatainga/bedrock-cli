@@ -13,13 +13,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class UpdateVersionCommand extends Command
 {
     protected static $defaultName = 'cache:update-version';
-    private PremiumCacheService $cacheService;
-
-    public function __construct(PremiumCacheService $cacheService)
-    {
-        $this->cacheService = $cacheService;
-        parent::__construct();
-    }
 
     protected function configure(): void
     {
@@ -43,10 +36,10 @@ class UpdateVersionCommand extends Command
             return Command::FAILURE;
         }
 
-
+        $cacheService = new PremiumCacheService();
 
         try {
-            $type = $this->cacheService->updateCacheVersion($name, $oldVersion, $newVersion);
+            $type = $cacheService->updateCacheVersion($name, $oldVersion, $newVersion);
 
             $io->success("✅ Versión actualizada: {$name} {$oldVersion} → {$newVersion}");
 

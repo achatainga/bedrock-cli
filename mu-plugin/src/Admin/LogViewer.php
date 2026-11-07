@@ -12,7 +12,6 @@ class LogViewer
     {
         $this->logger = $logger;
         add_action('wp_ajax_bedrock_cli_get_logs', [$this, 'ajaxGetLogs']);
-        add_action('wp_ajax_bedrock_cli_clear_logs', [$this, 'ajaxClearLogs']);
     }
 
     public function renderPage(): void
@@ -23,7 +22,6 @@ class LogViewer
             
             <div class="bedrock-cli-logs-controls">
                 <button id="refresh-logs" class="button">Refresh</button>
-                <button id="clear-logs" class="button button-secondary">Clear Logs</button>
                 <label>
                     <input type="checkbox" id="auto-refresh"> Auto-refresh (5s)
                 </label>
@@ -45,10 +43,7 @@ class LogViewer
 
     public function ajaxGetLogs(): void
     {
-        if (!check_ajax_referer('bedrock_cli_logs', 'nonce', false)) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
+        check_ajax_referer('bedrock_cli_logs', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
@@ -64,22 +59,6 @@ class LogViewer
             $logs = array_filter($logs, fn($log) => strpos($log, "[{$level}]") !== false);
         }
 
-        wp_send_json_success(['logs' => array_values($logs)]);
-    }
-
-    public function ajaxClearLogs(): void
-    {
-        if (!check_ajax_referer('bedrock_cli_logs', 'nonce', false)) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized');
-            return;
-        }
-
-        $cleared = $this->logger->clearLogs();
-        wp_send_json_success(['message' => $cleared ? 'Logs cleared successfully' : 'No logs to clear']);
+        wp_send_json_success(['logs' => $logs]);
     }
 }

@@ -3,7 +3,6 @@
 namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
-use Roots\BedrockCli\DTOs\Profile;
 
 class ProfileService
 {
@@ -74,28 +73,23 @@ class ProfileService
         return file_exists($this->profilesPath . '/' . $name . '.json');
     }
 
-    public function loadProfile(string $name): Profile
+    public function loadProfile(string $name): array
     {
         if (!$this->profileExists($name)) {
             throw new RuntimeException("Profile '{$name}' no existe");
         }
 
         $content = file_get_contents($this->profilesPath . '/' . $name . '.json');
-        $data = json_decode($content, true);
+        $profile = json_decode($content, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new RuntimeException("Profile '{$name}' contiene JSON inválido: " . json_last_error_msg());
         }
 
-        // Asegurar que docker_mode existe (default: false para compatibilidad)
-        if (!isset($data['docker_mode'])) {
-            $data['docker_mode'] = false;
-        }
-
-        return Profile::fromArray($data);
+        return $profile;
     }
 
-    public function saveProfile(string $name, Profile $profile): void
+    public function saveProfile(string $name, array $data): void
     {
         if (empty($name) || basename($name) !== $name || !preg_match('/^[a-zA-Z0-9_\-\.]+$/', $name)) {
             throw new \InvalidArgumentException("Nombre de profile inválido: '{$name}'");
@@ -110,12 +104,6 @@ class ProfileService
         file_put_contents($this->profilesPath . '/' . $name . '.json', $json);
     }
 
-    public function saveProfileArray(string $name, array $data): void
-    {
-        $profile = Profile::fromArray($data);
-        $this->saveProfile($name, $profile);
-    }
-
     public function listProfiles(): array
     {
         $profiles = [];
@@ -127,7 +115,7 @@ class ProfileService
                 $profile = $this->loadProfile($name);
                 $profiles[$name] = [
                     'name' => $name,
-                    'description' => $profile->description ?? 'Sin descripción',
+                    'description' => $profile['description'] ?? 'Sin descripción',
                     'file' => $file
                 ];
             } catch (RuntimeException $e) {

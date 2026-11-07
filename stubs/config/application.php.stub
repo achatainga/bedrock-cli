@@ -93,9 +93,7 @@ if (!defined('DB_PASSWORD')) {
     Config::define('DB_PASSWORD', env('DB_PASSWORD'));
 }
 if (!defined('DB_HOST')) {
-    $dbHost = env('DB_HOST') ?: 'localhost';
-    $dbPort = env('DB_PORT');
-    Config::define('DB_HOST', $dbPort ? "{$dbHost}:{$dbPort}" : $dbHost);
+    Config::define('DB_HOST', env('DB_HOST') ?: 'localhost');
 }
 if (!defined('DB_CHARSET')) {
     Config::define('DB_CHARSET', 'utf8mb4');
@@ -126,22 +124,6 @@ if (!defined('AUTH_SALT')) Config::define('AUTH_SALT', env('AUTH_SALT'));
 if (!defined('SECURE_AUTH_SALT')) Config::define('SECURE_AUTH_SALT', env('SECURE_AUTH_SALT'));
 if (!defined('LOGGED_IN_SALT')) Config::define('LOGGED_IN_SALT', env('LOGGED_IN_SALT'));
 if (!defined('NONCE_SALT')) Config::define('NONCE_SALT', env('NONCE_SALT'));
-
-/**
- * WP Mail SMTP Configuration
- */
-if (!defined('WPMS_ON')) Config::define('WPMS_ON', env('WPMS_ON') ?: false);
-if (!defined('WPMS_MAILER')) Config::define('WPMS_MAILER', env('WPMS_MAILER') ?: 'smtp');
-if (!defined('WPMS_SMTP_HOST')) Config::define('WPMS_SMTP_HOST', env('WPMS_SMTP_HOST'));
-if (!defined('WPMS_SMTP_PORT')) Config::define('WPMS_SMTP_PORT', env('WPMS_SMTP_PORT') ?: 587);
-if (!defined('WPMS_SMTP_HELO')) Config::define('WPMS_SMTP_HELO', env('WPMS_SMTP_HELO'));
-if (!defined('WPMS_SMTP_HOSTNAME')) Config::define('WPMS_SMTP_HOSTNAME', env('WPMS_SMTP_HOSTNAME'));
-if (!defined('WPMS_SMTP_AUTH')) Config::define('WPMS_SMTP_AUTH', env('WPMS_SMTP_AUTH') ?: false);
-if (!defined('WPMS_SMTP_AUTOTLS')) Config::define('WPMS_SMTP_AUTOTLS', env('WPMS_SMTP_AUTOTLS') ?: false);
-if (!defined('WPMS_SMTP_USER')) Config::define('WPMS_SMTP_USER', env('WPMS_SMTP_USER'));
-if (!defined('WPMS_SMTP_PASS')) Config::define('WPMS_SMTP_PASS', env('WPMS_SMTP_PASS'));
-if (!defined('WPMS_MAIL_FROM')) Config::define('WPMS_MAIL_FROM', env('WPMS_MAIL_FROM'));
-if (!defined('WPMS_MAIL_FROM_NAME')) Config::define('WPMS_MAIL_FROM_NAME', env('WPMS_MAIL_FROM_NAME'));
 
 /**
  * Custom Settings
@@ -175,9 +157,6 @@ if (!defined('DISALLOW_FILE_EDIT')) Config::define('DISALLOW_FILE_EDIT', true);
 
 // Disable plugin and theme updates and installation from the admin
 if (!defined('DISALLOW_FILE_MODS')) Config::define('DISALLOW_FILE_MODS', true);
-
-// Force direct filesystem method to avoid "Could not access filesystem" errors in Docker
-if (!defined('FS_METHOD')) Config::define('FS_METHOD', 'direct');
 
 // Limit the number of post revisions
 if (!defined('WP_POST_REVISIONS')) Config::define('WP_POST_REVISIONS', env('WP_POST_REVISIONS') ?? true);

@@ -14,20 +14,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ThemeCommand extends Command
 {
-    private ContextDetector $contextDetector;
-    private ManagementService $managementService;
-    private ThemeManager $themeManager;
-    private DependencyManager $dependencyManager;
-
-    public function __construct(ContextDetector $contextDetector, ManagementService $managementService, ThemeManager $themeManager, DependencyManager $dependencyManager)
-    {
-        parent::__construct();
-        $this->contextDetector = $contextDetector;
-        $this->managementService = $managementService;
-        $this->themeManager = $themeManager;
-        $this->dependencyManager = $dependencyManager;
-    }
-
     protected function configure(): void
     {
         $this->setName('add:theme')
@@ -39,8 +25,11 @@ class ThemeCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $contextDetector = new ContextDetector();
+        $management = new ManagementService($contextDetector);
+
         try {
-            $this->managementService->requireBedrockProject();
+            $management->requireBedrockProject();
         } catch (\RuntimeException $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             return Command::FAILURE;
@@ -50,12 +39,15 @@ class ThemeCommand extends Command
         $version = $input->getOption('theme-version');
         $activate = $input->getOption('activate');
 
+        $themeManager = new ThemeManager($management);
+        $dependencyManager = new DependencyManager($management);
+
         $output->writeln("<info>Instalando theme: {$slug}</info>");
 
-        $this->themeManager->add($slug, 'wpackagist-theme', $version);
+        $themeManager->add($slug, 'wpackagist-theme', $version);
 
         $package = "wpackagist-theme/{$slug}";
-        $exitCode = $this->dependencyManager->require(
+        $exitCode = $dependencyManager->require(
             $package,
             $version,
             false,

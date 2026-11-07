@@ -9,14 +9,12 @@ use Symfony\Component\Filesystem\Filesystem;
 class PremiumCacheService
 {
     private string $cachePath;
-    private string $themeCachePath;
     private AuthService $authService;
 
     public function __construct()
     {
         $home = str_replace('\\', '/', $this->getHomeDirectory());
         $this->cachePath = $home . '/.bedrock-cli/cache/premium';
-        $this->themeCachePath = $home . '/.bedrock-cli/cache/themes';
         $this->authService = new AuthService();
         $this->ensureCacheDirectory();
     }
@@ -422,30 +420,15 @@ class PremiumCacheService
 
     public function extractTheme(string $name, string $version): string
     {
-        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
+        $themeDir = $this->cachePath . "/themes/{$name}/{$version}";
+        $zipPath = $themeDir . "/{$name}.zip";
         $extractPath = $themeDir . "/extracted";
 
         if (is_dir($extractPath)) {
             return $extractPath;
         }
 
-        // Try both name.zip and slug.zip
-        $possibleNames = [$name . '.zip'];
-        $slug = str_replace('-theme', '', $name);
-        if ($slug !== $name) {
-            $possibleNames[] = $slug . '.zip';
-        }
-        
-        $zipPath = null;
-        foreach ($possibleNames as $zipName) {
-            $testPath = $themeDir . '/' . $zipName;
-            if (file_exists($testPath)) {
-                $zipPath = $testPath;
-                break;
-            }
-        }
-        
-        if (!$zipPath) {
+        if (!file_exists($zipPath)) {
             throw new RuntimeException("Theme {$name} v{$version} no está en caché");
         }
 
@@ -462,20 +445,8 @@ class PremiumCacheService
 
     public function clearThemeComposerJson(string $name, string $version): void
     {
-        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
-        
-        // Try exact name first
-        $themePath = $extractPath . '/' . $name;
-        if (!is_dir($themePath)) {
-            // Try slug (e.g., motta-theme -> motta)
-            $slug = str_replace('-theme', '', $name);
-            if ($slug !== $name && is_dir($extractPath . '/' . $slug)) {
-                $themePath = $extractPath . '/' . $slug;
-            } else {
-                $themePath = $extractPath;
-            }
-        }
-        
+        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
         $composerPath = $themePath . '/composer.json';
         
         if (file_exists($composerPath)) {
@@ -485,20 +456,8 @@ class PremiumCacheService
 
     public function ensureThemeComposerJson(string $name, string $version, string $vendor = 'cached'): void
     {
-        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
-        
-        // Try exact name first
-        $themePath = $extractPath . '/' . $name;
-        if (!is_dir($themePath)) {
-            // Try slug (e.g., motta-theme -> motta)
-            $slug = str_replace('-theme', '', $name);
-            if ($slug !== $name && is_dir($extractPath . '/' . $slug)) {
-                $themePath = $extractPath . '/' . $slug;
-            } else {
-                $themePath = $extractPath;
-            }
-        }
-        
+        $extractPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        $themePath = is_dir($extractPath . '/' . $name) ? $extractPath . '/' . $name : $extractPath;
         $composerPath = $themePath . '/composer.json';
 
         if (file_exists($composerPath)) {
@@ -520,119 +479,19 @@ class PremiumCacheService
 
     public function getThemeCachePath(string $name, string $version): string
     {
-        $extractPath = $this->themeCachePath . "/{$name}/{$version}/extracted";
-        
-        // Check if extracted directory exists
-        if (!is_dir($extractPath)) {
-            return $extractPath;
-        }
-        
-        // First check for exact name match
-        if (is_dir($extractPath . '/' . $name)) {
-            return $extractPath . '/' . $name;
-        }
-        
-        // Then check for slug (e.g., motta-theme -> motta)
-        $slug = str_replace('-theme', '', $name);
-        if ($slug !== $name && is_dir($extractPath . '/' . $slug)) {
-            return $extractPath . '/' . $slug;
-        }
-        
-        // Return first subdirectory if exists
-        $dirs = array_diff(scandir($extractPath), ['.', '..']);
-        foreach ($dirs as $dir) {
-            if (is_dir($extractPath . '/' . $dir)) {
-                return $extractPath . '/' . $dir;
+        $newPath = $this->cachePath . "/themes/{$name}/{$version}/extracted";
+        if (is_dir($newPath)) {
+            if (is_dir($newPath . '/' . $name)) {
+                return $newPath . '/' . $name;
             }
+            return $newPath;
         }
         
-        return $extractPath;
-    }
-
-    public function themeExists(string $name, string $version): bool
-    {
-        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        if (!is_dir($themeDir)) {
-            return false;
+        $legacyPath = $this->cachePath . "/{$name}/{$version}/extracted";
+        if (is_dir($legacyPath . '/' . $name)) {
+            return $legacyPath . '/' . $name;
         }
-        
-        // Check if ZIP file exists (either name.zip or slug.zip)
-        $possibleNames = [$name . '.zip'];
-        $slug = str_replace('-theme', '', $name);
-        if ($slug !== $name) {
-            $possibleNames[] = $slug . '.zip';
-        }
-        
-        foreach ($possibleNames as $zipName) {
-            if (file_exists($themeDir . '/' . $zipName)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    public function downloadTheme(string $repoUrl, string $name, string $version, string $repoPath): string
-    {
-        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        
-        // Try both name.zip and slug.zip (e.g., motta-theme.zip and motta.zip)
-        $possibleNames = [$name . '.zip'];
-        $slug = str_replace('-theme', '', $name);
-        if ($slug !== $name) {
-            $possibleNames[] = $slug . '.zip';
-        }
-        
-        // Check if already downloaded
-        foreach ($possibleNames as $zipName) {
-            $zipPath = $themeDir . "/{$zipName}";
-            if (file_exists($zipPath)) {
-                return $zipPath;
-            }
-        }
-
-        if (!is_dir($themeDir)) {
-            mkdir($themeDir, 0755, true);
-        }
-
-        $domain = parse_url($repoUrl, PHP_URL_HOST);
-        $auth = $this->authService->loadAuthForDomain($domain);
-        
-        if (!$auth) {
-            throw new \RuntimeException("No hay credenciales para {$domain}");
-        }
-
-        // Try downloading with each possible name
-        foreach ($possibleNames as $zipName) {
-            $fileUrl = $this->buildFileUrl($repoUrl, $repoPath . $zipName, $domain);
-            $zipPath = $themeDir . "/{$zipName}";
-
-            $ch = curl_init($fileUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$auth['token']}"]);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-
-            $content = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode === 200 && $content !== false && !empty($content)) {
-                file_put_contents($zipPath, $content);
-                return $zipPath;
-            }
-        }
-        
-        throw new \RuntimeException("Error descargando theme: probado " . implode(', ', $possibleNames));
-    }
-
-    public function clearThemeCache(string $name, string $version): void
-    {
-        $themeDir = $this->themeCachePath . "/{$name}/{$version}";
-        if (is_dir($themeDir)) {
-            $this->deleteDirectory($themeDir);
-        }
+        return $legacyPath;
     }
 
     private function extractSafely(ZipArchive $zip, string $destination): void
@@ -656,4 +515,3 @@ class PremiumCacheService
         }
     }
 }
-

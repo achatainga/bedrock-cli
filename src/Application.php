@@ -3,8 +3,6 @@
 namespace Roots\BedrockCli;
 
 use Symfony\Component\Console\Application as BaseApplication;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Reference;
 use Roots\BedrockCli\Commands\Acorn\AcornCommand;
 use Roots\BedrockCli\Commands\Database\MenuCommand as DatabaseMenuCommand;
 use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
@@ -12,7 +10,6 @@ use Roots\BedrockCli\Commands\Database\SnapshotCommand as DatabaseSnapshotComman
 use Roots\BedrockCli\Commands\Database\MigrateCommand as DatabaseMigrateCommand;
 use Roots\BedrockCli\Commands\Database\PullCommand as DatabasePullCommand;
 use Roots\BedrockCli\Commands\Docker\DockerCommand;
-use Roots\BedrockCli\Commands\Docker\UpdateConfigCommand;
 use Roots\BedrockCli\Commands\Options\MenuCommand as OptionsMenuCommand;
 use Roots\BedrockCli\Commands\Options\PullCommand as OptionsPullCommand;
 use Roots\BedrockCli\Commands\Options\PushCommand as OptionsPushCommand;
@@ -21,7 +18,6 @@ use Roots\BedrockCli\Commands\Options\ManageCommand as OptionsManageCommand;
 use Roots\BedrockCli\Commands\Plugins\MenuCommand as PluginsMenuCommand;
 use Roots\BedrockCli\Commands\Plugins\ListCommand as PluginsListCommand;
 use Roots\BedrockCli\Commands\Plugins\ActivateCommand as PluginsActivateCommand;
-use Roots\BedrockCli\Commands\Plugins\ActivateMultipleCommand as PluginsActivateMultipleCommand;
 use Roots\BedrockCli\Commands\Plugins\DeactivateCommand as PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\Plugins\CompressCommand as PluginsCompressCommand;
 use Roots\BedrockCli\Commands\Plugins\LinkCommand as PluginsLinkCommand;
@@ -41,7 +37,6 @@ use Roots\BedrockCli\Commands\Setup\InitCommand;
 use Roots\BedrockCli\Commands\System\MainMenuCommand;
 use Roots\BedrockCli\Commands\System\InitMenuCommand;
 use Roots\BedrockCli\Commands\System\SearchMenuCommand;
-use Roots\BedrockCli\Commands\System\LanguageCommand;
 use Roots\BedrockCli\Commands\System\InfoCommand;
 use Roots\BedrockCli\Commands\System\DoctorCommand;
 use Roots\BedrockCli\Commands\System\BackupCommand;
@@ -84,9 +79,14 @@ use Roots\BedrockCli\Commands\Auth\AddCommand as AuthAddCommand;
 use Roots\BedrockCli\Commands\Auth\ListCommand as AuthListCommand;
 use Roots\BedrockCli\Commands\Auth\RemoveCommand as AuthRemoveCommand;
 use Roots\BedrockCli\Commands\AI\AICommand;
+use Roots\BedrockCli\Commands\AI\ConfigCommand as AIConfigCommand;
+use Roots\BedrockCli\Commands\AI\AskCommand as AIAskCommand;
+use Roots\BedrockCli\Commands\AI\ChatCommand as AIChatCommand;
+use Roots\BedrockCli\Commands\AI\DiagnoseCommand as AIDiagnoseCommand;
+use Roots\BedrockCli\Commands\AI\SuggestCommand as AISuggestCommand;
+use Roots\BedrockCli\Commands\AI\ModelSelectorCommand as AIModelSelectorCommand;
 use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
-use Roots\BedrockCli\Commands\Install\UpdateConfigCommand as InstallUpdateConfigCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
 use Roots\BedrockCli\Commands\Sync\StatusCommand as SyncStatusCommand;
@@ -104,31 +104,16 @@ use Roots\BedrockCli\Commands\Mail\ViewCommand as MailViewCommand;
 use Roots\BedrockCli\Commands\Mail\ClearCommand as MailClearCommand;
 use Roots\BedrockCli\Commands\Mail\ResendActivationCommand as MailResendActivationCommand;
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\ExecutableFinder;
 
 class Application extends BaseApplication
 {
-    private ContainerBuilder $container;
-
     public function __construct()
     {
-        $this->container = new ContainerBuilder();
-        $this->configureServices();
-        
         parent::__construct('bedrock', $this->getVersion());
 
-        // Usar CommandRegistryService para comandos principales
-        $commandRegistry = $this->container->get('Roots\BedrockCli\Services\CommandRegistryService');
-        $registryCommands = $commandRegistry->registerCommands();
-        
-        $this->addCommands(array_merge($registryCommands, [
-            new AcornCommand(
-                $this->container->get('Roots\BedrockCli\Services\StateService')
-            ),
-            new DatabaseMenuCommand(
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService')
-            ),
+        $this->addCommands([
+            new AcornCommand(),
+            new DatabaseMenuCommand(),
             new DatabaseCleanCommand(),
             new DatabaseSnapshotCommand(),
             new DatabaseMigrateCommand(),
@@ -139,12 +124,7 @@ class Application extends BaseApplication
             new OptionsPushCommand(),
             new OptionsListCommand(),
             new OptionsManageCommand(),
-            new PluginsMenuCommand(
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
-                $this->container->get('Roots\BedrockCli\Services\UnzipService'),
-                $this->container->get('Roots\BedrockCli\Services\ZipService')
-            ),
+            new PluginsMenuCommand(),
             new PluginsListCommand(),
             new PluginsActivateCommand(),
             new PluginsDeactivateCommand(),
@@ -154,20 +134,9 @@ class Application extends BaseApplication
             new PluginsOrderCommand(),
             new PluginsOrderMenuCommand(),
             new PluginsOrderBuilderCommand(),
-            new ThemesMenuCommand(
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
-                $this->container->get('Roots\BedrockCli\Services\UnzipService'),
-                $this->container->get('Roots\BedrockCli\Services\ZipService')
-            ),
-            new ThemesListCommand(
-                $this->container->get('Roots\BedrockCli\Services\UnzipService')
-            ),
-            new ThemesActivateCommand(
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService'),
-                $this->container->get('Roots\BedrockCli\Services\StateService')
-            ),
+            new ThemesMenuCommand(),
+            new ThemesListCommand(),
+            new ThemesActivateCommand(),
             new ThemesCompressCommand(),
             new ThemesStatusCommand(),
             new SetupCommand(),
@@ -178,161 +147,53 @@ class Application extends BaseApplication
             new MainMenuCommand(),
             new InitMenuCommand(),
             new SearchMenuCommand(),
-            new LanguageCommand(
-                $this->container->get('Roots\BedrockCli\Services\WpCliService')
-            ),
-            new InfoCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
-            ),
-            new DoctorCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
-            ),
+            new InfoCommand(),
+            new DoctorCommand(),
             new BackupCommand(),
-            new ReinstallCommand(
-                $this->container->get('Roots\BedrockCli\Services\SecurityService'),
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService')
-            ),
-            new SeedCommand(
-                $this->container->get('Roots\BedrockCli\Services\DockerService'),
-                $this->container->get('Roots\BedrockCli\Services\WpCliService')
-            ),
+            new ReinstallCommand(),
+            new SeedCommand(),
             new ExportConfigCommand(),
             new ImportCoreCommand(),
-            new ProfileMenuCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileCreateCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
-                $this->container->get('Roots\BedrockCli\Services\PremiumCacheService'),
-                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
-            ),
-            new ProfileListCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileShowCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileDeleteCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileEditCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileExportCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileApplyCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
-                $this->container->get('Roots\BedrockCli\Services\ComposerService'),
-                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
-            ),
-            new ProfileAddPluginCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileRemovePluginCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileSetThemeCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileAddRepoCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileEditWizardCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
-                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
-            ),
-            new ProfileManagePluginsCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ProfileValidateVcsCommand(
-                $this->container->get('Roots\BedrockCli\Services\ProfileService'),
-                $this->container->get('Roots\BedrockCli\Services\VcsValidator')
-            ),
-            new PluginSearchCommand(
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new PluginInfoCommand(
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ThemeSearchCommand(
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ThemeInfoCommand(
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService'),
-                $this->container->get('Roots\BedrockCli\Services\ProfileService')
-            ),
-            new ManageCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector')
-            ),
-            new PluginsManageCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager'),
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService')
-            ),
-            new ThemesManageCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager'),
-                $this->container->get('Roots\BedrockCli\Services\WordPressApiService')
-            ),
-            new DependenciesManageCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new AddPluginCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new AddThemeCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new AddDependencyCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new RemovePluginCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\PluginManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new RemoveThemeCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ThemeManager'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
-            new RemoveDependencyCommand(
-                $this->container->get('Roots\BedrockCli\Services\Management\ContextDetector'),
-                $this->container->get('Roots\BedrockCli\Services\Management\ManagementService'),
-                $this->container->get('Roots\BedrockCli\Services\Management\DependencyManager')
-            ),
+            new ProfileMenuCommand(),
+            new ProfileCreateCommand(),
+            new ProfileListCommand(),
+            new ProfileShowCommand(),
+            new ProfileDeleteCommand(),
+            new ProfileEditCommand(),
+            new ProfileExportCommand(),
+            new ProfileApplyCommand(),
+            new ProfileAddPluginCommand(),
+            new ProfileRemovePluginCommand(),
+            new ProfileSetThemeCommand(),
+            new ProfileAddRepoCommand(),
+            new ProfileEditWizardCommand(),
+            new ProfileManagePluginsCommand(),
+            new ProfileValidateVcsCommand(),
+            new PluginSearchCommand(),
+            new PluginInfoCommand(),
+            new ThemeSearchCommand(),
+            new ThemeInfoCommand(),
+            new ManageCommand(),
+            new PluginsManageCommand(),
+            new ThemesManageCommand(),
+            new DependenciesManageCommand(),
+            new AddPluginCommand(),
+            new AddThemeCommand(),
+            new AddDependencyCommand(),
+            new RemovePluginCommand(),
+            new RemoveThemeCommand(),
+            new RemoveDependencyCommand(),
             new AuthMenuCommand(),
-            new AuthAddCommand(
-                $this->container->get('Roots\BedrockCli\Services\AuthService')
-            ),
-            new AuthListCommand(
-                $this->container->get('Roots\BedrockCli\Services\AuthService')
-            ),
-            new AuthRemoveCommand(
-                $this->container->get('Roots\BedrockCli\Services\AuthService')
-            ),
-            new AICommand(
-                $this->container->get('Roots\BedrockCli\Services\AIContextBuilder')
-            ),
+            new AuthAddCommand(),
+            new AuthListCommand(),
+            new AuthRemoveCommand(),
+            new AICommand(),
+            new AIConfigCommand(),
+            new AIAskCommand(),
+            new AIChatCommand(),
+            new AIDiagnoseCommand(),
+            new AISuggestCommand(),
+            new AIModelSelectorCommand(),
             new InstallMuPluginCommand(),
             new UpdateMuPluginCommand(),
             new CacheImportCommand(),
@@ -361,6 +222,8 @@ class Application extends BaseApplication
 
     public function getVersion(): string
     {
+        // Estrategia híbrida: Composer InstalledVersions > Git tag > Git commits > Fallback
+        
         // 1. Composer InstalledVersions (instalación global)
         if (class_exists('\Composer\InstalledVersions')) {
             try {
@@ -368,6 +231,7 @@ class Application extends BaseApplication
                 if ($version && $version !== 'dev-feature/unified-management-system') {
                     return $version;
                 }
+                // Si es dev branch, obtener referencia
                 $reference = \Composer\InstalledVersions::getReference('achatainga/bedrock-cli');
                 if ($reference) {
                     return 'dev-' . substr($reference, 0, 7);
@@ -377,10 +241,22 @@ class Application extends BaseApplication
             }
         }
         
-        // 2. Skip git commands - errores vienen del entorno, no del código
-        // Los errores "system cannot find path" son del entorno PHP/Windows, no de bedrock-cli
+        // 2. Intentar git tag (desarrollo local)
+        $process = new Process(['git', 'describe', '--tags', '--exact-match', 'HEAD']);
+        $process->setWorkingDirectory(__DIR__ . '/..');
+        if ($process->run() === 0) {
+            return trim($process->getOutput());
+        }
         
-        // 3. Composer.json version
+        // 3. Git commits count (desarrollo local)
+        $process = new Process(['git', 'rev-list', '--count', 'HEAD']);
+        $process->setWorkingDirectory(__DIR__ . '/..');
+        if ($process->run() === 0) {
+            $commits = trim($process->getOutput());
+            return "2.{$commits}.0-dev";
+        }
+        
+        // 4. Composer.json version
         $composerPath = __DIR__ . '/../composer.json';
         if (file_exists($composerPath)) {
             $composer = json_decode(file_get_contents($composerPath), true);
@@ -389,6 +265,7 @@ class Application extends BaseApplication
             }
         }
         
+        // 5. Fallback
         return '2.0.0-unknown';
     }
 }

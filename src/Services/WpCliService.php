@@ -3,20 +3,14 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Process\Process;
-use Roots\BedrockCli\Services\Management\ContextDetector;
-use Roots\BedrockCli\Enums\ExecutionMode;
 
 class WpCliService
 {
     private DockerService $docker;
-    private ContextDetector $contextDetector;
-    private string $projectPath;
 
-    public function __construct(DockerService $docker, ContextDetector $contextDetector)
+    public function __construct(DockerService $docker)
     {
         $this->docker = $docker;
-        $this->contextDetector = $contextDetector;
-        $this->projectPath = getcwd();
     }
 
     public function exec(array $args): Process

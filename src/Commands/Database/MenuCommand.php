@@ -2,7 +2,6 @@
 
 namespace Roots\BedrockCli\Commands\Database;
 
-use Roots\BedrockCli\Traits\SpinnerTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -18,20 +17,6 @@ use Roots\BedrockCli\Traits\ProjectSelectorTrait;
 class MenuCommand extends Command
 {
     use ProjectSelectorTrait;
-    use SpinnerTrait;
-    
-    private DockerService $dockerService;
-    private WpCliService $wpCliService;
-    
-    public function __construct(
-        DockerService $dockerService,
-        WpCliService $wpCliService
-    ) {
-        $this->dockerService = $dockerService;
-        $this->wpCliService = $wpCliService;
-        parent::__construct();
-    }
-    
     protected function configure(): void
     {
         $this
@@ -51,8 +36,8 @@ class MenuCommand extends Command
             return Command::FAILURE;
         }
 
-        $docker = $this->dockerService;
-        $wpcli = $this->wpCliService;
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
 
         if ($input->getOption('create')) {
             return $this->create($wpcli, $output);
@@ -533,5 +518,19 @@ PHP;
         return Command::SUCCESS;
     }
 
-
+    protected function runWithLoader(\Symfony\Component\Process\Process $process, OutputInterface $output, string $message): void
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameIndex = 0;
+        
+        $process->start();
+        
+        while ($process->isRunning()) {
+            $output->write("\r<comment>{$message}</comment> <fg=cyan>{$frames[$frameIndex]}</>");
+            $frameIndex = ($frameIndex + 1) % count($frames);
+            usleep(80000);
+        }
+        
+        $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
+    }
 }

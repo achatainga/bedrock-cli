@@ -40,7 +40,7 @@ trait PremiumAssetsTrait
         }
         
         return match($source) {
-            '1', 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)' => $this->selectFromRepository($input, $output, $helper, 'plugin'),
+            '1', 'Repositorio de paquetes (packages/plugin1/, packages/plugin2/)' => $this->selectFromRepository($input, $output, $helper),
             '2', 'Repositorio individual (1 repo = 1 plugin)' => $this->selectFromIndividualRepo($input, $output, $helper, 'plugin'),
             '3', 'Importar .zip local ahora' => $this->importLocalZip($input, $output, $helper, 'plugin'),
             '4', 'Desde cache (ya importado)' => $this->selectFromCache($input, $output, $helper, 'plugin'),
@@ -49,7 +49,7 @@ trait PremiumAssetsTrait
         };
     }
 
-    private function selectFromRepository(InputInterface $input, OutputInterface $output, $helper, string $type = 'plugin'): array
+    private function selectFromRepository(InputInterface $input, OutputInterface $output, $helper): array
     {
         $output->writeln('');
         $output->writeln('<info>📦 Repositorio Privado</info>');
@@ -66,8 +66,7 @@ trait PremiumAssetsTrait
         $branch = $helper->ask($input, $output, $branchQuestion);
         
         // Verificar acceso
-        $authService = new AuthService();
-        $service = new PremiumRepoService($authService, $repoUrl, $branch);
+        $service = new PremiumRepoService($repoUrl, $branch);
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
@@ -90,26 +89,23 @@ trait PremiumAssetsTrait
         $output->writeln('<comment>Escaneando repositorio...</comment>');
         
         try {
-            $filterType = $type === 'plugin' ? 'wordpress-plugin' : 'wordpress-theme';
-            $items = $service->scanRepository($repoUrl, 'packages', $branch, $filterType);
+            $plugins = $service->scanRepository($repoUrl, 'packages', $branch);
             
-            if (empty($items)) {
-                $typeName = $type === 'plugin' ? 'plugins' : 'themes';
-                $output->writeln("<error>No se encontraron {$typeName} en packages/</error>");
+            if (empty($plugins)) {
+                $output->writeln('<error>No se encontraron plugins en packages/</error>');
                 return [];
             }
             
             $output->writeln('');
-            $typeName = $type === 'plugin' ? 'Plugins' : 'Themes';
-            $output->writeln("<info>{$typeName} encontrados: " . count($items) . "</info>");
+            $output->writeln("<info>Plugins encontrados: " . count($plugins) . "</info>");
             $output->writeln('');
             
             // Mostrar lista
-            $itemsList = [];
+            $pluginsList = [];
             $index = 1;
-            foreach ($items as $item) {
-                $output->writeln("  <fg=cyan>[{$index}]</> {$item['name']} - v{$item['latest']}");
-                $itemsList[$index] = $item;
+            foreach ($plugins as $plugin) {
+                $output->writeln("  <fg=cyan>[{$index}]</> {$plugin['name']} - v{$plugin['latest']}");
+                $pluginsList[$index] = $plugin;
                 $index++;
             }
             
@@ -122,30 +118,30 @@ trait PremiumAssetsTrait
             }
             
             $selected = array_map('trim', explode(',', $selection));
-            $selectedItems = [];
+            $selectedPlugins = [];
             
             foreach ($selected as $num) {
                 $num = (int)$num;
-                if (isset($itemsList[$num])) {
-                    $item = $itemsList[$num];
+                if (isset($pluginsList[$num])) {
+                    $plugin = $pluginsList[$num];
                     
                     // Seleccionar versión
-                    $version = $this->selectVersion($item, $helper, $input, $output);
+                    $version = $this->selectVersion($plugin, $helper, $input, $output);
                     
-                    $selectedItems[] = [
-                        'name' => $item['slug'],
+                    $selectedPlugins[] = [
+                        'name' => $plugin['slug'],
                         'version' => $version,
                         'source' => 'vcs',
                         'type' => 'git',
                         'url' => $repoUrl,
-                        'path' => "packages/{$item['slug']}/{$version}/"
+                        'path' => "packages/{$plugin['slug']}/{$version}/"
                     ];
                     
-                    $output->writeln("<info>✓ {$item['slug']}:{$version}</info>");
+                    $output->writeln("<info>✓ {$plugin['slug']}:{$version}</info>");
                 }
             }
             
-            return $selectedItems;
+            return $selectedPlugins;
             
         } catch (\Exception $e) {
             $output->writeln("<error>Error: {$e->getMessage()}</error>");
@@ -266,8 +262,7 @@ trait PremiumAssetsTrait
         }
         
         // Verificar acceso
-        $authService = new AuthService();
-        $service = new PremiumRepoService($authService, $repoUrl, 'main');
+        $service = new PremiumRepoService();
         $access = $service->checkAccess($repoUrl);
         
         if (!$access['success']) {
@@ -359,7 +354,7 @@ trait PremiumAssetsTrait
         }
         
         $result = match($source) {
-            '1', 'Repositorio de paquetes (packages/theme1/, packages/theme2/)' => $this->selectFromRepository($input, $output, $helper, 'theme'),
+            '1', 'Repositorio de paquetes (packages/theme1/, packages/theme2/)' => $this->selectFromRepository($input, $output, $helper),
             '2', 'Repositorio individual (1 repo = 1 tema)' => $this->selectFromIndividualRepo($input, $output, $helper, 'theme'),
             '3', 'Importar .zip local ahora' => $this->importLocalZip($input, $output, $helper, 'theme'),
             '4', 'Desde cache (ya importado)' => $this->selectFromCache($input, $output, $helper, 'theme'),
