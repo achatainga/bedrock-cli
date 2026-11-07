@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use RuntimeException;
+use Symfony\Component\Process\Process;
 
 class AuthService
 {
@@ -118,10 +119,14 @@ class AuthService
 
     private function getComposerHome(): string
     {
-        // Use composer's actual home directory
-        $composerHome = getenv('COMPOSER_HOME');
-        if ($composerHome) {
-            return $composerHome;
+        $process = new Process(['composer', 'config', '--global', 'home']);
+        $process->setTimeout(10);
+        $process->run();
+        
+        if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
+            $path = trim($process->getOutput());
+            // Normalizar separadores de directorio
+            return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         }
         
         // Try to get from composer itself
@@ -136,15 +141,11 @@ class AuthService
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('APPDATA') . DIRECTORY_SEPARATOR . 'Composer';
         }
-        
-        // Modern composer uses ~/.config/composer, old uses ~/.composer
-        $home = getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
-        $configPath = $home . DIRECTORY_SEPARATOR . '.config' . DIRECTORY_SEPARATOR . 'composer';
-        if (is_dir($configPath)) {
-            return $configPath;
+        $home = getenv('HOME');
+        if (!$home && function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+            $home = posix_getpwuid(posix_getuid())['dir'] ?? null;
         }
-        
-        return $home . DIRECTORY_SEPARATOR . '.composer';
+        return ($home ?: sys_get_temp_dir()) . DIRECTORY_SEPARATOR . '.composer';
     }
 
     public function getAuthFile(): string

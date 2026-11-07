@@ -96,7 +96,7 @@ class SetupCommand extends Command
         $state = [
             'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
             'env_exists' => file_exists($projectPath . '/.env'),
-            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_installed' => $dockerValidation->isValid || $this->isDockerInstalled(),
             'docker_running' => $dockerValidation->isValid,
             'containers_running' => $dockerValidation->isValid,
             'db_exists' => $dbValidation->isValid,
@@ -883,135 +883,12 @@ class SetupCommand extends Command
         
         $output->write("\r<comment>{$message}</comment> <info>✓</info>\n");
     }
-    
-    private function fixPortInconsistencies(OutputInterface $output, array $inconsistencies): void
+
+    private function isDockerInstalled(): bool
     {
-        $envPath = getcwd() . '/.env';
-        if (!file_exists($envPath)) {
-            return;
-        }
-        
-        $envContent = file_get_contents($envPath);
-        $modified = false;
-        
-        foreach ($inconsistencies as $issue) {
-            // Detectar inconsistencia de DB_PORT
-            if (strpos($issue['message'], 'DB_PORT missing') !== false) {
-                // Extraer puerto de mensaje (formato: "Docker MySQL uses port 3307")
-                if (preg_match('/port (\d+)/', $issue['message'], $matches)) {
-                    $dbPort = $matches[1];
-                    
-                    // Agregar DB_PORT al .env si no existe
-                    if (strpos($envContent, 'DB_PORT=') === false) {
-                        // Buscar línea DB_HOST para insertar después
-                        if (preg_match('/(DB_HOST=.*)/', $envContent, $hostMatch)) {
-                            $envContent = str_replace(
-                                $hostMatch[1],
-                                $hostMatch[1] . "\nDB_PORT={$dbPort}",
-                                $envContent
-                            );
-                            $modified = true;
-                            $output->writeln("<info>✓ DB_PORT={$dbPort} agregado al .env</info>");
-                        }
-                    }
-                }
-            }
-        }
-        
-        if ($modified) {
-            file_put_contents($envPath, $envContent);
-        }
-    }
-    
-    /**
-     * Asegura permisos correctos en el directorio actual (getcwd)
-     */
-    private function ensureComposerPermissions(OutputInterface $output): void
-    {
-        $projectRoot = getcwd();
-        $needsAdjustment = false;
-
-        // Comprobación rápida
-        if (file_exists("{$projectRoot}/composer.json")) {
-            $perms = fileperms("{$projectRoot}/composer.json") & 0777;
-            if ($perms !== 0666 && $perms !== 0777) {
-                $needsAdjustment = true;
-            }
-        }
-
-        if ($needsAdjustment) {
-            $output->writeln('<info>Corrigiendo permisos de archivos...</info>');
-            
-            // Files -> 666
-            $files = ["composer.json", "composer.lock"];
-            foreach ($files as $file) {
-                if (file_exists($projectRoot . '/' . $file)) {
-                    @chmod($projectRoot . '/' . $file, 0666);
-                }
-            }
-
-            // Dirs -> 777
-            $dirs = ["web/app/plugins"];
-            foreach ($dirs as $dir) {
-                if (is_dir($projectRoot . '/' . $dir)) {
-                    @chmod($projectRoot . '/' . $dir, 0777);
-                }
-            }
-
-            // Vendor Recursivo -> 777
-            if (is_dir($projectRoot . '/vendor/composer')) {
-                $process = Process::fromShellCommandline('chmod -R 777 vendor/composer');
-                $process->run();
-            }
-            
-            $output->writeln('  ✓ Permisos ajustados para gestión web');
-            $output->writeln('');
-        }
-    }
-    
-    /**
-     * Asegura permisos correctos para uploads en el directorio actual
-     */
-    private function ensureUploadsPermissions(OutputInterface $output): void
-    {
-        $projectRoot = getcwd();
-        $uploadsDir = $projectRoot . '/web/app/uploads';
-        
-        // Crear directorio si no existe
-        if (!is_dir($uploadsDir)) {
-            @mkdir($uploadsDir, 0755, true);
-        }
-        
-        // Verificar si necesita ajuste de permisos
-        $needsAdjustment = false;
-        if (is_dir($uploadsDir)) {
-            $perms = fileperms($uploadsDir) & 0777;
-            $stat = stat($uploadsDir);
-            // Verificar si no es propiedad de www-data (uid 33) o no tiene permisos 755
-            if ($stat['uid'] !== 33 || $perms < 0755) {
-                $needsAdjustment = true;
-            }
-        }
-        
-        if ($needsAdjustment) {
-            $output->writeln('<info>Configurando permisos para uploads...</info>');
-            
-            // Intentar cambiar owner a www-data (Docker)
-            $process = Process::fromShellCommandline("chown -R 33:33 \"{$uploadsDir}\" 2>/dev/null");
-            $process->run();
-            
-            // Configurar permisos
-            @chmod($uploadsDir, 0755);
-            
-            // Si hay subdirectorios, aplicar recursivamente
-            $process = Process::fromShellCommandline("find \"{$uploadsDir}\" -type d -exec chmod 755 {} \; 2>/dev/null");
-            $process->run();
-            
-            $process = Process::fromShellCommandline("find \"{$uploadsDir}\" -type f -exec chmod 644 {} \; 2>/dev/null");
-            $process->run();
-            
-            $output->writeln('  ✓ Permisos de uploads configurados');
-            $output->writeln('');
-        }
+        $process = new Process(['docker', '--version']);
+        $process->setTimeout(5);
+        $process->run();
+        return $process->isSuccessful();
     }
 }

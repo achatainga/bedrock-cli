@@ -93,17 +93,11 @@ class MainMenuCommand extends Command
                 $output->writeln('<info>Modo guía solicitado pero no hay wizard activo. Mostrando menú normal.</info>');
             }
             $output->writeln('');
-            // Usar caracteres ASCII en Windows para evitar artefactos visuales
-            $boxTopLeft = $this->isWindows ? '+' : '╔';
-            $boxTopRight = $this->isWindows ? '+' : '╗';
-            $boxBottomLeft = $this->isWindows ? '+' : '╚';
-            $boxBottomRight = $this->isWindows ? '+' : '╝';
-            $boxHorizontal = $this->isWindows ? '-' : '═';
-            $boxVertical = $this->isWindows ? '|' : '║';
-            
-            $output->writeln('<fg=cyan;options=bold>' . $boxTopLeft . str_repeat($boxHorizontal, 39) . $boxTopRight . '</>');
-            $output->writeln('<fg=cyan;options=bold>' . $boxVertical . '</> <fg=yellow;options=bold>      BEDROCK CLI v2.0          </> <fg=cyan;options=bold>     ' . $boxVertical . '</>');
-            $output->writeln('<fg=cyan;options=bold>' . $boxBottomLeft . str_repeat($boxHorizontal, 39) . $boxBottomRight . '</>');
+            $version = $this->getApplication() ? $this->getApplication()->getVersion() : 'v2.4';
+            $bannerTitle = str_pad("BEDROCK CLI {$version}", 31, ' ', STR_PAD_BOTH);
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln("<fg=cyan;options=bold>║</> <fg=yellow;options=bold>{$bannerTitle}</> <fg=cyan;options=bold>║</>");
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             
             // Mostrar wizard si está activo
@@ -116,47 +110,47 @@ class MainMenuCommand extends Command
                 }
             }
             
-            $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
-            $this->printMenuItem($output, 'N', 'N', '🆕 New      - Crear proyecto desde cero', $currentStep);
-            $this->printMenuItem($output, '1', '1', '🩺 Doctor   - Verificar dependencias', $currentStep);
-            $this->printMenuItem($output, '2', '2', '⚙️  Setup    - Configuración inicial', $currentStep);
-            $this->printMenuItem($output, '3', '3', '📋 Profiles - Crear/gestionar profiles', $currentStep);
+            $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO & CREACIÓN</>');
+            $this->printMenuItem($output, 'N', 'N', '🆕 New        - Crear nuevo proyecto Bedrock', $currentStep);
+            $this->printMenuItem($output, 'C', 'C', '📦 Clone      - Clonar WordPress a Bedrock (1-Click Staging & Auto-SSL)', $currentStep);
+            $this->printMenuItem($output, 'V', 'V', '🏢 Verticals  - 50 Verticales empresariales pre-diseñadas', $currentStep);
+            $this->printMenuItem($output, '1', '1', '🩺 Doctor     - Verificar dependencias del sistema y auto-reparar', $currentStep);
+            $this->printMenuItem($output, '2', '2', '⚙️  Setup      - Asistente de configuración inicial', $currentStep);
+            $this->printMenuItem($output, '3', '3', '📋 Profiles   - Crear y gestionar profiles de stack', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=green>⚡ DESARROLLO</>');
-            $this->printMenuItem($output, '4', 'D', '🐳 Docker   - Levantar/bajar contenedores', $currentStep);
-            $this->printMenuItem($output, '5', 'M', '🎛️  Manage   - Plugins, Themes, Dependencies', $currentStep);
-            $this->printMenuItem($output, '6', 'B', '🗄️  Database - Gestión de base de datos', $currentStep);
+            $output->writeln('<fg=green>⚡ DESARROLLO & OPERACIONES</>');
+            $this->printMenuItem($output, '4', 'D', '🐳 Docker     - Levantar, detener y monitorear contenedores', $currentStep);
+            $this->printMenuItem($output, '5', 'M', '🎛️  Manage     - Plugins, Themes, Dependencies', $currentStep);
+            $this->printMenuItem($output, '6', 'B', '🗄️  Database   - Gestión de base de datos (db:pull SSH, migrate, clean)', $currentStep);
+            $this->printMenuItem($output, 'S', 'S', '🔄 Sync       - Sincronización de entidades entre entornos (Git-like)', $currentStep);
+            $this->printMenuItem($output, 'M', 'M', '✉️  Mail       - Observabilidad de correos capturados en Mailpit', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=cyan>🔍 CONTENIDO</>');
-            $this->printMenuItem($output, '7', '7', '🔍 Search   - Buscar en WordPress.org', $currentStep);
-            $this->printMenuItem($output, '8', '8', 'ℹ️  Info     - Estado del proyecto', $currentStep);
+            $output->writeln('<fg=cyan>🔍 CONTENIDO & DIAGNÓSTICO</>');
+            $this->printMenuItem($output, '7', '7', '🔍 Search     - Buscar plugins y themes en WordPress.org', $currentStep);
+            $this->printMenuItem($output, '8', '8', 'ℹ️  Info       - Estado del proyecto y stack actual', $currentStep);
             $output->writeln('');
             
-            $output->writeln('<fg=magenta>🔧 AVANZADO</>');
-            $this->printMenuItem($output, '9', '9', '🚀 Init     - Inicializar ambiente', $currentStep);
-            $this->printMenuItem($output, 'I', 'I', '🤖 AI       - Copiloto inteligente', $currentStep);
-            $output->writeln('');
-            
-            $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
-            $this->printMenuItem($output, 'L', 'L', '🌐 Language - Cambiar idioma', $currentStep);
-            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
+            $output->writeln('<fg=magenta>🔧 AVANZADO & AI COPILOT</>');
+            $this->printMenuItem($output, '9', '9', '🚀 Init       - Inicializar ambiente con Blueprints', $currentStep);
+            $this->printMenuItem($output, 'I', 'I', '🤖 AI Copilot - Diagnóstico con IA y ciclo autónomo de auto-evolución', $currentStep);
+            $this->printMenuItem($output, 'O', 'O', '⚙️  Options    - Gestión granular de wp_options', $currentStep);
+            $this->printMenuItem($output, 'A', 'A', '🌱 Acorn      - Integración Roots Acorn & Blade components', $currentStep);
             
             if ($needsAuth) {
-                $output->writeln(' <fg=red>[T]</> 🔐 Auth     - ⚠️  CONFIGURAR CREDENCIALES');
+                $output->writeln(' <fg=red>[T]</> 🔐 Auth       - ⚠️  CONFIGURAR CREDENCIALES');
             } else {
-                $this->printMenuItem($output, 'T', 'T', '🔐 Auth     - Credenciales repos privados', $currentStep);
+                $this->printMenuItem($output, 'T', 'T', '🔐 Auth       - Credenciales repos privados (auth.json)', $currentStep);
             }
-            $this->printMenuItem($output, 'U', 'U', '🔄 Update   - Actualizar MU-Plugin', $currentStep);
-            $this->printMenuItem($output, 'B', 'B', '💾 Backup   - Crear backup', $currentStep);
-            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall - Reinstalar (DESTRUCTIVO)', $currentStep);
+            $this->printMenuItem($output, 'B', 'B', '💾 Backup     - Crear backup completo de la instancia', $currentStep);
+            $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall   - Reinstalar aplicación (DESTRUCTIVO)', $currentStep);
             $output->writeln('');
             
             $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, L, A, T, U, B, R]:</> ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9, N, C, V, S, M, I, O, A, T, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -165,9 +159,9 @@ class MainMenuCommand extends Command
             
             $selectedIndex = strtoupper($selectedIndex);
             
-            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'L', 'A', 'T', 'U', 'B', 'R'];
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'C', 'V', 'S', 'M', 'I', 'O', 'A', 'T', 'B', 'R'];
             if (!in_array($selectedIndex, $validOptions)) {
-                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, L, A, T, B, R.</error>');
+                $output->writeln('<error>Opción inválida. Usa 0-9, N, C, V, S, M, I, O, A, T, B, R.</error>');
                 sleep(1);
                 continue;
             }
@@ -180,12 +174,16 @@ class MainMenuCommand extends Command
 
             $commandMap = [
                 'N' => 'new:wizard',
+                'C' => 'clone',
+                'V' => 'verticals:list',
                 '1' => 'doctor',
                 '2' => 'setup',
                 '3' => 'profile:menu',
                 '4' => 'docker',
                 '5' => 'manage',
                 '6' => 'db',
+                'S' => 'sync:status',
+                'M' => 'mail:list',
                 '7' => 'search:menu',
                 '8' => 'info',
                 '9' => 'init:menu',

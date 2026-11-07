@@ -21,40 +21,15 @@ class WpCliService
 
     public function exec(array $args): Process
     {
-        $mode = $this->contextDetector->detectExecutionMode();
-
-        // Native OR Hybrid mode: use local wp-cli
-        if ($mode !== ExecutionMode::DOCKER) {
-            // Native/Hybrid mode: use global wp-cli or install it
-            $wpPath = trim(shell_exec('which wp 2>/dev/null') ?: '');
-            
-            if (empty($wpPath)) {
-                // Try composer global wp-cli
-                $composerHome = getenv('COMPOSER_HOME') ?: (getenv('HOME') . '/.config/composer');
-                $wpPath = $composerHome . '/vendor/bin/wp';
-                
-                if (!file_exists($wpPath)) {
-                    throw new \RuntimeException('WP-CLI not found. Install it: composer global require wp-cli/wp-cli-bundle');
-                }
-            }
-            
-            return new Process(array_merge([$wpPath], $args), $this->projectPath);
-        }
-
-        // Docker Pure mode
-        // Escapar argumentos para evitar problemas con espacios y caracteres especiales
+        // Escapar todos los argumentos de forma canónica para bash POSIX
         $escapedArgs = array_map(function($arg) {
-            // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas
-            if (preg_match('/[\s\$\&\|\;\(\)\<\>]/', $arg)) {
-                return "'" . str_replace("'", "'\\''" , $arg) . "'";
-            }
-            return $arg;
+            return "'" . str_replace("'", "'\\''", (string) $arg) . "'";
         }, $args);
         
-        $wpCommand = array_merge(
-            ['bash', '-c'],
-            ['export PATH=/var/www/html/vendor/bin:$PATH && export MYSQL_TEST_LOGIN_FILE=/var/www/html/.my.cnf && wp ' . implode(' ', $escapedArgs) . ' --allow-root 2>&1']
-        );
+        $wpCommand = [
+            'bash', '-c',
+            'export PATH=/var/www/html/vendor/bin:$PATH && export MYSQL_TEST_LOGIN_FILE=/var/www/html/.my.cnf && wp ' . implode(' ', $escapedArgs) . ' --allow-root 2>&1'
+        ];
         
         return $this->docker->exec('web', $wpCommand);
     }

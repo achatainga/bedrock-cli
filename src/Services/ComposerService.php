@@ -86,7 +86,7 @@ class ComposerService
                     $this->cacheService->clearPluginComposerJson($plugin['name'], $plugin['version']);
                     $this->cacheService->ensureComposerJson($plugin['name'], $plugin['version'], $vendor);
                     
-                    $cachePath = $this->cacheService->getCachePath($plugin['name'], $plugin['version']);
+                    $cachePath = str_replace('\\', '/', $this->cacheService->getCachePath($plugin['name'], $plugin['version']));
                     $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => $useSymlink]];
                     
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
@@ -107,7 +107,8 @@ class ComposerService
                         $composerData['require'][$packageName] = $plugin['version'];
                     }
                 } elseif ($plugin['source'] === 'path') {
-                    $repo = ['type' => 'path', 'url' => $plugin['path'], 'options' => ['symlink' => $useSymlink]];
+                    $normalizedPath = str_replace('\\', '/', $plugin['path']);
+                    $repo = ['type' => 'path', 'url' => $normalizedPath, 'options' => ['symlink' => $useSymlink]];
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {
                         $composerData['repositories'][] = $repo;
                     }
@@ -136,7 +137,7 @@ class ComposerService
                     $this->cacheService->clearThemeComposerJson($theme['name'], $theme['version']);
                     $this->cacheService->ensureThemeComposerJson($theme['name'], $theme['version'], $vendor);
                     
-                    $cachePath = $this->cacheService->getThemeCachePath($theme['name'], $theme['version']);
+                    $cachePath = str_replace('\\', '/', $this->cacheService->getThemeCachePath($theme['name'], $theme['version']));
                     $repo = ['type' => 'path', 'url' => $cachePath, 'options' => ['symlink' => $useSymlink]];
                     
                     if (!$this->repositoryExists($composerData['repositories'], $repo)) {

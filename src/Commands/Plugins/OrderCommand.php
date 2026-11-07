@@ -521,6 +521,8 @@ PHP;
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $data,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'X-Bedrock-Token: ' . $token,
@@ -563,9 +565,9 @@ PHP;
 
     protected function activateViaWpEval(array $levelPlugins, int $levelNum, OutputInterface $output): ?array
     {
-        $pluginsJson = json_encode($levelPlugins);
+        $pluginsB64 = base64_encode(json_encode($levelPlugins));
         $php = <<<'PHP'
-$plugins = json_decode('{PLUGINS_JSON}', true);
+$plugins = json_decode(base64_decode('{PLUGINS_B64}'), true);
 $results = [];
 
 foreach ($plugins as $slug) {
@@ -610,7 +612,7 @@ foreach ($plugins as $slug) {
 echo json_encode($results);
 PHP;
         
-        $php = str_replace('{PLUGINS_JSON}', $pluginsJson, $php);
+        $php = str_replace('{PLUGINS_B64}', $pluginsB64, $php);
 
         $process = new Process(['docker-compose', 'exec', '-T', 'web', 'wp', 'eval', $php]);
         $process->setTimeout(120);

@@ -6,8 +6,7 @@ use Roots\BedrockCli\ValueObjects\DockerValidation;
 use Roots\BedrockCli\ValueObjects\DatabaseValidation;
 use Roots\BedrockCli\ValueObjects\WordPressValidation;
 use Roots\BedrockCli\ValueObjects\AcornValidation;
-use Roots\BedrockCli\Services\Management\ContextDetector;
-use Roots\BedrockCli\Enums\ExecutionMode;
+use Symfony\Component\Process\Process;
 
 class ProjectValidationService
 {
@@ -99,15 +98,26 @@ class ProjectValidationService
         $dbName = trim($env['DB_NAME'], '"\'');
         $dbUser = trim($env['DB_USER'], '"\'');
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
-
-        exec("mysql -h{$dbHost} -u{$dbUser} -p{$dbPass} -e 'SHOW DATABASES LIKE \"{$dbName}\"' 2>/dev/null", $output, $returnCode);
-
-        if ($returnCode === 0 && !empty($output)) {
-            foreach ($output as $line) {
-                if (strpos($line, $dbName) !== false) {
-                    return new DatabaseValidation(true, 'Database exists');
-                }
-            }
+        
+        $process = new Process([
+            'docker', 'compose', 'exec', '-T', 'mysql',
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", '-e', "SHOW DATABASES LIKE '{$dbName}';"
+        ], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = $process->getOutput();
+        if (!$process->isSuccessful()) {
+            $fallback = new Process([
+                'docker-compose', 'exec', '-T', 'mysql',
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", '-e', "SHOW DATABASES LIKE '{$dbName}';"
+            ], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = $fallback->getOutput();
+        }
+        
+        if ($output && strpos($output, $dbName) !== false) {
+            return new DatabaseValidation(true, 'Database connection successful');
         }
 
         return new DatabaseValidation(false, 'Database not found');
@@ -304,13 +314,36 @@ class ProjectValidationService
         return $inconsistencies;
     }
 
+    private function parseHostPort(string $portMapping): ?int
+    {
+        $parts = explode(':', $portMapping);
+        if (count($parts) === 3) {
+            // e.g. "127.0.0.1:8080:80" -> 8080
+            return (int) $parts[1];
+        }
+        if (count($parts) === 2) {
+            // e.g. "8080:80" -> 8080
+            return (int) $parts[0];
+        }
+        return null;
+    }
+
     private function getDockerHttpPort(array $dockerCompose): ?int
     {
-        // Check web service first (most common)
+        // Check nginx service first (standard Bedrock)
+        if (isset($dockerCompose['services']['nginx']['ports'])) {
+            foreach ($dockerCompose['services']['nginx']['ports'] as $portMapping) {
+                if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
+                    return $this->parseHostPort($portMapping);
+                }
+            }
+        }
+
+        // Check web service (most common fallback)
         if (isset($dockerCompose['services']['web']['ports'])) {
             foreach ($dockerCompose['services']['web']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -319,7 +352,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['wordpress']['ports'])) {
             foreach ($dockerCompose['services']['wordpress']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':80') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -332,7 +365,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['redis']['ports'])) {
             foreach ($dockerCompose['services']['redis']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':6379') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -346,7 +379,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['mysql']['ports'])) {
             foreach ($dockerCompose['services']['mysql']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -355,7 +388,7 @@ class ProjectValidationService
         if (isset($dockerCompose['services']['db']['ports'])) {
             foreach ($dockerCompose['services']['db']['ports'] as $portMapping) {
                 if (is_string($portMapping) && strpos($portMapping, ':3306') !== false) {
-                    return (int) explode(':', $portMapping)[0];
+                    return $this->parseHostPort($portMapping);
                 }
             }
         }
@@ -427,17 +460,19 @@ class ProjectValidationService
 
     private function isDockerRunning(): bool
     {
-        exec('docker info 2>/dev/null', $output, $returnCode);
-        return $returnCode === 0;
+        $process = new Process(['docker', 'info']);
+        $process->setTimeout(10);
+        $process->run();
+        return $process->isSuccessful() && strpos($process->getOutput(), 'Server Version') !== false;
     }
 
     private function areContainersRunning(string $projectPath): bool
     {
         $projectName = basename($projectPath);
-        
-        exec("docker ps --filter name={$projectName} --format '{{.Names}}' 2>/dev/null", $output, $returnCode);
-        
-        return $returnCode === 0 && !empty($output);
+        $process = new Process(['docker', 'ps', '--filter', "name={$projectName}", '--format', '{{.Names}}']);
+        $process->setTimeout(10);
+        $process->run();
+        return !empty(trim($process->getOutput()));
     }
 
     private function hasWordPressTables(string $projectPath): bool
@@ -453,12 +488,24 @@ class ProjectValidationService
         $dbPass = trim($env['DB_PASSWORD'], '"\'');
         $prefix = trim($env['DB_PREFIX'] ?? 'wp_', '"\'');
         
-        $projectName = basename($projectPath);
-        $cmd = "docker exec {$projectName}_mysql mysql -u{$dbUser} -p{$dbPass} {$dbName} -e 'SHOW TABLES LIKE \"{$prefix}options\"' 2>/dev/null";
+        $process = new Process([
+            'docker', 'compose', 'exec', '-T', 'mysql',
+            'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName, '-e', "SHOW TABLES LIKE '{$prefix}options';"
+        ], $projectPath);
+        $process->setTimeout(15);
+        $process->run();
+        $output = $process->getOutput();
+        if (!$process->isSuccessful()) {
+            $fallback = new Process([
+                'docker-compose', 'exec', '-T', 'mysql',
+                'mysql', "-u{$dbUser}", "-p{$dbPass}", $dbName, '-e', "SHOW TABLES LIKE '{$prefix}options';"
+            ], $projectPath);
+            $fallback->setTimeout(15);
+            $fallback->run();
+            $output = $fallback->getOutput();
+        }
         
-        $output = shell_exec($cmd);
-        
-        return $output && strpos($output, $prefix . 'options') !== false;
+        return !empty($output) && strpos($output, $prefix . 'options') !== false;
     }
 
     private function isAcornPackageInstalled(string $projectPath): bool

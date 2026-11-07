@@ -23,4 +23,18 @@ class ExportConfigCommandTest extends TestCase
         
         $this->assertTrue($application->has('export:config'));
     }
+
+    public function testGenerateExportScriptUsesKeysetPagination(): void
+    {
+        $command = new class extends ExportConfigCommand {
+            public function exposeScript(bool $all): string {
+                return $this->generateExportScript($all, []);
+            }
+        };
+
+        $scriptAll = $command->exposeScript(true);
+        $this->assertStringContainsString('option_name > %s', $scriptAll);
+        $this->assertStringContainsString('chunkSize = 1000', $scriptAll);
+        $this->assertStringContainsString('ORDER BY option_name ASC LIMIT %d', $scriptAll);
+    }
 }

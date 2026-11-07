@@ -9,6 +9,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Filesystem\Filesystem;
 use Roots\BedrockCli\Services\SecurityService;
 use Roots\BedrockCli\Services\DockerService;
 use Roots\BedrockCli\Services\WpCliService;
@@ -143,11 +144,14 @@ class ReinstallCommand extends Command
         }
 
         // Intentar obtener datos del sitio actual
-        $process = $this->wpCliService->execute(['option', 'get', 'blogname']);
+        $docker = new DockerService();
+        $wpcli = new WpCliService($docker);
+        
+        $process = $wpcli->exec(['option', 'get', 'blogname']);
         $process->run();
         $title = $process->isSuccessful() ? trim($process->getOutput()) : 'Mi Sitio';
         
-        $process = $this->wpCliService->execute(['option', 'get', 'admin_email']);
+        $process = $wpcli->exec(['option', 'get', 'admin_email']);
         $process->run();
         $email = $process->isSuccessful() ? trim($process->getOutput()) : 'admin@example.com';
 
@@ -167,20 +171,12 @@ class ReinstallCommand extends Command
             return;
         }
 
-        if (DIRECTORY_SEPARATOR === '\\') {
-            // Windows
-            $process = Process::fromShellCommandline("rmdir /s /q \"{$fullPath}\"");
-        } else {
-            // Unix
-            $process = Process::fromShellCommandline("rm -rf \"{$fullPath}\"");
-        }
-        
-        $process->run();
-        
-        if ($process->isSuccessful()) {
+        try {
+            $filesystem = new Filesystem();
+            $filesystem->remove($fullPath);
             $output->writeln("<fg=green>✓ {$path} eliminado</>");
-        } else {
-            $output->writeln("<fg=red>✗ Error al eliminar {$path}</>");
+        } catch (\Throwable $e) {
+            $output->writeln("<fg=red>✗ Error al eliminar {$path}: {$e->getMessage()}</>");
         }
     }
 
@@ -200,13 +196,13 @@ class ReinstallCommand extends Command
 
     private function reinstallWordPress(WpCliService $wpcli, array $data, OutputInterface $output): void
     {
-        $process = $wpcli->coreInstall(
-            $data['url'],
-            $data['title'],
-            'admin',
-            'admin',
-            $data['email']
-        );
+        $process = $wpcli->coreInstall([
+            'url' => $data['url'],
+            'title' => $data['title'],
+            'admin_user' => 'admin',
+            'admin_password' => 'admin',
+            'admin_email' => $data['email']
+        ]);
         
         $process->run(function ($type, $buffer) use ($output) {
             $output->write($buffer);

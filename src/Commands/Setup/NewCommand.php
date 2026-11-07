@@ -3,10 +3,12 @@
 namespace Roots\BedrockCli\Commands\Setup;
 
 use Symfony\Component\Console\Command\Command;
+use Roots\BedrockCli\Services\EnvironmentSecurityService;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\ComposerService;
@@ -49,12 +51,18 @@ class NewCommand extends Command
         $this->webServerService = $webServerService;
     }
 
+    private string $resolvedDbPass = '';
+    private string $resolvedDbUser = '';
+    private string $resolvedRedisPass = '';
+    private string $resolvedMysqlRootPass = '';
+
     protected function configure(): void
     {
         $this
             ->setName('new')
             ->setDescription('Crear nuevo proyecto Bedrock')
-            ->addArgument('name', InputArgument::REQUIRED, 'Nombre del proyecto')
+            ->addArgument('name', InputArgument::OPTIONAL, 'Nombre del proyecto')
+            ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Nombre del proyecto')
             ->addOption('no-docker', null, InputOption::VALUE_NONE, 'NO generar archivos Docker (por defecto SÍ se genera)')
             ->addOption('no-acorn', null, InputOption::VALUE_NONE, 'NO instalar Roots Acorn (por defecto SÍ se instala)')
             ->addOption('no-redis', null, InputOption::VALUE_NONE, 'NO instalar Redis (por defecto SÍ se instala)')
@@ -62,23 +70,49 @@ class NewCommand extends Command
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Usuario de BD', 'root')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Contraseña de BD', 'mysql')
             ->addOption('http-port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP')
+            ->addOption('port', null, InputOption::VALUE_REQUIRED, 'Puerto HTTP (alias de --http-port)')
             ->addOption('mysql-port', null, InputOption::VALUE_REQUIRED, 'Puerto MySQL')
             ->addOption('redis-port', null, InputOption::VALUE_REQUIRED, 'Puerto Redis')
             ->addOption('mode', null, InputOption::VALUE_REQUIRED, 'Modo de ejecución (full, hybrid, native)', 'full')
             ->addOption('hybrid-services', null, InputOption::VALUE_REQUIRED, 'Servicios híbridos (separados por coma)', 'mysql,redis')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Sobrescribir si existe')
+            ->addOption('verify', null, InputOption::VALUE_NONE, 'Verificar y auto-reparar proyecto después de crearlo')
             ->addOption('profile', null, InputOption::VALUE_REQUIRED, 'Profile a usar', 'default');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $name = $input->getArgument('name');
-        $force = $input->getOption('force');
-        
-        if (is_dir($name) && !$force) {
-            $output->writeln("<error>El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
+        $name = $input->getArgument('name') ?: $input->getOption('name');
+        if (!$name) {
+            $output->writeln('<error>El nombre del proyecto es obligatorio. Usa: bedrock new <nombre> o --name=<nombre></error>');
             return Command::FAILURE;
         }
+        $force = $input->getOption('force');
+        
+        if (is_dir($name)) {
+            if (!$force) {
+                $output->writeln("<error>El directorio '{$name}' ya existe. Usa --force para sobrescribir.</error>");
+                return Command::FAILURE;
+            }
+            $output->writeln("<comment>Limpiando directorio e instancias previas de '{$name}' (--force)...</comment>");
+            if (file_exists("{$name}/docker-compose.yml")) {
+                $down = new Process(['docker', 'compose', 'down', '-v'], $name);
+                $down->setTimeout(120);
+                $down->run();
+            }
+            $cleanContainers = new Process(['docker', 'rm', '-f', "{$name}_web", "{$name}_nginx", "{$name}_mysql", "{$name}_redis", "{$name}_worker"]);
+            $cleanContainers->run();
+
+            try {
+                (new Filesystem())->remove($name);
+            } catch (\Throwable) {
+                // Fallback para entornos Linux con archivos de contenedores (root/www-data)
+                $sudoRm = new Process(['sudo', 'rm', '-rf', $name]);
+                $sudoRm->run();
+            }
+        }
+
+        $this->initSecurityCredentials($input);
 
         $output->writeln("<info>Creando proyecto Bedrock: {$name}</info>");
         $output->writeln('');
@@ -109,8 +143,8 @@ class NewCommand extends Command
         $this->initGit($name, $output);
         $this->generateWizardState($name, $input, $profile, $output);
         
-        // Verificación y auto-fix post-creación
-        if (!$input->getOption('no-docker')) {
+        // Verificación y auto-fix post-creación (solo si --verify está presente)
+        if ($input->getOption('verify') && !$input->getOption('no-docker')) {
             $this->verifyAndFixProject($name, $output);
             
             // [NUEVO] Configurar permisos para MU plugin
@@ -146,7 +180,7 @@ class NewCommand extends Command
             $output->writeln('');
             $output->writeln('<comment>Instalar WordPress:</comment>');
             $output->writeln('  docker-compose exec web wp core install \\');
-            $output->writeln('    --url=http://localhost:' . ($input->getOption('http-port') ?: $this->webServerService->findFreePort(80)) . ' \\');
+            $output->writeln('    --url=http://localhost:' . (($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output)) . ' \\');
             $output->writeln('    --title="Mi Sitio" \\');
             $output->writeln('    --admin_user=admin \\');
             $output->writeln('    --admin_password=admin \\');
@@ -247,9 +281,32 @@ class NewCommand extends Command
         $output->writeln('<info>✓ Acorn instalado</info>');
     }
 
+    private function initSecurityCredentials(InputInterface $input): void
+    {
+        $dbUser = $input->getOption('db-user') ?: 'root';
+        $dbPass = $input->getOption('db-pass');
+
+        if (empty($dbPass) || $dbPass === 'mysql') {
+            $dbPass = EnvironmentSecurityService::generateSecureSecret(24);
+        }
+
+        $this->resolvedDbUser = $dbUser;
+        $this->resolvedDbPass = $dbPass;
+        $this->resolvedRedisPass = EnvironmentSecurityService::generateSecureSecret(32);
+
+        if ($dbUser === 'root') {
+            $this->resolvedMysqlRootPass = $this->resolvedDbPass;
+        } else {
+            $this->resolvedMysqlRootPass = EnvironmentSecurityService::generateSecureSecret(24);
+        }
+    }
+
     private function installRedis(string $name, OutputInterface $output): void
     {
         $output->writeln('<info>Instalando Redis Object Cache...</info>');
+
+        $allowProc = new Process(['composer', 'config', '--no-plugins', 'allow-plugins.mnsami/composer-custom-directory-installer', 'true'], $name);
+        $allowProc->run();
 
         $process = new Process(['composer', 'require', 'rhubarbgroup/redis-cache', '--no-interaction'], $name);
         $process->setTimeout(900);
@@ -272,22 +329,38 @@ class NewCommand extends Command
         $stubsDir = $this->getStubsDir();
         $projectName = $name;
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        $dbUser = $input->getOption('db-user');
-        $dbPass = $input->getOption('db-pass');
-        
-        // Determinar puertos (necesarios para reemplazo en stub)
-        $httpPort = $input->getOption('http-port') ?: $this->determineHttpPort(null, $output)['port'];
-        $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
-        $redisPort = $input->getOption('redis-port') ?: $this->webServerService->findFreePort(6379);
+        $dbUser = $this->resolvedDbUser;
+        $dbPass = $this->resolvedDbPass;
+        $redisPass = $this->resolvedRedisPass;
+        $mysqlRootPass = $this->resolvedMysqlRootPass;
+
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
+        $mysqlPort = $input->getOption('mysql-port') ?: $this->findFreePort(3306, $output);
+        $redisPort = $input->getOption('redis-port') ?: $this->findFreePort(6379, $output);
+
+        $nginxPortBinding = EnvironmentSecurityService::getSafePortBinding($httpPort, false);
+        $mysqlPortBinding = EnvironmentSecurityService::getSafePortBinding($mysqlPort, true);
+        $redisPortBinding = EnvironmentSecurityService::getSafePortBinding($redisPort, true);
+
+        $mysqlUserEnvBlock = '';
+        if ($dbUser !== 'root') {
+            $mysqlUserEnvBlock = "      MYSQL_USER: {$dbUser}\n      MYSQL_PASSWORD: {$dbPass}";
+        }
 
         $vars = [
             '{{PROJECT_NAME}}' => $projectName,
             '{{DB_NAME}}' => $dbName,
             '{{DB_USER}}' => $dbUser,
             '{{DB_PASSWORD}}' => $dbPass,
+            '{{MYSQL_ROOT_PASSWORD}}' => $mysqlRootPass,
+            '{{MYSQL_USER_ENV_BLOCK}}' => $mysqlUserEnvBlock,
             '{{HTTP_PORT}}' => $httpPort,
             '{{MYSQL_PORT}}' => $mysqlPort,
             '{{REDIS_PORT}}' => $redisPort,
+            '{{NGINX_PORT_BINDING}}' => $nginxPortBinding,
+            '{{MYSQL_PORT_BINDING}}' => $mysqlPortBinding,
+            '{{REDIS_PORT_BINDING}}' => $redisPortBinding,
+            '{{REDIS_PASSWORD}}' => $redisPass,
         ];
 
         // 1. Generar docker-compose.yml base desde stub
@@ -321,6 +394,7 @@ class NewCommand extends Command
         @mkdir("{$name}/docker/mysql", 0755, true);
         $this->copyStub("{$stubsDir}/docker/mysql/client.cnf.stub", "{$name}/docker/mysql/client.cnf", $vars);
         $this->copyStub("{$stubsDir}/docker/mysql/my.cnf.stub", "{$name}/docker/mysql/my.cnf", $vars);
+        $this->copyStub("{$stubsDir}/docker/php-fpm/zz-tuning.conf.stub", "{$name}/docker/php-fpm/zz-tuning.conf", $vars);
 
         // Archivos específicos de Full Mode
         if ($mode === 'full') {
@@ -369,9 +443,7 @@ class NewCommand extends Command
 
         $stubsDir = $this->getStubsDir();
         $dbName = $input->getOption('db-name') ?: str_replace('-', '_', $name);
-        $httpPort = $input->getOption('http-port') ?: $this->webServerService->findFreePort(80);
-        $mode = $input->getOption('mode') ?: ($input->getOption('no-docker') ? 'native' : 'full');
-        $useRedis = !$input->getOption('no-redis');
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
         
         // Determinar puertos
         $mysqlPort = $input->getOption('mysql-port') ?: $this->webServerService->findFreePort(3306);
@@ -410,10 +482,9 @@ class NewCommand extends Command
         $vars = [
             '{{PROJECT_NAME}}' => $name,
             '{{DB_NAME}}' => $dbName,
-            '{{DB_USER}}' => $input->getOption('db-user'),
-            '{{DB_PASSWORD}}' => $input->getOption('db-pass'),
-            '{{DB_HOST}}' => $dbHost,
-            '{{DB_PORT_LINE}}' => $dbPortLine,
+            '{{DB_USER}}' => $this->resolvedDbUser,
+            '{{DB_PASSWORD}}' => $this->resolvedDbPass,
+            '{{REDIS_PASSWORD}}' => $this->resolvedRedisPass,
             '{{HTTP_PORT}}' => $httpPort,
             '{{WP_PORT_LINE}}' => $wpPortLine,
             '{{WP_HOME_URL}}' => $wpHomeUrl,
@@ -526,6 +597,14 @@ class NewCommand extends Command
         } else {
             $output->writeln('<comment>⚠ MU-Plugin no encontrado, omitiendo...</comment>');
         }
+
+        // Instalar guard para Simple JWT Login en CLI
+        $jwtCliStub = $this->getStubsDir() . '/mu-plugins/disable-jwt-cli.php.stub';
+        if (file_exists($jwtCliStub)) {
+            @mkdir("{$name}/web/app/mu-plugins", 0755, true);
+            copy($jwtCliStub, "{$name}/web/app/mu-plugins/disable-jwt-cli.php");
+            $output->writeln('<info>✓ Guard disable-jwt-cli.php instalado</info>');
+        }
     }
     
     private function recursiveCopy(string $source, string $destination): void
@@ -558,7 +637,8 @@ class NewCommand extends Command
         $output->writeln("<info>Aplicando profile '{$profileName}'...</info>");
 
         try {
-            $profile = $this->profileService->loadProfile($profileName);
+            $profile = $profileService->loadProfile($profileName);
+            $profile = is_object($profile) ? $profile->toArray() : $profile;
             
             // SIEMPRE detectar Docker mode en tiempo real
             $dockerMode = !$input->getOption('no-docker');
@@ -596,8 +676,9 @@ class NewCommand extends Command
         $profileName = $input->getOption('profile');
 
         try {
-            $profile = $this->profileService->loadProfile($profileName);
-            $this->blueprintService->generateBlueprints($profile, $name);
+            $profile = $profileService->loadProfile($profileName);
+            $profile = is_object($profile) ? $profile->toArray() : $profile;
+            $blueprintService->generateBlueprints($profile, $name);
             $output->writeln('<info>✓ Blueprints generados (production, staging, development)</info>');
         } catch (\RuntimeException $e) {
             $output->writeln("<comment>Blueprints no generados: {$e->getMessage()}</comment>");
@@ -743,8 +824,8 @@ class NewCommand extends Command
     {
         $output->writeln('<info>Generando wizard de configuración...</info>');
 
-
-        $httpPort = $input->getOption('http-port') ?: $this->webServerService->findFreePort(80);
+        $stateService = new StateService();
+        $httpPort = ($input->getOption('http-port') ?: $input->getOption('port')) ?: $this->findFreePort(80, $output);
 
         $themeName = 'twentytwentyfive';
         if ($profile && !empty($profile['themes'])) {

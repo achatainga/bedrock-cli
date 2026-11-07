@@ -168,4 +168,26 @@ class WpCliServiceTest extends TestCase
 
         $this->assertInstanceOf(Process::class, $result);
     }
+
+    public function test_it_escapes_special_characters_and_backticks_safely(): void
+    {
+        $processMock = $this->createMock(Process::class);
+        
+        $this->dockerMock
+            ->expects($this->once())
+            ->method('exec')
+            ->with(
+                'web',
+                $this->callback(function (array $cmd) {
+                    $cmdStr = $cmd[2] ?? '';
+                    return str_contains($cmdStr, "'plugin'")
+                        && str_contains($cmdStr, "'install'")
+                        && str_contains($cmdStr, "'`id`'")
+                        && str_contains($cmdStr, "'test;rm -rf /'");
+                })
+            )
+            ->willReturn($processMock);
+
+        $this->service->exec(['plugin', 'install', '`id`', 'test;rm -rf /']);
+    }
 }

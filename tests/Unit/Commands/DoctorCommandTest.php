@@ -26,4 +26,11 @@ class DoctorCommandTest extends TestCase
         
         $this->assertTrue($application->has('doctor'));
     }
+
+    public function test_it_does_not_use_from_shell_commandline(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/src/Commands/System/DoctorCommand.php');
+        $this->assertNotFalse($source);
+        $this->assertStringNotContainsString('fromShellCommandline', $source);
+    }
 }

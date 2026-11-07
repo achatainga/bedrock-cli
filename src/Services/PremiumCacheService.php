@@ -14,7 +14,7 @@ class PremiumCacheService
 
     public function __construct()
     {
-        $home = $this->getHomeDirectory();
+        $home = str_replace('\\', '/', $this->getHomeDirectory());
         $this->cachePath = $home . '/.bedrock-cli/cache/premium';
         $this->themeCachePath = $home . '/.bedrock-cli/cache/themes';
         $this->authService = new AuthService();
@@ -23,16 +23,16 @@ class PremiumCacheService
 
     private function getHomeDirectory(): string
     {
-        // Detectar WSL: PHP_OS_FAMILY es Linux pero existe /mnt/c/
-        if (PHP_OS_FAMILY === 'Linux' || is_dir('/proc/version')) {
-            return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
-        }
-        
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('USERPROFILE') ?: getenv('HOMEDRIVE') . getenv('HOMEPATH');
         }
-        
-        return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
+
+        $home = getenv('HOME');
+        if (!$home && function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+            $home = posix_getpwuid(posix_getuid())['dir'] ?? null;
+        }
+
+        return $home ?: sys_get_temp_dir();
     }
 
     private function ensureCacheDirectory(): void
@@ -69,8 +69,8 @@ class PremiumCacheService
         $ch = curl_init($fileUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_USERAGENT, 'bedrock-cli');
         curl_setopt($ch, CURLOPT_TIMEOUT, 120);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
@@ -117,7 +117,7 @@ class PremiumCacheService
             throw new RuntimeException("No se pudo abrir {$zipPath}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         return $extractPath;
@@ -350,7 +350,7 @@ class PremiumCacheService
             throw new RuntimeException("Cannot open zip file: {$targetZip}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         $pluginPath = $extractPath;
@@ -454,7 +454,7 @@ class PremiumCacheService
             throw new RuntimeException("No se pudo abrir {$zipPath}");
         }
 
-        $zip->extractTo($extractPath);
+        $this->extractSafely($zip, $extractPath);
         $zip->close();
 
         return $extractPath;
@@ -632,6 +632,27 @@ class PremiumCacheService
         $themeDir = $this->themeCachePath . "/{$name}/{$version}";
         if (is_dir($themeDir)) {
             $this->deleteDirectory($themeDir);
+        }
+    }
+
+    private function extractSafely(ZipArchive $zip, string $destination): void
+    {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            if ($entry === false) {
+                continue;
+            }
+            if (str_contains($entry, '..') || str_starts_with($entry, '/') || str_starts_with($entry, '\\')) {
+                throw new RuntimeException("Ruta insegura detectada en zip (Zip Slip): {$entry}");
+            }
+        }
+
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        if (!$zip->extractTo($destination)) {
+            throw new RuntimeException("Error al extraer archivo en {$destination}");
         }
     }
 }

@@ -134,4 +134,13 @@ class AIServiceTest extends TestCase
         
         $service->ask('test question');
     }
+
+    public function test_gemini_url_does_not_contain_api_key_query_param(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/src/Services/AIService.php');
+        $this->assertNotFalse($source);
+        $this->assertStringNotContainsString('generateContent?key=', $source);
+        $this->assertStringContainsString('x-goog-api-key', $source);
+        $this->assertStringContainsString('CURLOPT_SSL_VERIFYHOST => 2', $source);
+    }
 }

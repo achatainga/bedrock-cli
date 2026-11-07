@@ -7,6 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 class EditCommand extends Command
 {
@@ -43,13 +44,16 @@ class EditCommand extends Command
         $output->writeln("<info>Abriendo {$name}.json en {$editor}...</info>");
         
         // Abrir editor
-        $command = PHP_OS_FAMILY === 'Windows' 
-            ? "start /wait {$editor} \"{$profilePath}\""
-            : "{$editor} \"{$profilePath}\"";
+        if (PHP_OS_FAMILY === 'Windows') {
+            $process = new Process(['cmd', '/c', 'start', '', '/wait', $editor, $profilePath]);
+        } else {
+            $process = new Process([$editor, $profilePath]);
+        }
+        $process->setTimeout(null);
+        $process->setTty(Process::isTtySupported());
+        $process->run();
         
-        system($command, $returnCode);
-        
-        if ($returnCode !== 0) {
+        if (!$process->isSuccessful()) {
             $output->writeln('<error>Error al abrir el editor</error>');
             return Command::FAILURE;
         }

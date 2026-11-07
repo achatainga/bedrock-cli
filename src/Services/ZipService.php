@@ -3,6 +3,7 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 class ZipService
 {
@@ -49,17 +50,19 @@ class ZipService
         }
 
         $output->writeln('<fg=cyan>➜ Usando: Python Local</>');
-        exec('python --version 2>&1', $pythonCheck, $pythonCode);
+        $pyCheck = new Process(['python', '--version']);
+        $pyCheck->run();
         
-        if ($pythonCode !== 0) {
+        if (!$pyCheck->isSuccessful()) {
             $this->suggestPythonInstall($output);
             return false;
         }
 
-        $command = sprintf('python "%s" "%s" "%s" 2>&1', $pythonScript, $sourceDir, $zipPath);
-        exec($command, $output_lines, $return_code);
+        $pyProcess = new Process(['python', $pythonScript, $sourceDir, $zipPath]);
+        $pyProcess->setTimeout(300);
+        $pyProcess->run();
         
-        if ($return_code === 0) {
+        if ($pyProcess->isSuccessful()) {
             $output->writeln('<fg=green>✓ Comprimido exitosamente</>');
             return true;
         }
@@ -76,8 +79,9 @@ class ZipService
         $os = PHP_OS_FAMILY;
         
         if ($os === 'Windows') {
-            exec('choco --version 2>&1', $chocoCheck, $chocoCode);
-            if ($chocoCode === 0) {
+            $chocoCheck = new Process(['choco', '--version']);
+            $chocoCheck->run();
+            if ($chocoCheck->isSuccessful()) {
                 $output->writeln("<error>✗ Python no encontrado</error>");
                 $output->writeln("<info>➜ Instalar con: <fg=green>choco install python</></info>");
             } else {
@@ -123,24 +127,24 @@ class ZipService
         $dockerZipPath = str_replace('\\', '/', $dockerZipPath);
         $dockerScriptPath = str_replace('\\', '/', $dockerScriptPath);
         
-        $command = sprintf(
-            'docker exec %s python "%s" "%s" "%s" 2>&1',
-            $containerName,
-            $dockerScriptPath,
+        $dockerPyProcess = new Process([
+            'docker', 'exec', $containerName,
+            'python', $dockerScriptPath,
             $dockerSourceDir,
             $dockerZipPath
-        );
+        ]);
+        $dockerPyProcess->setTimeout(300);
+        $dockerPyProcess->run();
         
-        exec($command, $output_lines, $return_code);
-        
-        if ($return_code === 0) {
+        if ($dockerPyProcess->isSuccessful()) {
             $output->writeln('<fg=green>✓ Comprimido exitosamente</>');
             return true;
         }
         
         $output->writeln('<error>✗ Error al comprimir con Python Docker</error>');
-        if (!empty($output_lines)) {
-            $output->writeln('<comment>  ' . implode("\n  ", $output_lines) . '</comment>');
+        $err = trim($dockerPyProcess->getErrorOutput() ?: $dockerPyProcess->getOutput());
+        if (!empty($err)) {
+            $output->writeln('<comment>  ' . $err . '</comment>');
         }
         return false;
     }
@@ -224,23 +228,22 @@ class ZipService
         $dockerSourceDir = str_replace('\\', '/', $dockerSourceDir);
         $dockerZipPath = str_replace('\\', '/', $dockerZipPath);
         
-        $command = sprintf(
-            'docker exec %s zip -r "%s" "%s" 2>&1',
-            $containerName,
-            $dockerZipPath,
-            $dockerSourceDir
-        );
-        
-        exec($command, $output_lines, $return_code);
+        $dockerZipProcess = new Process([
+            'docker', 'exec', $containerName,
+            'zip', '-r', $dockerZipPath, $dockerSourceDir
+        ]);
+        $dockerZipProcess->setTimeout(300);
+        $dockerZipProcess->run();
 
-        if ($return_code === 0) {
+        if ($dockerZipProcess->isSuccessful()) {
             $output->writeln('<fg=green>✓ Comprimido exitosamente</>');
             return true;
         }
         
         $output->writeln('<error>✗ Error al comprimir con zip Docker</error>');
-        if (!empty($output_lines)) {
-            $output->writeln('<comment>  ' . implode("\n  ", $output_lines) . '</comment>');
+        $err = trim($dockerZipProcess->getErrorOutput() ?: $dockerZipProcess->getOutput());
+        if (!empty($err)) {
+            $output->writeln('<comment>  ' . $err . '</comment>');
         }
         $output->writeln("<error>✗ No se pudo comprimir: Ningún método disponible</error>");
         return false;

@@ -6,7 +6,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Roots\BedrockCli\Services\ProjectValidationService;
-use Roots\BedrockCli\Traits\ProjectSelectorTrait;
+use Symfony\Component\Process\Process;
 
 class InfoCommand extends Command
 {
@@ -54,7 +54,7 @@ class InfoCommand extends Command
         $state = [
             'is_bedrock' => file_exists($projectPath . '/composer.json') && file_exists($projectPath . '/config/application.php'),
             'env_exists' => file_exists($projectPath . '/.env'),
-            'docker_installed' => $dockerValidation->isValid || shell_exec('docker --version 2>/dev/null') !== null,
+            'docker_installed' => $dockerValidation->isValid || $this->isDockerInstalled(),
             'docker_running' => $dockerValidation->isValid,
             'containers_running' => $dockerValidation->isValid,
             'wp_installed' => $wpValidation->isValid,
@@ -245,7 +245,7 @@ class InfoCommand extends Command
         }
         
         // Obtener tema activo desde WordPress
-        $activeTheme = $this->getActiveTheme();
+        $activeTheme = $this->getActiveTheme($output);
         
         $output->writeln('<fg=cyan;options=bold>Temas:</>');
         
@@ -277,7 +277,7 @@ class InfoCommand extends Command
         }
         
         // Obtener plugins activos desde WordPress
-        $activePlugins = $this->getActivePlugins();
+        $activePlugins = $this->getActivePlugins($output);
         
         $output->writeln('<fg=cyan;options=bold>Plugins:</>');
         
@@ -296,11 +296,11 @@ class InfoCommand extends Command
         $output->writeln('');
     }
     
-    private function getActiveTheme(): ?string
+    private function getActiveTheme(?OutputInterface $output = null): ?string
     {
         try {
-            $process = \Symfony\Component\Process\Process::fromShellCommandline(
-                'docker-compose exec -T web wp theme list --status=active --field=name 2>/dev/null',
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'wp', 'theme', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
             $process->setTimeout(10);
@@ -309,29 +309,43 @@ class InfoCommand extends Command
             if ($process->isSuccessful()) {
                 return trim($process->getOutput()) ?: null;
             }
-        } catch (\Exception $e) {
-            return null;
+
+            if ($output && $output->isVerbose()) {
+                $err = trim($process->getErrorOutput());
+                $output->writeln("<comment>[InfoCommand] Fallo al listar temas activos: {$err}</comment>");
+            }
+        } catch (\Throwable $e) {
+            if ($output && $output->isVerbose()) {
+                $output->writeln("<comment>[InfoCommand] Excepción al consultar tema activo: {$e->getMessage()}</comment>");
+            }
         }
         
         return null;
     }
     
-    private function getActivePlugins(): array
+    private function getActivePlugins(?OutputInterface $output = null): array
     {
         try {
-            $process = \Symfony\Component\Process\Process::fromShellCommandline(
-                'docker-compose exec -T web wp plugin list --status=active --field=name 2>/dev/null',
+            $process = new \Symfony\Component\Process\Process(
+                ['docker-compose', 'exec', '-T', 'web', 'wp', 'plugin', 'list', '--status=active', '--field=name'],
                 getcwd()
             );
             $process->setTimeout(10);
             $process->run();
             
             if ($process->isSuccessful()) {
-                $output = trim($process->getOutput());
-                return $output ? explode("\n", $output) : [];
+                $out = trim($process->getOutput());
+                return $out ? array_filter(array_map('trim', explode("\n", $out))) : [];
             }
-        } catch (\Exception $e) {
-            return [];
+
+            if ($output && $output->isVerbose()) {
+                $err = trim($process->getErrorOutput());
+                $output->writeln("<comment>[InfoCommand] Fallo al listar plugins activos: {$err}</comment>");
+            }
+        } catch (\Throwable $e) {
+            if ($output && $output->isVerbose()) {
+                $output->writeln("<comment>[InfoCommand] Excepción al consultar plugins activos: {$e->getMessage()}</comment>");
+            }
         }
         
         return [];
@@ -355,5 +369,13 @@ class InfoCommand extends Command
         }
         
         $output->writeln('');
+    }
+
+    private function isDockerInstalled(): bool
+    {
+        $process = new Process(['docker', '--version']);
+        $process->setTimeout(5);
+        $process->run();
+        return $process->isSuccessful();
     }
 }

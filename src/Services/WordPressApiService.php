@@ -121,7 +121,13 @@ class WordPressApiService
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('USERPROFILE') ?: getenv('HOMEDRIVE') . getenv('HOMEPATH');
         }
-        return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
+
+        $home = getenv('HOME');
+        if (!$home && function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+            $home = posix_getpwuid(posix_getuid())['dir'] ?? null;
+        }
+
+        return $home ?: sys_get_temp_dir();
     }
 
     private function ensureCacheDirectory(): void

@@ -58,11 +58,17 @@ class PullCommand extends Command
             return 0;
         }
 
-        $results = json_decode($process->getOutput(), true);
+        $payload = json_decode($process->getOutput(), true);
+        $results = isset($payload['results']) ? $payload['results'] : $payload;
+        $truncated = $payload['truncated'] ?? false;
         
         if (empty($results)) {
             $output->writeln('<comment>No se encontraron opciones para exportar</comment>');
             return 0;
+        }
+
+        if (!empty($truncated)) {
+            $output->writeln('<comment>⚠ ADVERTENCIA: Se alcanzó el límite de seguridad de 50.000 opciones. Se recomienda refinar mediante --prefix.</comment>');
         }
 
         $count = 0;
@@ -80,18 +86,66 @@ class PullCommand extends Command
     {
         $excludeJson = json_encode(array_merge($excludePatterns, $defaultExclusions));
         $prefixJson = json_encode($prefix);
+        $allStr = $all ? 'true' : 'false';
         
         return <<<PHP
 global \$wpdb;
 \$exclude = {$excludeJson};
 \$prefix = {$prefixJson};
-\$all = " . ($all ? 'true' : 'false') . ";
+\$all = {$allStr};
+
+\$keys = [];
+\$chunkSize = 1000;
+\$maxOptions = 50000;
+\$truncated = false;
 
 if (\$all) {
-    \$keys = \$wpdb->get_col("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name");
+    \$lastOption = '';
+    while (count(\$keys) < \$maxOptions) {
+        if (\$lastOption === '') {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} ORDER BY option_name ASC LIMIT %d", \$chunkSize));
+        } else {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name > %s ORDER BY option_name ASC LIMIT %d", \$lastOption, \$chunkSize));
+        }
+        if (empty(\$chunk)) {
+            break;
+        }
+        foreach (\$chunk as \$k) {
+            \$keys[] = \$k;
+            if (count(\$keys) >= \$maxOptions) {
+                \$truncated = true;
+                break;
+            }
+        }
+        \$lastOption = end(\$chunk);
+        if (count(\$chunk) < \$chunkSize) {
+            break;
+        }
+    }
 } elseif (\$prefix) {
+    \$lastOption = '';
     \$like = \$wpdb->esc_like(\$prefix) . '%';
-    \$keys = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name", \$like));
+    while (count(\$keys) < \$maxOptions) {
+        if (\$lastOption === '') {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name ASC LIMIT %d", \$like, \$chunkSize));
+        } else {
+            \$chunk = \$wpdb->get_col(\$wpdb->prepare("SELECT option_name FROM {\$wpdb->options} WHERE option_name LIKE %s AND option_name > %s ORDER BY option_name ASC LIMIT %d", \$like, \$lastOption, \$chunkSize));
+        }
+        if (empty(\$chunk)) {
+            break;
+        }
+        foreach (\$chunk as \$k) {
+            \$keys[] = \$k;
+            if (count(\$keys) >= \$maxOptions) {
+                \$truncated = true;
+                break;
+            }
+        }
+        \$lastOption = end(\$chunk);
+        if (count(\$chunk) < \$chunkSize) {
+            break;
+        }
+    }
 } else {
     \$keys = ['blogname', 'blogdescription', 'siteurl', 'home'];
 }
@@ -113,7 +167,7 @@ foreach (\$keys as \$key) {
     }
 }
 
-echo json_encode(\$results);
+echo json_encode(['results' => \$results, 'truncated' => \$truncated, 'total_keys' => count(\$keys)]);
 PHP;
     }
 

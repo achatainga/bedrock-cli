@@ -29,16 +29,16 @@ class ProfileService
 
     private function getHomeDirectory(): string
     {
-        // Detectar WSL: PHP_OS_FAMILY es Linux pero existe /mnt/c/
-        if (PHP_OS_FAMILY === 'Linux' || is_dir('/proc/version')) {
-            return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
-        }
-        
         if (PHP_OS_FAMILY === 'Windows') {
             return getenv('USERPROFILE') ?: getenv('HOMEDRIVE') . getenv('HOMEPATH');
         }
-        
-        return getenv('HOME') ?: posix_getpwuid(posix_getuid())['dir'];
+
+        $home = getenv('HOME');
+        if (!$home && function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+            $home = posix_getpwuid(posix_getuid())['dir'] ?? null;
+        }
+
+        return $home ?: sys_get_temp_dir();
     }
 
     private function ensureDirectoryStructure(): void
@@ -68,6 +68,9 @@ class ProfileService
 
     public function profileExists(string $name): bool
     {
+        if (empty($name) || basename($name) !== $name || !preg_match('/^[a-zA-Z0-9_\-\.]+$/', $name)) {
+            return false;
+        }
         return file_exists($this->profilesPath . '/' . $name . '.json');
     }
 
@@ -94,7 +97,11 @@ class ProfileService
 
     public function saveProfile(string $name, Profile $profile): void
     {
-        $json = json_encode($profile->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if (empty($name) || basename($name) !== $name || !preg_match('/^[a-zA-Z0-9_\-\.]+$/', $name)) {
+            throw new \InvalidArgumentException("Nombre de profile inválido: '{$name}'");
+        }
+
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new RuntimeException("Error al codificar profile: " . json_last_error_msg());
@@ -390,7 +397,7 @@ class ProfileService
         return $headers;
     }
     
-    public function detectDockerMode(string $projectPath = null): bool
+    public function detectDockerMode(?string $projectPath = null): bool
     {
         $path = $projectPath ?: getcwd();
         return file_exists($path . '/docker-compose.yml') || 
