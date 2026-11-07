@@ -90,4 +90,12 @@ class Logger
         $content = file($this->logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         return array_slice($content, -$lines);
     }
+
+    public function clearLogs(): bool
+    {
+        if (file_exists($this->logFile)) {
+            return unlink($this->logFile);
+        }
+        return false;
+    }
 }

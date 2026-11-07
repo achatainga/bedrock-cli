@@ -6,7 +6,7 @@ class AdminMenu
 {
     public function __construct()
     {
-        add_action('admin_menu', [$this, 'registerMenu'], 57);
+        add_action('admin_menu', [$this, 'registerMenu'], 5);
     }
 
     public function registerMenu(): void
@@ -19,7 +19,7 @@ class AdminMenu
             'bedrock-cli',
             [$this, 'renderDashboard'],
             'dashicons-admin-tools',
-            57
+            2
         );
 
         // Submenú: Dashboard
@@ -30,6 +30,16 @@ class AdminMenu
             'manage_options',
             'bedrock-cli',
             [$this, 'renderDashboard']
+        );
+
+        // Submenú: Plugins
+        add_submenu_page(
+            'bedrock-cli',
+            'Plugins',
+            'Plugins',
+            'manage_options',
+            'bedrock-cli-plugins',
+            [$this, 'renderPlugins']
         );
 
         // Submenú: Logs
@@ -55,45 +65,12 @@ class AdminMenu
 
     public function renderDashboard(): void
     {
-        ?>
-        <div class="wrap">
-            <h1>Bedrock CLI - Dashboard</h1>
+        require_once __DIR__ . '/Views/dashboard.php';
+    }
 
-            <div class="card">
-                <h2>Accesos Rápidos</h2>
-                <p>
-                    <a href="<?php echo admin_url('admin.php?page=bedrock-cli-logs'); ?>" class="button button-primary">
-                        📋 Ver Logs
-                    </a>
-                    <a href="<?php echo admin_url('admin.php?page=bedrock-cli-api'); ?>" class="button">
-                        🔌 REST API Info
-                    </a>
-                </p>
-            </div>
-
-            <div class="card">
-                <h2>Estado del Sistema</h2>
-                <table class="widefat">
-                    <tr>
-                        <td><strong>Plugin:</strong></td>
-                        <td>Bedrock CLI MU-Plugin v1.0.0</td>
-                    </tr>
-                    <tr>
-                        <td><strong>REST API:</strong></td>
-                        <td>✅ Activo</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Endpoint:</strong></td>
-                        <td><code><?php echo rest_url('bedrock-cli/v1'); ?></code></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Token:</strong></td>
-                        <td><?php echo get_option('bedrock_cli_token') ? '✅ Configurado' : '❌ No configurado'; ?></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <?php
+    public function renderPlugins(): void
+    {
+        require_once __DIR__ . '/Views/plugins.php';
     }
 
     public function renderLogs(): void

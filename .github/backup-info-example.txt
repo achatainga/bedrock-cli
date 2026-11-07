@@ -1,0 +1,29 @@
+# GIT BACKUP - Pre-Push Safety
+# Created: 2026-01-04 17:45
+# Branch: develop
+
+# REMOTE STATE (origin/develop)
+REMOTE_COMMIT=07aceed
+REMOTE_MESSAGE="fix: Setup verifica activación real de plugins"
+
+# LOCAL STATE (develop)
+LOCAL_COMMIT=de94e01
+LOCAL_MESSAGE="refactor: complete ProfileService integration in ThemeManager"
+
+# COMMITS TO PUSH (13 total)
+b21efff feat: intelligent web server detection and auto-configuration
+a175338 feat: add port detection methods to WebServerService
+531d73d refactor: apply DRY principle with ProjectCreationTrait
+a4e91f8 refactor: eliminate duplication with AbstractAssetManager
+e876f44 feat: add HeaderTrait to centralize ASCII art headers
+84fb237 refactor: consolidate spinner functionality into ProgressService
+b68d878 refactor: migrate all commands from SpinnerTrait to ProgressService
+70f8a38 refactor: implement HeaderTrait in Install commands
+15b0fd0 fix: critical errors from Gemini review
+45709ab fix: critical bugs + DRY violations
+8ee70dd refactor: complete DRY violations fixes
+1ab22e5 refactor: add ProfileService injection to ThemeManager
+de94e01 refactor: complete ProfileService integration in ThemeManager
+
+# ROLLBACK COMMAND (if remote breaks)
+# git push origin +07aceed:develop --force

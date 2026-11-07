@@ -2,6 +2,7 @@
 
 namespace Roots\BedrockCli\Commands\Profile;
 
+use Roots\BedrockCli\DTOs\Profile;
 use Roots\BedrockCli\Services\ProfileService;
 use Roots\BedrockCli\Services\VcsValidator;
 use Roots\BedrockCli\Traits\InteractiveSearchTrait;
@@ -85,6 +86,19 @@ class EditWizardCommand extends Command
         $this->regenerateRequire($profile);
         
         $this->profileService->saveProfile($name, $profile);
+        
+        // Si estamos en un proyecto, actualizar también .bedrock/profile.json
+        $projectProfilePath = getcwd() . '/.bedrock/profile.json';
+        if (file_exists($projectProfilePath)) {
+            $projectProfile = json_decode(file_get_contents($projectProfilePath), true);
+            if ($projectProfile && $projectProfile['name'] === $name) {
+                file_put_contents(
+                    $projectProfilePath,
+                    json_encode($profile->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                );
+            }
+        }
+        
         $output->writeln('');
         $output->writeln("<info>✅ Profile '{$name}' actualizado</info>");
         $output->writeln('');
@@ -92,7 +106,7 @@ class EditWizardCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function displayMainMenu(array $profile, OutputInterface $output): void
+    private function displayMainMenu(Profile|array $profile, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('<fg=cyan>╔═══════════════════════════════════════╗</>');
@@ -111,7 +125,7 @@ class EditWizardCommand extends Command
         $output->writeln('');
     }
 
-    private function editDescription(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    private function editDescription(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $current = $profile['description'] ?? 'Sin descripción';
@@ -119,11 +133,20 @@ class EditWizardCommand extends Command
         $output->writeln('');
         
         $question = new Question('Nueva descripción [Enter para mantener]: ', $current);
-        $profile['description'] = $helper->ask($input, $output, $question);
+        $newDesc = $helper->ask($input, $output, $question);
+        
+        if ($profile instanceof \Roots\BedrockCli\DTOs\Profile) {
+            $data = $profile->toArray();
+            $data['description'] = $newDesc;
+            $profile = \Roots\BedrockCli\DTOs\Profile::fromArray($data);
+        } else {
+            $profile['description'] = $newDesc;
+        }
+        
         $output->writeln('<info>✓ Descripción actualizada</info>');
     }
     
-    private function editDockerMode(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    private function editDockerMode(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $current = $profile['docker_mode'] ?? false;
@@ -133,11 +156,20 @@ class EditWizardCommand extends Command
         $output->writeln('<fg=yellow>Docker Mode controla si los assets premium se copian o usan symlinks.</>');        $output->writeln('<fg=yellow>• SÍ (Docker): Copia archivos (compatible con contenedores)</>');        $output->writeln('<fg=yellow>• NO (Nativo): Usa symlinks (más rápido en desarrollo local)</>');        $output->writeln('');
         
         $question = new ConfirmationQuestion('¿Habilitar Docker Mode? (Y/n): ', $current);
-        $profile['docker_mode'] = $helper->ask($input, $output, $question);
+        $newValue = $helper->ask($input, $output, $question);
+        
+        if ($profile instanceof \Roots\BedrockCli\DTOs\Profile) {
+            $data = $profile->toArray();
+            $data['docker_mode'] = $newValue;
+            $profile = \Roots\BedrockCli\DTOs\Profile::fromArray($data);
+        } else {
+            $profile['docker_mode'] = $newValue;
+        }
+        
         $output->writeln('<info>✓ Docker Mode actualizado</info>');
     }
 
-    protected function addNewPlugin(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewPlugin(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
@@ -156,6 +188,7 @@ class EditWizardCommand extends Command
         if ($type === '1') {
             $plugins = $this->searchWithCancelOption($input, $output, $helper, 'plugin');
             $added = 0;
+            $pluginsData = $profile['plugins'];
             foreach ($plugins as $plugin) {
                 $slug = is_array($plugin) ? $plugin['slug'] : $plugin;
                 $validation = $this->validateNoDuplicatePlugin($profile, $slug, 'public');
@@ -163,9 +196,10 @@ class EditWizardCommand extends Command
                     $output->writeln("<error>{$validation['message']}</error>");
                     continue;
                 }
-                $profile['plugins']['public'][] = $plugin;
+                $pluginsData['public'][] = $plugin;
                 $added++;
             }
+            $profile['plugins'] = $pluginsData;
             if ($added > 0) {
                 $output->writeln("<info>✓ {$added} plugin(s) público(s) agregado(s)</info>");
             }
@@ -173,15 +207,17 @@ class EditWizardCommand extends Command
             $plugins = $this->selectPremiumPlugins($input, $output, $helper);
             $plugins = $this->downloadPremiumPluginsToCache($plugins, $input, $output);
             $added = 0;
+            $pluginsData = $profile['plugins'];
             foreach ($plugins as $plugin) {
                 $validation = $this->validateNoDuplicatePlugin($profile, $plugin['name'], 'premium');
                 if (!$validation['valid']) {
                     $output->writeln("<error>{$validation['message']}</error>");
                     continue;
                 }
-                $profile['plugins']['premium'][] = $plugin;
+                $pluginsData['premium'][] = $plugin;
                 $added++;
             }
+            $profile['plugins'] = $pluginsData;
             if ($added > 0) {
                 $output->writeln("<info>✓ {$added} plugin(s) premium agregado(s)</info>");
             }
@@ -252,7 +288,7 @@ class EditWizardCommand extends Command
         return $processedPlugins;
     }
     
-    protected function addNewTheme(array &$profile, InputInterface $input, OutputInterface $output, $helper): void
+    protected function addNewTheme(Profile|array &$profile, InputInterface $input, OutputInterface $output, $helper): void
     {
         $output->writeln('');
         $output->writeln('  <fg=cyan>[1]</> 🌐 Público (WordPress.org)');
@@ -282,15 +318,63 @@ class EditWizardCommand extends Command
         } elseif ($type === '2') {
             $premiumTheme = $this->selectPremiumTheme($input, $output, $helper);
             if ($premiumTheme) {
-                $profile['themes']['premium'][] = $premiumTheme;
+                // Download to cache if from VCS
+                if ($premiumTheme['source'] === 'vcs' && !empty($premiumTheme['path'])) {
+                    $cacheService = new \Roots\BedrockCli\Services\PremiumCacheService();
+                    
+                    if ($cacheService->themeExists($premiumTheme['name'], $premiumTheme['version'])) {
+                        $question = new ConfirmationQuestion(
+                            "<fg=yellow>{$premiumTheme['name']} v{$premiumTheme['version']} ya existe en caché. ¿Redescargar? (Y/n):</> ",
+                            false
+                        );
+                        
+                        if ($helper->ask($input, $output, $question)) {
+                            $cacheService->clearThemeCache($premiumTheme['name'], $premiumTheme['version']);
+                            $output->writeln("<info>✓ Caché de {$premiumTheme['name']} limpiado</info>");
+                        } else {
+                            $output->writeln("<comment>✓ Usando {$premiumTheme['name']} v{$premiumTheme['version']} desde caché</comment>");
+                            $premiumTheme['source'] = 'cache';
+                            $premiumTheme['original_url'] = $premiumTheme['url'];
+                            unset($premiumTheme['url']);
+                        }
+                    }
+                    
+                    if ($premiumTheme['source'] === 'vcs') {
+                        $output->writeln("<comment>📥 Descargando {$premiumTheme['name']} v{$premiumTheme['version']} a caché...</comment>");
+                        
+                        try {
+                            $cacheService->downloadTheme(
+                                $premiumTheme['url'],
+                                $premiumTheme['name'],
+                                $premiumTheme['version'],
+                                $premiumTheme['path']
+                            );
+                            
+                            $premiumTheme['source'] = 'cache';
+                            $premiumTheme['original_url'] = $premiumTheme['url'];
+                            unset($premiumTheme['url']);
+                            
+                            $output->writeln("<info>✓ {$premiumTheme['name']} descargado</info>");
+                        } catch (\Exception $e) {
+                            $output->writeln("<error>✗ Error: {$e->getMessage()}</error>");
+                            return;
+                        }
+                    }
+                }
+                
+                $themes = $profile['themes'];
+                $themes['premium'][] = $premiumTheme;
+                $profile['themes'] = $themes;
                 $output->writeln("<info>✓ Theme premium agregado</info>");
             }
         } elseif ($type === '3') {
             $imported = $this->importLocalZip($input, $output, $helper, 'theme');
             if (!empty($imported)) {
+                $themes = $profile['themes'];
                 foreach ($imported as $theme) {
-                    $profile['themes']['premium'][] = $theme;
+                    $themes['premium'][] = $theme;
                 }
+                $profile['themes'] = $themes;
                 $output->writeln("<info>✓ Theme importado</info>");
             }
         } elseif ($type === '4') {
@@ -301,7 +385,7 @@ class EditWizardCommand extends Command
         }
     }
     
-    protected function regenerateRequire(array &$profile): void
+    protected function regenerateRequire(Profile|array &$profile): void
     {
         // Limpiar require completamente
         $newRequire = [];

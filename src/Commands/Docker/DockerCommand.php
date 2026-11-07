@@ -54,8 +54,20 @@ class DockerCommand extends Command
         
         // Verificar si Docker está corriendo
         if (!$docker->isRunning()) {
+            $isLinux = DIRECTORY_SEPARATOR === '/';
+            $dockerName = $isLinux ? 'Docker Engine' : 'Docker Desktop';
+            
             $output->writeln('');
-            $output->writeln('<fg=yellow>Docker Desktop no está en ejecución.</>');
+            $output->writeln("<fg=yellow>{$dockerName} no está en ejecución.</>");
+            
+            if ($isLinux) {
+                $output->writeln('<fg=yellow>Verifica que Docker esté instalado y el servicio activo:</>');
+                $output->writeln('<fg=cyan>  sudo systemctl status docker</>');
+                $output->writeln('<fg=cyan>  sudo systemctl start docker</>');
+                $output->writeln('');
+                return Command::FAILURE;
+            }
+            
             $output->writeln('<fg=cyan>Ejecutando bedrock doctor para verificar/iniciar Docker...</>');
             $output->writeln('');
             
@@ -119,13 +131,14 @@ class DockerCommand extends Command
             $output->writeln(' <fg=cyan>[5]</> 🛠️  Reconstruir (con caché)');
             $output->writeln(' <fg=cyan>[6]</> 📊 Ver estado');
             $output->writeln(' <fg=cyan>[7]</> 📜 Ver logs');
+            $output->writeln(' <fg=cyan>[8]</> ⚙️  Actualizar configuración');
             $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
-            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
+            $question = new Question('<fg=yellow>Opción [0-8]: </>', '0');
             $index = $helper->ask($input, $output, $question);
             
-            if (!is_numeric($index) || $index < 0 || $index > 7) {
+            if (!is_numeric($index) || $index < 0 || $index > 8) {
                 $output->writeln('<error>Opción inválida</error>');
                 continue;
             }
@@ -157,6 +170,9 @@ class DockerCommand extends Command
                     break;
                 case '7':
                     $this->logs($docker, $output);
+                    break;
+                case '8':
+                    $this->updateConfig($output);
                     break;
             }
             
@@ -325,5 +341,12 @@ class DockerCommand extends Command
     private function markStepCompleted(int $stepId): void
     {
         $this->stateService->markCompleted(getcwd(), $stepId);
+    }
+    
+    private function updateConfig(OutputInterface $output): int
+    {
+        $command = $this->getApplication()->find('docker:update-config');
+        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        return $command->run($input, $output);
     }
 }

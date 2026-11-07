@@ -56,7 +56,7 @@ class MainMenuCommand extends Command
         // FASE 2.5: Validaciones con animación y cache
         $skipValidation = $input->getOption('skip-validation');
         
-        if ($state && $state['wizard_mode'] && !$skipValidation) {
+        if ($state && !$skipValidation) {
             $this->showValidationProgress($output);
             $this->stateService->updateStepValidations(getcwd());
             // Recargar estado después de validaciones
@@ -108,9 +108,12 @@ class MainMenuCommand extends Command
             
             // Mostrar wizard si está activo
             if ($currentStep) {
-                $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
-                $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
-                $output->writeln('');
+                // BUG FIX 2: No mostrar paso si ya está completado
+                if (!($currentStep['completed'] ?? false)) {
+                    $output->writeln('<fg=yellow;options=bold>📋 PASO ' . $currentStep['id'] . ': ' . $currentStep['title'] . '</>');
+                    $output->writeln('<comment>' . $currentStep['description'] . '</comment>');
+                    $output->writeln('');
+                }
             }
             
             $output->writeln('<fg=yellow>🚀 INICIO RÁPIDO</>');
@@ -137,6 +140,7 @@ class MainMenuCommand extends Command
             $output->writeln('');
             
             $this->printMenuItem($output, 'O', 'O', '⚙️  Options   - Gestión de wp_options', $currentStep);
+            $this->printMenuItem($output, 'L', 'L', '🌐 Language - Cambiar idioma', $currentStep);
             $this->printMenuItem($output, 'A', 'A', '🌱 Acorn    - Roots Acorn', $currentStep);
             
             if ($needsAuth) {
@@ -144,6 +148,7 @@ class MainMenuCommand extends Command
             } else {
                 $this->printMenuItem($output, 'T', 'T', '🔐 Auth     - Credenciales repos privados', $currentStep);
             }
+            $this->printMenuItem($output, 'U', 'U', '🔄 Update   - Actualizar MU-Plugin', $currentStep);
             $this->printMenuItem($output, 'B', 'B', '💾 Backup   - Crear backup', $currentStep);
             $this->printMenuItem($output, 'R', 'R', '🗑️  Reinstall - Reinstalar (DESTRUCTIVO)', $currentStep);
             $output->writeln('');
@@ -151,7 +156,7 @@ class MainMenuCommand extends Command
             $this->printMenuItem($output, '0', '0', '❌ Salir', $currentStep);
             $output->writeln('');
 
-            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, A, T, B, R]:</> ', '0');
+            $question = new Question('<fg=yellow>Opción [0-9, N, I, O, L, A, T, U, B, R]:</> ', '0');
             $selectedIndex = $helper->ask($input, $output, $question);
             
             $cursor = new Cursor($output);
@@ -160,9 +165,9 @@ class MainMenuCommand extends Command
             
             $selectedIndex = strtoupper($selectedIndex);
             
-            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'A', 'T', 'B', 'R'];
+            $validOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'N', 'I', 'O', 'L', 'A', 'T', 'U', 'B', 'R'];
             if (!in_array($selectedIndex, $validOptions)) {
-                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, A, T, B, R.</error>');
+                $output->writeln('<error>Opción inválida. Usa 0-9, N, I, O, L, A, T, B, R.</error>');
                 sleep(1);
                 continue;
             }
@@ -186,8 +191,10 @@ class MainMenuCommand extends Command
                 '9' => 'init:menu',
                 'I' => 'ai',
                 'O' => 'options',
+                'L' => 'language',
                 'A' => 'acorn',
                 'T' => 'auth:menu',
+                'U' => 'install:update-mu-plugin',
                 'B' => 'backup',
                 'R' => 'reinstall',
             ];
@@ -232,11 +239,12 @@ class MainMenuCommand extends Command
         $output->writeln('<fg=cyan>🔍 Evaluando estado del proyecto...</>');
         
         $projectPath = getcwd();
+        $isDockerProject = file_exists($projectPath . '/docker-compose.yml');
         
         $validations = [
             'Profile configuration' => ['delay' => 0.2, 'method' => 'validateProfileExists'],
             'VCS access (GitHub/GitLab)' => ['delay' => 0.4, 'method' => 'validateVcsAccess'],
-            'Docker containers' => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
+            ($isDockerProject ? 'Docker containers' : 'Project mode') => ['delay' => 0.3, 'method' => 'validateDockerRunning'],
             'Database connection' => ['delay' => 0.4, 'method' => 'validateDatabaseAccess'],
             'WordPress installation' => ['delay' => 0.5, 'method' => 'validateWordPressInstalled'],
             'Theme activation' => ['delay' => 0.3, 'method' => 'validateThemeActive'],
@@ -267,7 +275,16 @@ class MainMenuCommand extends Command
                     $result = $this->stateService->validateWordPressInstalled($projectPath);
                     break;
                 case 'validateThemeActive':
-                    $result = $this->stateService->validateThemeActive($projectPath, 'twentytwentyfive');
+                    // Get actual theme from profile
+                    $profileFile = $projectPath . '/.bedrock/profile.json';
+                    $themeName = 'twentytwentyfive'; // default
+                    if (file_exists($profileFile)) {
+                        $profile = json_decode(file_get_contents($profileFile), true);
+                        if (isset($profile['themes'][0]['name'])) {
+                            $themeName = $profile['themes'][0]['name'];
+                        }
+                    }
+                    $result = $this->stateService->validateThemeActive($projectPath, $themeName);
                     break;
                 case 'validatePluginsActive':
                     $result = $this->stateService->validatePluginsActive($projectPath);
@@ -392,7 +409,20 @@ class MainMenuCommand extends Command
                 '4' => 'docker',
                 '8' => 'info',
                 'D' => 'docker',
-                'P' => 'plugins:menu',
+                'P' => 'plugins:activate',
+                'T' => 'themes:menu',
+                'A' => 'acorn',
+                'S' => 'seed'
+            ];
+
+            // Ejecutar comando seleccionado
+            $commandMap = [
+                '1' => 'doctor',
+                '2' => 'setup', 
+                '4' => 'docker',
+                '8' => 'info',
+                'D' => 'docker',
+                'P' => 'plugins:activate-multiple',
                 'T' => 'themes:menu',
                 'A' => 'acorn',
                 'S' => 'seed'
@@ -402,23 +432,24 @@ class MainMenuCommand extends Command
             if ($commandName) {
                 $output->writeln('');
                 $command = $this->getApplication()->find($commandName);
-                // FASE 3: Fix propagación de flags - crear input limpio
                 $cleanInput = new ArrayInput([]);
                 $command->run($cleanInput, $output);
                 
-                // Recargar estado después de ejecutar comando (con validación rápida)
-                $stateService = new StateService();
+                // Recargar estado después de ejecutar comando
                 if (!$skipValidation) {
                     $output->writeln('<fg=cyan>🔄 Actualizando estado...</>');
-                    $stateService->updateStepValidations(getcwd());
+                    $this->stateService->updateStepValidations(getcwd());
                 }
-                $state = $stateService->loadState(getcwd());
-                $currentStep = $state && $state['wizard_mode'] ? $stateService->getCurrentStep($state) : null;
+                $state = $this->stateService->loadState(getcwd());
+                $currentStep = $state && $state['wizard_mode'] ? $this->stateService->getCurrentStep($state) : null;
                 
                 if (!$currentStep) {
                     $output->writeln('<info>🎉 ¡Todos los pasos completados! El proyecto está listo.</info>');
                     return Command::SUCCESS;
                 }
+                
+                // Continue loop to show menu again
+                continue;
             } else {
                 $output->writeln('<error>Opción inválida.</error>');
                 sleep(1);
@@ -454,26 +485,43 @@ class MainMenuCommand extends Command
     
     private function getMainOptionForStep(array $step): ?array
     {
-        // Dynamic step options based on actual validation state
+        // Use step title instead of hardcoded ID mapping
         $projectPath = getcwd();
+        $title = strtolower($step['title']);
         
-        // Check actual WordPress installation status
-        $wordpressInstalled = $this->stateService->validateWordPressInstalled($projectPath);
+        if (strpos($title, 'profile') !== false) {
+            return ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'];
+        }
         
-        $stepOptions = [
-            1 => ['key' => '3', 'label' => '📋 Profile  - Aplicar profile'],
-            2 => ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'],
-            3 => ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'],
-            4 => ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'],
-            5 => $wordpressInstalled ? 
-                ['key' => 'T', 'label' => '🎨 Themes   - Activar tema (CRÍTICO)'] :
-                ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress (CRÍTICO)'],
-            6 => ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'],
-            7 => ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'],
-            8 => ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders']
-        ];
+        if (strpos($title, 'credenciales') !== false || strpos($title, 'auth') !== false) {
+            return ['key' => 'T', 'label' => '🔐 Auth     - Configurar credenciales'];
+        }
         
-        return $stepOptions[$step['id']] ?? null;
+        if (strpos($title, 'docker') !== false) {
+            return ['key' => '4', 'label' => '🐳 Docker   - Levantar contenedores + DB'];
+        }
+        
+        if (strpos($title, 'wordpress') !== false || strpos($title, 'instalar') !== false) {
+            return ['key' => '2', 'label' => '⚙️  Setup    - Instalar WordPress'];
+        }
+        
+        if (strpos($title, 'tema') !== false || strpos($title, 'theme') !== false) {
+            return ['key' => 'T', 'label' => '🎨 Themes   - Activar tema'];
+        }
+        
+        if (strpos($title, 'plugin') !== false) {
+            return ['key' => 'P', 'label' => '🔌 Plugins  - Activar plugins'];
+        }
+        
+        if (strpos($title, 'acorn') !== false) {
+            return ['key' => 'A', 'label' => '🌱 Acorn    - Configurar Acorn'];
+        }
+        
+        if (strpos($title, 'seed') !== false) {
+            return ['key' => 'S', 'label' => '🌱 Seed     - Ejecutar seeders'];
+        }
+        
+        return null;
     }
     
     private function showFullMenu(InputInterface $input, OutputInterface $output, $helper, bool $needsAuth): int

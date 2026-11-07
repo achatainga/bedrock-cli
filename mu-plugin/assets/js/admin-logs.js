@@ -72,5 +72,28 @@
                 clearInterval(autoRefreshInterval);
             }
         });
+
+        $('#clear-logs').on('click', function() {
+            if (!confirm('Are you sure you want to clear all logs?')) {
+                return;
+            }
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'bedrock_cli_clear_logs',
+                    nonce: bedrockCliLogs.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        loadLogs(); // Refresh to show empty logs
+                        alert(response.data.message);
+                    } else {
+                        alert('Error: ' + response.data);
+                    }
+                }
+            });
+        });
     });
 })(jQuery);

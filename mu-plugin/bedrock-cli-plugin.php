@@ -12,6 +12,12 @@ if (!defined('ABSPATH') || !function_exists('add_action')) {
     return;
 }
 
+// Definir constantes del plugin
+define('BEDROCK_CLI_PLUGIN_VERSION', '1.0.0');
+define('BEDROCK_CLI_PLUGIN_FILE', __FILE__);
+define('BEDROCK_CLI_PLUGIN_DIR', __DIR__);
+define('BEDROCK_CLI_PLUGIN_URL', plugins_url('', __FILE__));
+
 // Validar base de datos inicializada
 global $wpdb;
 if (!isset($wpdb) || !$wpdb) {
@@ -45,6 +51,11 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
             require $file;
         }
     });
+}
+
+// Cargar File Modification Manager
+if (file_exists(__DIR__ . '/file-modification-manager.php')) {
+    require_once __DIR__ . '/file-modification-manager.php';
 }
 
 // Inicializar plugin

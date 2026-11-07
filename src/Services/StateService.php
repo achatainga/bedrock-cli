@@ -55,15 +55,17 @@ class StateService
             }
         }
 
-        file_put_contents(
-            "{$projectPath}/bedrock_state.json",
-            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-        );
+        $stateFile = $this->getStateFilePath($projectPath);
+        $stateDir = dirname($stateFile);
+        if (!is_dir($stateDir)) {
+            @mkdir($stateDir, 0755, true);
+        }
+        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     public function loadState(string $projectPath): ?array
     {
-        $file = "{$projectPath}/bedrock_state.json";
+        $file = $this->getStateFilePath($projectPath);
         
         // Si no existe y es un proyecto Bedrock, generarlo
         if (!file_exists($file) && $this->isBedrockProject($projectPath)) {
@@ -109,10 +111,16 @@ class StateService
             $state['wizard_mode'] = false;
         }
 
-        file_put_contents(
-            "{$projectPath}/bedrock_state.json",
-            json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
+        $stateFile = $this->getStateFilePath($projectPath);
+        file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function getStateFilePath(string $projectPath): string
+    {
+        $home = getenv('HOME') ?: getenv('USERPROFILE');
+        $stateDir = $home . '/.bedrock/states';
+        $projectHash = md5($projectPath);
+        return "{$stateDir}/{$projectHash}.json";
     }
 
     public function markStepCompleted(int $stepId): void
@@ -146,7 +154,7 @@ class StateService
             [
                 'id' => 2,
                 'title' => 'Instalar WordPress',
-                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com",
+                'description' => "Instala WordPress Core en la base de datos. Ejecuta:\ndocker-compose exec web wp core install --url=http://localhost:{$config['http_port']} --title=\"Mi Sitio\" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --locale=es_ES",
                 'menu_item' => 'I',
                 'completed' => false,
                 'skippable' => false
@@ -285,10 +293,7 @@ class StateService
      */
     public function validateThemeActive(string $projectPath, string $themeName): bool
     {
-        $projectName = basename($projectPath);
-        $activeTheme = shell_exec("cd {$projectPath} && docker-compose exec -T web wp theme status {$themeName} 2>/dev/null");
-        
-        return $activeTheme && strpos($activeTheme, 'Active') !== false;
+        return $this->validationService->validateTheme($projectPath, $themeName)->isValid;
     }
 
     /**
@@ -296,10 +301,7 @@ class StateService
      */
     public function validatePluginsActive(string $projectPath): bool
     {
-        $projectName = basename($projectPath);
-        $plugins = shell_exec("cd {$projectPath} && docker-compose exec -T web wp plugin list --status=active --format=count 2>/dev/null");
-        
-        return $plugins && (int)trim($plugins) > 0;
+        return $this->validationService->validatePlugins($projectPath)->isValid;
     }
 
     /**
@@ -507,24 +509,23 @@ class StateService
                     break;
                     
                 case 'theme':
-                    if (isset($step['condition']) && $step['condition'] === 'true') {
-                        // Extraer nombre del tema del comando
-                        if (preg_match('/wp theme activate (\w+)/', $step['command'] ?? '', $matches)) {
-                            $step['completed'] = $this->validateThemeActive($projectPath, $matches[1]);
+                    // Get theme from profile
+                    $profileFile = $projectPath . '/.bedrock/profile.json';
+                    if (file_exists($profileFile)) {
+                        $profile = json_decode(file_get_contents($profileFile), true);
+                        $themeName = $profile['themes'][0]['name'] ?? null;
+                        if ($themeName) {
+                            $step['completed'] = $this->validateThemeActive($projectPath, $themeName);
                         }
                     }
                     break;
                     
                 case 'plugins':
-                    if (isset($step['condition']) && $step['condition'] === 'true') {
-                        $step['completed'] = $this->validatePluginsActive($projectPath);
-                    }
+                    $step['completed'] = $this->validatePluginsActive($projectPath);
                     break;
                     
                 case 'acorn':
-                    if (isset($step['condition']) && $step['condition'] === 'true') {
-                        $step['completed'] = $this->validateAcornConfigured($projectPath);
-                    }
+                    $step['completed'] = $this->validateAcornConfigured($projectPath);
                     break;
                     
                 case 'seeders':
@@ -552,10 +553,8 @@ class StateService
             }
 
             // Guardar estado actualizado
-            file_put_contents(
-                "{$projectPath}/bedrock_state.json",
-                json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-            );
+            $stateFile = $this->getStateFilePath($projectPath);
+            file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         }
     }
 }

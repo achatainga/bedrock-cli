@@ -3,18 +3,45 @@
 namespace Roots\BedrockCli\Services;
 
 use Symfony\Component\Process\Process;
+use Roots\BedrockCli\Services\Management\ContextDetector;
+use Roots\BedrockCli\Enums\ExecutionMode;
 
 class WpCliService
 {
     private DockerService $docker;
+    private ContextDetector $contextDetector;
+    private string $projectPath;
 
-    public function __construct(DockerService $docker)
+    public function __construct(DockerService $docker, ContextDetector $contextDetector)
     {
         $this->docker = $docker;
+        $this->contextDetector = $contextDetector;
+        $this->projectPath = getcwd();
     }
 
     public function exec(array $args): Process
     {
+        $mode = $this->contextDetector->detectExecutionMode();
+
+        // Native OR Hybrid mode: use local wp-cli
+        if ($mode !== ExecutionMode::DOCKER) {
+            // Native/Hybrid mode: use global wp-cli or install it
+            $wpPath = trim(shell_exec('which wp 2>/dev/null') ?: '');
+            
+            if (empty($wpPath)) {
+                // Try composer global wp-cli
+                $composerHome = getenv('COMPOSER_HOME') ?: (getenv('HOME') . '/.config/composer');
+                $wpPath = $composerHome . '/vendor/bin/wp';
+                
+                if (!file_exists($wpPath)) {
+                    throw new \RuntimeException('WP-CLI not found. Install it: composer global require wp-cli/wp-cli-bundle');
+                }
+            }
+            
+            return new Process(array_merge([$wpPath], $args), $this->projectPath);
+        }
+
+        // Docker Pure mode
         // Escapar argumentos para evitar problemas con espacios y caracteres especiales
         $escapedArgs = array_map(function($arg) {
             // Si el argumento contiene espacios o caracteres especiales, envolverlo en comillas

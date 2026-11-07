@@ -11,6 +11,7 @@ use Roots\BedrockCli\Commands\Database\CleanCommand as DatabaseCleanCommand;
 use Roots\BedrockCli\Commands\Database\SnapshotCommand as DatabaseSnapshotCommand;
 use Roots\BedrockCli\Commands\Database\MigrateCommand as DatabaseMigrateCommand;
 use Roots\BedrockCli\Commands\Docker\DockerCommand;
+use Roots\BedrockCli\Commands\Docker\UpdateConfigCommand;
 use Roots\BedrockCli\Commands\Options\MenuCommand as OptionsMenuCommand;
 use Roots\BedrockCli\Commands\Options\PullCommand as OptionsPullCommand;
 use Roots\BedrockCli\Commands\Options\PushCommand as OptionsPushCommand;
@@ -19,6 +20,7 @@ use Roots\BedrockCli\Commands\Options\ManageCommand as OptionsManageCommand;
 use Roots\BedrockCli\Commands\Plugins\MenuCommand as PluginsMenuCommand;
 use Roots\BedrockCli\Commands\Plugins\ListCommand as PluginsListCommand;
 use Roots\BedrockCli\Commands\Plugins\ActivateCommand as PluginsActivateCommand;
+use Roots\BedrockCli\Commands\Plugins\ActivateMultipleCommand as PluginsActivateMultipleCommand;
 use Roots\BedrockCli\Commands\Plugins\DeactivateCommand as PluginsDeactivateCommand;
 use Roots\BedrockCli\Commands\Plugins\CompressCommand as PluginsCompressCommand;
 use Roots\BedrockCli\Commands\Plugins\StatusCommand as PluginsStatusCommand;
@@ -37,6 +39,7 @@ use Roots\BedrockCli\Commands\Setup\InitCommand;
 use Roots\BedrockCli\Commands\System\MainMenuCommand;
 use Roots\BedrockCli\Commands\System\InitMenuCommand;
 use Roots\BedrockCli\Commands\System\SearchMenuCommand;
+use Roots\BedrockCli\Commands\System\LanguageCommand;
 use Roots\BedrockCli\Commands\System\InfoCommand;
 use Roots\BedrockCli\Commands\System\DoctorCommand;
 use Roots\BedrockCli\Commands\System\BackupCommand;
@@ -80,6 +83,7 @@ use Roots\BedrockCli\Commands\Auth\RemoveCommand as AuthRemoveCommand;
 use Roots\BedrockCli\Commands\AI\AICommand;
 use Roots\BedrockCli\Commands\Install\InstallMuPluginCommand;
 use Roots\BedrockCli\Commands\Install\UpdateMuPluginCommand;
+use Roots\BedrockCli\Commands\Install\UpdateConfigCommand as InstallUpdateConfigCommand;
 use Roots\BedrockCli\Commands\Cache\ImportCommand as CacheImportCommand;
 use Roots\BedrockCli\Commands\Cache\UpdateVersionCommand as CacheUpdateVersionCommand;
 use Roots\BedrockCli\Commands\UpdateCommand;
@@ -99,9 +103,9 @@ class Application extends BaseApplication
 
         // Usar CommandRegistryService para comandos principales
         $commandRegistry = $this->container->get('Roots\BedrockCli\Services\CommandRegistryService');
-        $commandRegistry->registerCommands($this);
-
-        $this->addCommands([
+        $registryCommands = $commandRegistry->registerCommands();
+        
+        $this->addCommands(array_merge($registryCommands, [
             new AcornCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
@@ -116,6 +120,7 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
+            new UpdateConfigCommand(),
             new OptionsMenuCommand(),
             new OptionsPullCommand(),
             new OptionsPushCommand(),
@@ -132,6 +137,9 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
                 $this->container->get('Roots\BedrockCli\Services\WpCliService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService')
+            ),
+            new PluginsActivateMultipleCommand(
+                $this->container->get('Roots\BedrockCli\Services\PluginActivationService')
             ),
             new PluginsDeactivateCommand(
                 $this->container->get('Roots\BedrockCli\Services\DockerService'),
@@ -176,15 +184,21 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\BlueprintService'),
                 $this->container->get('Roots\BedrockCli\Services\AuthService'),
                 $this->container->get('Roots\BedrockCli\Services\StateService'),
-                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
+                $this->container->get('Roots\BedrockCli\Services\ProjectValidationService'),
+                $this->container->get('Roots\BedrockCli\Services\WebServerService')
             ),
-            new NewWizardCommand(),
+            new NewWizardCommand(
+                $this->container->get('Roots\BedrockCli\Services\WebServerService')
+            ),
             new InitCommand(
                 $this->container->get('Roots\BedrockCli\Services\StateService')
             ),
             // MainMenuCommand registrado via CommandRegistryService - NO duplicar aquí
             new InitMenuCommand(),
             new SearchMenuCommand(),
+            new LanguageCommand(
+                $this->container->get('Roots\BedrockCli\Services\WpCliService')
+            ),
             new InfoCommand(
                 $this->container->get('Roots\BedrockCli\Services\ProjectValidationService')
             ),
@@ -339,6 +353,7 @@ class Application extends BaseApplication
             ),
             new InstallMuPluginCommand(),
             new UpdateMuPluginCommand(),
+            new InstallUpdateConfigCommand(),
             new CacheImportCommand(
                 $this->container->get('Roots\BedrockCli\Services\PremiumCacheService')
             ),
@@ -353,7 +368,7 @@ class Application extends BaseApplication
                 $this->container->get('Roots\BedrockCli\Services\ErrorLoggerService'),
                 $this->container->get('Roots\BedrockCli\Services\CliRunnerService')
             ),
-        ]);
+        ]));
     }
 
     private function configureServices(): void
@@ -370,8 +385,10 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\BlueprintService', 'Roots\BedrockCli\Services\BlueprintService');
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService');
         $this->container->register('Roots\BedrockCli\Services\SecurityService', 'Roots\BedrockCli\Services\SecurityService');
-        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService');
-        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector');
+        $this->container->register('Roots\BedrockCli\Services\ProjectValidationService', 'Roots\BedrockCli\Services\ProjectValidationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
+        $this->container->register('Roots\BedrockCli\Services\Management\ContextDetector', 'Roots\BedrockCli\Services\Management\ContextDetector')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
         $this->container->register('Roots\BedrockCli\Services\Management\ManagementService', 'Roots\BedrockCli\Services\Management\ManagementService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
         $this->container->register('Roots\BedrockCli\Services\Management\PluginManager', 'Roots\BedrockCli\Services\Management\PluginManager')
@@ -384,6 +401,8 @@ class Application extends BaseApplication
         $this->container->register('Roots\BedrockCli\Services\PremiumCacheService', 'Roots\BedrockCli\Services\PremiumCacheService');
         $this->container->register('Roots\BedrockCli\Services\UnzipService', 'Roots\BedrockCli\Services\UnzipService');
         $this->container->register('Roots\BedrockCli\Services\ZipService', 'Roots\BedrockCli\Services\ZipService');
+        $this->container->register('Roots\BedrockCli\Services\PluginActivationService', 'Roots\BedrockCli\Services\PluginActivationService')
+            ->addArgument(new Reference('Roots\BedrockCli\Services\WpCliService'));
         $this->container->register('Roots\BedrockCli\Services\ProgressService', 'Roots\BedrockCli\Services\ProgressService');
         $this->container->register('Roots\BedrockCli\Services\ProjectDiagnosticService', 'Roots\BedrockCli\Services\ProjectDiagnosticService');
         $this->container->register('Roots\BedrockCli\Services\OrderValidator', 'Roots\BedrockCli\Services\OrderValidator');
@@ -392,7 +411,8 @@ class Application extends BaseApplication
         
         // Add WpCliService with DockerService dependency
         $this->container->register('Roots\BedrockCli\Services\WpCliService', 'Roots\BedrockCli\Services\WpCliService')
-            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'));
+            ->addArgument(new Reference('Roots\BedrockCli\Services\DockerService'))
+            ->addArgument(new Reference('Roots\BedrockCli\Services\Management\ContextDetector'));
         
         // Add StateService with ProjectValidationService dependency
         $this->container->register('Roots\BedrockCli\Services\StateService', 'Roots\BedrockCli\Services\StateService')
@@ -407,6 +427,9 @@ class Application extends BaseApplication
         // Add CliRunnerService with ErrorLoggerService dependency
         $this->container->register('Roots\BedrockCli\Services\CliRunnerService', 'Roots\BedrockCli\Services\CliRunnerService')
             ->addArgument(new Reference('Roots\BedrockCli\Services\ErrorLoggerService'));
+        
+        // Add WebServerService
+        $this->container->register('Roots\BedrockCli\Services\WebServerService', 'Roots\BedrockCli\Services\WebServerService');
         
         // Add CommandRegistryService
         $this->container->register('Roots\BedrockCli\Services\CommandRegistryService', 'Roots\BedrockCli\Services\CommandRegistryService')

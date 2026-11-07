@@ -48,7 +48,9 @@ class ShowCommand extends Command
         if (!empty($profile['plugins']['public'])) {
             $output->writeln('<info>🔌 Plugins Públicos:</info>');
             foreach ($profile['plugins']['public'] as $plugin) {
-                $output->writeln("  • {$plugin}");
+                $name = is_array($plugin) ? ($plugin['slug'] ?? $plugin['name'] ?? 'unknown') : $plugin;
+                $version = is_array($plugin) ? ($plugin['version'] ?? '*') : '*';
+                $output->writeln("  • {$name} ({$version})");
             }
             $output->writeln('');
         }
@@ -63,20 +65,31 @@ class ShowCommand extends Command
         }
 
         // Tema
-        $output->writeln('<info>🎨 Tema:</info>');
-        $output->writeln("  • Nombre: {$profile['theme']['name']}");
-        $output->writeln("  • Tipo: {$profile['theme']['type']}");
-        if ($profile['theme']['license_env']) {
-            $output->writeln("  • Licencia: \${$profile['theme']['license_env']}");
+        if (!empty($profile['theme']['name']) || !empty($profile['themes']['premium'][0])) {
+            $output->writeln('<info>🎨 Tema:</info>');
+            if (!empty($profile['theme']['name'])) {
+                $output->writeln("  • Nombre: {$profile['theme']['name']}");
+                $output->writeln("  • Tipo: {$profile['theme']['type']}");
+                if (!empty($profile['theme']['license_env'])) {
+                    $output->writeln("  • Licencia: \${$profile['theme']['license_env']}");
+                }
+            } elseif (!empty($profile['themes']['premium'][0])) {
+                $theme = $profile['themes']['premium'][0];
+                $output->writeln("  • Nombre: {$theme['name']}");
+                $output->writeln("  • Versión: {$theme['version']}");
+                $output->writeln("  • Fuente: {$theme['source']}");
+            }
+            $output->writeln('');
         }
-        $output->writeln('');
 
         // Blueprints
-        $output->writeln('<info>🏗️  Blueprints:</info>');
-        foreach ($profile['blueprints'] as $env => $config) {
-            $output->writeln("  • <comment>{$env}</comment>: " . count($config['seeders']) . ' seeders');
+        if (!empty($profile['blueprints'])) {
+            $output->writeln('<info>🏗️  Blueprints:</info>');
+            foreach ($profile['blueprints'] as $env => $config) {
+                $output->writeln("  • <comment>{$env}</comment>: " . count($config['seeders']) . ' seeders');
+            }
+            $output->writeln('');
         }
-        $output->writeln('');
 
         $output->writeln('<comment>JSON completo:</comment>');
         $output->writeln(json_encode($profile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

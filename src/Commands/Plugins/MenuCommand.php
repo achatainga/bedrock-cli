@@ -44,6 +44,7 @@ class MenuCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $helper = $this->getHelper('question');
+        $wpcli = $this->wpCliService;
         
         $plugin = $input->getArgument('plugin');
         
@@ -57,19 +58,19 @@ class MenuCommand extends Command
         
         while (true) {
             $output->writeln('');
-            $output->writeln('<cyan>╔═══════════════════════════════════════╗</cyan>');
-            $output->writeln('<cyan>║</cyan>   🔌 PLUGINS - Gestión              <cyan>║</cyan>');
-            $output->writeln('<cyan>╚═══════════════════════════════════════╝</cyan>');
+            $output->writeln('<fg=cyan;options=bold>╔═══════════════════════════════════════╗</>');
+            $output->writeln('<fg=cyan;options=bold>║</> <fg=yellow;options=bold>  🔌 PLUGINS - Gestión          </> <fg=cyan;options=bold>║</>');
+            $output->writeln('<fg=cyan;options=bold>╚═══════════════════════════════════════╝</>');
             $output->writeln('');
             
-            $output->writeln(' <cyan>[1]</cyan> ⚙️  Gestionar plugin específico');
-            $output->writeln(' <cyan>[2]</cyan> 📋 Listar desde WordPress');
-            $output->writeln(' <cyan>[3]</cyan> ⬇️  Instalar desde repositorio');
-            $output->writeln(' <cyan>[4]</cyan> 🔄 Actualizar todos');
-            $output->writeln(' <cyan>[5]</cyan> 📦 Descomprimir ZIPs');
-            $output->writeln(' <cyan>[6]</cyan> 🔢 Orden de activación');
-            $output->writeln(' <cyan>[7]</cyan> 🛠️  Constructor de orden');
-            $output->writeln(' <cyan>[0]</cyan> ❌ Volver');
+            $output->writeln(' <fg=cyan>[1]</> ⚙️  Gestionar plugin específico');
+            $output->writeln(' <fg=cyan>[2]</> 📋 Listar desde WordPress');
+            $output->writeln(' <fg=cyan>[3]</> ⬇️  Instalar desde repositorio');
+            $output->writeln(' <fg=cyan>[4]</> 🔄 Actualizar todos');
+            $output->writeln(' <fg=cyan>[5]</> 📦 Descomprimir ZIPs');
+            $output->writeln(' <fg=cyan>[6]</> 🔢 Orden de activación');
+            $output->writeln(' <fg=cyan>[7]</> 🛠️  Constructor de orden');
+            $output->writeln(' <fg=cyan>[0]</> ❌ Volver');
             $output->writeln('');
             
             $choices = [
@@ -83,8 +84,7 @@ class MenuCommand extends Command
                 '0' => 'Volver',
             ];
             
-            $question = new ChoiceQuestion('', $choices, '1');
-            $question->setAutocompleterValues(null);
+            $question = new Question('<fg=yellow>Opción [0-7]: </>', '0');
 
             $index = $helper->ask($input, $output, $question);
             $cursor = new Cursor($output);
@@ -125,6 +125,10 @@ class MenuCommand extends Command
             }
             
             $output->writeln('');
+            $output->writeln('<comment>Presiona Enter para continuar...</comment>');
+            if ($input->isInteractive()) {
+                fgets(STDIN);
+            }
         }
 
         return Command::SUCCESS;
@@ -149,7 +153,16 @@ class MenuCommand extends Command
                 $output->writeln('');
                 
                 // Detectar tipo de error
-                if (str_contains($errorOutput, 'Error establishing a database connection')) {
+                if (str_contains($errorOutput, 'Could not access filesystem') || str_contains($errorOutput, 'functions.php')) {
+                    $output->writeln('<fg=red>⚠️  Error de permisos o filesystem</>');
+                    $output->writeln('<comment>Posibles causas:</comment>');
+                    $output->writeln('  1. Permisos incorrectos en archivos de WordPress');
+                    $output->writeln('  2. Error en functions.php del tema');
+                    $output->writeln('  3. Plugin o tema con código incompatible');
+                    $output->writeln('');
+                    $output->writeln('<fg=cyan>Solución sugerida:</>');
+                    $output->writeln('  Revisar logs: docker-compose logs web');
+                } elseif (str_contains($errorOutput, 'Error establishing a database connection')) {
                     $output->writeln('<fg=red>⚠️  Error de conexión a la base de datos</>');
                     $output->writeln('<comment>Posibles causas:</comment>');
                     $output->writeln('  1. Docker no está corriendo');
